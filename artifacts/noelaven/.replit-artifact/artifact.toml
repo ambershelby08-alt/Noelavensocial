@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Noelaven"
+version = "1.0.0"
+id = "artifacts/noelaven"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22018
+
+[services.development]
+run = "pnpm --filter @workspace/noelaven run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/noelaven", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/noelaven/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22018"
+BASE_PATH = "/"

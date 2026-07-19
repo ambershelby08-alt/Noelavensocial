@@ -1,0 +1,1 @@
+- [Noelaven Firebase demo mode](noelaven-firebase.md) — placeholder env vars intentionally trigger demo mode; `isFirebaseConfigured` detects them explicitly.
