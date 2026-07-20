@@ -63,7 +63,11 @@ function Field({ label, icon, error, right, ...props }: InputProps) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function Login() {
-  const { signIn, signInWithGoogle, isLoading, redirectError } = useAuth();
+  // TODO: Re-enable Google Sign-In after the app is published on a stable domain.
+  //       Firebase restricts OAuth redirects to authorised domains; a stable
+  //       production URL must be added to the Firebase Console → Authentication →
+  //       Settings → Authorised domains before re-enabling the button below.
+  const { signIn, signInWithGoogle: _signInWithGoogle, isLoading, redirectError } = useAuth();
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -90,13 +94,14 @@ export default function Login() {
     }
   }
 
-  async function handleGoogleSignIn() {
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      setErrors(prev => ({ ...prev, form: (err as Error).message }));
-    }
-  }
+  // TODO: Restore when Google Sign-In is re-enabled (see comment above).
+  // async function handleGoogleSignIn() {
+  //   try {
+  //     await _signInWithGoogle();
+  //   } catch (err) {
+  //     setErrors(prev => ({ ...prev, form: (err as Error).message }));
+  //   }
+  // }
 
   return (
     <div className="min-h-screen bg-[#FDF9F6] relative overflow-hidden flex flex-col">
@@ -178,24 +183,29 @@ export default function Login() {
               : 'Sign In'}
           </motion.button>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 py-1">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-[12px] text-gray-400 font-medium">or</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
+          {/*
+            ── Google Sign-In (temporarily disabled) ─────────────────────────
+            Re-enable this block once the app is live on a stable domain and
+            that domain is added to Firebase Console → Authentication →
+            Settings → Authorised domains.
 
-          {/* Google */}
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.98 }}
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-            className="w-full bg-white border border-black/[0.08] rounded-2xl py-4 flex items-center justify-center gap-3 font-semibold text-[15px] text-gray-700 shadow-sm hover:shadow-md transition-all disabled:opacity-70"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </motion.button>
+            <div className="flex items-center gap-3 py-1">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-[12px] text-gray-400 font-medium">or</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.98 }}
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="w-full bg-white border border-black/[0.08] rounded-2xl py-4 flex items-center justify-center gap-3 font-semibold text-[15px] text-gray-700 shadow-sm hover:shadow-md transition-all disabled:opacity-70"
+            >
+              <GoogleIcon />
+              Continue with Google
+            </motion.button>
+            ──────────────────────────────────────────────────────────────── */}
         </motion.form>
 
         {/* Footer link */}
