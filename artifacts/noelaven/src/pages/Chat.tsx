@@ -6,8 +6,10 @@ import {
   Smile, Mic, Send, X, Camera, File, MapPin, ChevronDown,
   Check, CheckCheck,
 } from 'lucide-react';
-import { mockConversations, mockMessages } from '@/lib/mockData';
+import { mockMessages } from '@/lib/mockData';
 import type { Message, User } from '@/lib/mockData';
+import { useMessages } from '@/hooks/useMessages';
+import { isFirebaseConfigured } from '@/lib/firebase';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -434,10 +436,22 @@ export default function Chat() {
   const { currentUser } = useAuth();
   const convId          = params?.id ?? '';
 
-  const conversation = mockConversations.find(c => c.id === convId);
-  const initMsgs     = (mockMessages[convId] ?? []) as LocalMsg[];
+  const { conversation: hookConv, messages: hookMessages, sendMessage: hookSend } = useMessages(convId);
+  // In demo mode, seed local messages from mockMessages; in Firebase mode they come from the hook
+  const initMsgs = isFirebaseConfigured ? [] : (mockMessages[convId] ?? []) as LocalMsg[];
+  const [messages, setMessages] = useState<LocalMsg[]>(initMsgs);
 
-  const [messages, setMessages]         = useState<LocalMsg[]>(initMsgs);
+  // Sync from Firestore listener
+  useEffect(() => {
+    if (isFirebaseConfigured && hookMessages.length >= 0) {
+      setMessages(hookMessages as LocalMsg[]);
+    }
+  }, [hookMessages]);
+
+  const conversation = isFirebaseConfigured ? hookConv : (
+    // Demo fallback: build a minimal conversation object from hookConv or return null
+    hookConv
+  );
   const [inputText, setInputText]       = useState('');
   const [isOtherTyping, setOtherTyping] = useState(false);
   const [emojiOpen, setEmojiOpen]       = useState(false);

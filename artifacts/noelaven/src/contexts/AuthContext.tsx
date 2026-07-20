@@ -1,6 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import {
+  onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail,
+  updateProfile, signOut as firebaseSignOut,
+} from 'firebase/auth';
+import { type FirebaseError } from 'firebase/app';
+import { auth, isFirebaseConfigured } from '@/lib/firebase';
+import { getUserDoc, createUserDoc, updateUserDoc, seedCommunitiesIfNeeded } from '@/lib/firestore';
 import { User, mockUsers } from '@/lib/mockData';
-import { isFirebaseConfigured } from '@/lib/firebase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +41,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const googleProvider = new GoogleAuthProvider();
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isDemoMode = !isFirebaseConfigured;
   const demoUser = mockUsers.find(u => u.id === 'demo-user') ?? mockUsers[0];
@@ -42,87 +51,212 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null);
   const [isLoading, setIsLoading] = useState(!isDemoMode);
   const [isNewUser, setIsNewUser] = useState(false);
+  // Track the Firebase Auth UID so completeProfile can write to the right doc
+  const [pendingUid, setPendingUid] = useState<string | null>(null);
 
+  // ─── Firebase auth listener ────────────────────────────────────────────────
   useEffect(() => {
-    if (!isDemoMode) {
-      // Real Firebase: wire onAuthStateChanged here
+    if (isDemoMode || !auth) {
       setIsLoading(false);
+      return;
+    }
+
+    // Seed default communities once (no-op if already seeded)
+    seedCommunitiesIfNeeded();
+
+    const unsub = onAuthStateChanged(auth, async firebaseUser => {
+      if (!firebaseUser) {
+        setCurrentUser(null);
+        setPendingUser(null);
+        setPendingUid(null);
+        setIsNewUser(false);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const profile = await getUserDoc(firebaseUser.uid);
+
+        if (profile && profile.handle) {
+          // Existing complete profile
+          setCurrentUser(profile);
+          setPendingUser(null);
+          setPendingUid(null);
+          setIsNewUser(false);
+        } else {
+          // New user — profile not yet created (or created but missing handle)
+          setPendingUser({
+            displayName: firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'New User',
+            email: firebaseUser.email ?? '',
+          });
+          setPendingUid(firebaseUser.uid);
+          setCurrentUser(null);
+          setIsNewUser(true);
+        }
+      } catch {
+        // Firestore error (e.g. offline) — treat as new user
+        setPendingUser({
+          displayName: firebaseUser.displayName ?? 'New User',
+          email: firebaseUser.email ?? '',
+        });
+        setPendingUid(firebaseUser.uid);
+        setCurrentUser(null);
+        setIsNewUser(true);
+      } finally {
+        setIsLoading(false);
+      }
+    });
+
+    return unsub;
+  }, [isDemoMode]);
+
+  // ─── Auth actions (demo mode stubs + real Firebase) ────────────────────────
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    if (isDemoMode) {
+      setIsLoading(true);
+      await new Promise(r => setTimeout(r, 900));
+      setCurrentUser(demoUser);
+      setIsLoading(false);
+      return;
+    }
+    if (!auth) throw new Error('Firebase Auth not initialized');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged handles the rest
+    } catch (err) {
+      const e = err as FirebaseError;
+      throw new Error(friendlyAuthError(e.code));
     }
   }, [isDemoMode]);
 
-  // Simulated 900 ms network delay for all auth actions
-  function delay(ms = 900) {
-    return new Promise<void>(r => setTimeout(r, ms));
-  }
+  const signUp = useCallback(async (email: string, password: string, displayName: string) => {
+    if (isDemoMode) {
+      setIsLoading(true);
+      await new Promise(r => setTimeout(r, 900));
+      setPendingUser({ displayName, email });
+      setIsNewUser(true);
+      setIsLoading(false);
+      return;
+    }
+    if (!auth) throw new Error('Firebase Auth not initialized');
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName });
+      // onAuthStateChanged fires → profile missing → isNewUser = true
+    } catch (err) {
+      const e = err as FirebaseError;
+      throw new Error(friendlyAuthError(e.code));
+    }
+  }, [isDemoMode]);
 
-  const signIn = async (email: string, _password: string) => {
-    setIsLoading(true);
-    await delay();
-    // Placeholder: any credentials succeed and log in as the demo user
-    setCurrentUser(mockUsers.find(u => u.id === 'demo-user') ?? mockUsers[0]);
-    setIsLoading(false);
-  };
+  const signInWithGoogle = useCallback(async () => {
+    if (isDemoMode) {
+      setIsLoading(true);
+      await new Promise(r => setTimeout(r, 700));
+      setCurrentUser(demoUser);
+      setIsLoading(false);
+      return;
+    }
+    if (!auth) throw new Error('Firebase Auth not initialized');
+    try {
+      await signInWithPopup(auth, googleProvider);
+      // onAuthStateChanged handles the rest
+    } catch (err) {
+      const e = err as FirebaseError;
+      if (e.code === 'auth/popup-closed-by-user') return; // user dismissed
+      throw new Error(friendlyAuthError(e.code));
+    }
+  }, [isDemoMode]);
 
-  const signUp = async (_email: string, _password: string, displayName: string) => {
+  const completeProfile = useCallback(async (data: ProfileData) => {
     setIsLoading(true);
-    await delay();
-    // Placeholder: store name/email, route to profile creation
-    setPendingUser({ displayName, email: _email });
-    setIsNewUser(true);
-    setIsLoading(false);
-  };
 
-  const signInWithGoogle = async () => {
-    setIsLoading(true);
-    await delay(700);
-    setCurrentUser(mockUsers.find(u => u.id === 'demo-user') ?? mockUsers[0]);
-    setIsLoading(false);
-  };
+    if (isDemoMode) {
+      await new Promise(r => setTimeout(r, 800));
+      const newUser: User = {
+        id: `user-${Date.now()}`,
+        displayName: pendingUser?.displayName ?? 'New User',
+        handle: data.handle,
+        bio: data.bio,
+        avatarUrl: '',
+        coverUrl: '',
+        interests: data.interests,
+        followers: 0, following: 0, postCount: 0,
+        badges: ['New Member'],
+        joinedAt: new Date(),
+      };
+      setCurrentUser(newUser);
+      setIsNewUser(false);
+      setPendingUser(null);
+      setIsLoading(false);
+      return;
+    }
 
-  const completeProfile = async (data: ProfileData) => {
-    setIsLoading(true);
-    await delay(800);
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      displayName: pendingUser?.displayName ?? 'New User',
-      handle: data.handle,
-      bio: data.bio,
-      avatarUrl: `https://api.dicebear.com/9.x/avataaars/svg?seed=${data.handle}`,
-      coverUrl: `https://picsum.photos/800/300?random=${Math.floor(Math.random() * 99)}`,
-      interests: data.interests,
-      followers: 0,
-      following: 0,
-      postCount: 0,
-      badges: ['New Member'],
-      joinedAt: new Date(),
-    };
-    setCurrentUser(newUser);
+    if (!pendingUid) {
+      setIsLoading(false);
+      throw new Error('No pending user — please sign up first');
+    }
+
+    try {
+      await createUserDoc(pendingUid, {
+        displayName: pendingUser?.displayName ?? 'New User',
+        handle: data.handle,
+        bio: data.bio,
+        interests: data.interests,
+        email: pendingUser?.email,
+      });
+      const profile = await getUserDoc(pendingUid);
+      if (profile) {
+        setCurrentUser(profile);
+        setIsNewUser(false);
+        setPendingUser(null);
+        setPendingUid(null);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isDemoMode, pendingUser, pendingUid]);
+
+  const resetPassword = useCallback(async (email: string) => {
+    if (isDemoMode) {
+      await new Promise(r => setTimeout(r, 800));
+      return;
+    }
+    if (!auth) throw new Error('Firebase Auth not initialized');
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (err) {
+      const e = err as FirebaseError;
+      throw new Error(friendlyAuthError(e.code));
+    }
+  }, [isDemoMode]);
+
+  const signOut = useCallback(async () => {
+    if (!isDemoMode && auth) {
+      await firebaseSignOut(auth);
+    }
+    setCurrentUser(isDemoMode ? null : null);
     setIsNewUser(false);
     setPendingUser(null);
-    setIsLoading(false);
-  };
+    setPendingUid(null);
+    // In demo mode, reload to reset all state
+    if (isDemoMode) window.location.reload();
+  }, [isDemoMode]);
 
-  const resetPassword = async (_email: string) => {
-    await delay(800);
-    // Real Firebase: sendPasswordResetEmail(auth, email)
-  };
-
-  const signOut = async () => {
-    setCurrentUser(null);
-    setIsNewUser(false);
-    setPendingUser(null);
-  };
-
-  const updateUser = (updates: Partial<User>) => {
+  const updateUser = useCallback((updates: Partial<User>) => {
     setCurrentUser(prev => (prev ? { ...prev, ...updates } : prev));
-  };
+    if (!isDemoMode && currentUser) {
+      updateUserDoc(currentUser.id, updates).catch(console.error);
+    }
+  }, [isDemoMode, currentUser]);
 
   return (
     <AuthContext.Provider
       value={{
         currentUser, pendingUser, isLoading, isNewUser, isDemoMode,
-        signIn, signUp, signInWithGoogle, signOut, completeProfile, resetPassword,
-        updateUser,
+        signIn, signUp, signInWithGoogle, signOut,
+        completeProfile, resetPassword, updateUser,
       }}
     >
       {children}
@@ -134,4 +268,21 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
+}
+
+// ─── Error messages ───────────────────────────────────────────────────────────
+
+function friendlyAuthError(code: string): string {
+  const map: Record<string, string> = {
+    'auth/invalid-email':          "That email address doesn't look right.",
+    'auth/user-not-found':         'No account found with that email.',
+    'auth/wrong-password':         'Incorrect password. Please try again.',
+    'auth/invalid-credential':     'Incorrect email or password.',
+    'auth/email-already-in-use':   'An account with this email already exists.',
+    'auth/weak-password':          'Password must be at least 6 characters.',
+    'auth/too-many-requests':      'Too many attempts. Please wait a moment.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/popup-blocked':          'Pop-up was blocked. Please allow pop-ups and try again.',
+  };
+  return map[code] ?? 'Something went wrong. Please try again.';
 }

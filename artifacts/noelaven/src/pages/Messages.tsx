@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, PenSquare, X, Check, ChevronRight, MessageCircle,
 } from 'lucide-react';
-import { mockConversations, mockUsers } from '@/lib/mockData';
+import { mockUsers } from '@/lib/mockData';
 import type { Conversation, User } from '@/lib/mockData';
+import { useConversations } from '@/hooks/useConversations';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -167,24 +168,21 @@ function ConvItem({ conv }: { conv: Conversation }) {
 
 // ─── Compose drawer ───────────────────────────────────────────────────────────
 
-function ComposeDrawer({ onClose }: { onClose: () => void }) {
+function ComposeDrawer({ onClose, openDirect, composeUsers }: {
+  onClose: () => void;
+  openDirect: (userId: string) => Promise<string | null>;
+  composeUsers: User[];
+}) {
   const [, setLocation] = useLocation();
-  const { currentUser } = useAuth();
   const [search, setSearch] = useState('');
-  const users = mockUsers.filter(u => u.id !== currentUser?.id);
+  const users = composeUsers;
   const filtered = search
     ? users.filter(u => u.displayName.toLowerCase().includes(search.toLowerCase()) || u.handle.toLowerCase().includes(search.toLowerCase()))
     : users;
 
-  function handleSelect(user: User) {
-    const existing = mockConversations.find(c =>
-      c.type === 'direct' && c.participants.some(p => p.id === user.id)
-    );
-    if (existing) {
-      setLocation(`/messages/${existing.id}`);
-    } else {
-      setLocation(`/messages/conv-1`); // fallback
-    }
+  async function handleSelect(user: User) {
+    const convId = await openDirect(user.id);
+    if (convId) setLocation(`/messages/${convId}`);
     onClose();
   }
 
@@ -251,11 +249,12 @@ function ComposeDrawer({ onClose }: { onClose: () => void }) {
 export default function Messages() {
   const [search, setSearch]         = useState('');
   const [composeOpen, setCompose]   = useState(false);
-  const conversations = mockConversations;
+  const { conversations, openDirectConversation, getComposeUsers } = useConversations();
 
+  const { currentUser: _cu } = useAuth();
   const filtered = search
     ? conversations.filter(c => {
-        const other = c.participants.find(p => p.id !== 'demo-user');
+        const other = c.participants.find(p => p.id !== (_cu?.id ?? 'demo-user'));
         const name = c.type === 'group' ? c.name ?? '' : other?.displayName ?? '';
         return name.toLowerCase().includes(search.toLowerCase()) || c.lastMessage.toLowerCase().includes(search.toLowerCase());
       })
@@ -359,7 +358,14 @@ export default function Messages() {
 
       {/* ── Overlays ─────────────────────────────────────────────── */}
       <AnimatePresence>
-        {composeOpen && <ComposeDrawer key="compose" onClose={() => setCompose(false)} />}
+        {composeOpen && (
+          <ComposeDrawer
+            key="compose"
+            onClose={() => setCompose(false)}
+            openDirect={openDirectConversation}
+            composeUsers={getComposeUsers()}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

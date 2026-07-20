@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check, AtSign, Sparkles, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -298,13 +299,7 @@ export default function CreateProfile() {
       <div className="relative z-10 flex-1 flex flex-col px-6 pt-14 pb-8 max-w-sm mx-auto w-full overflow-y-auto">
         {/* Top wordmark */}
         <div className="flex items-center gap-2 mb-8">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shadow-md"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
-          >
-            <span className="text-white font-black text-sm">N</span>
-          </div>
-          <span className="font-black text-[17px] text-gray-900">Noelaven</span>
+          <NoelavenLogo variant="full" size="sm" />
         </div>
 
         <AnimatePresence mode="wait">

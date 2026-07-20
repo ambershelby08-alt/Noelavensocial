@@ -7,8 +7,10 @@ import {
   UserCheck, ChevronRight, AtSign, FileText, Star, Plus,
   ArrowLeft,
 } from 'lucide-react';
-import { mockUsers, mockPosts, mockCommunities, mockConversations } from '@/lib/mockData';
+import { mockUsers, mockConversations } from '@/lib/mockData';
 import type { User, Post, Community } from '@/lib/mockData';
+import { useProfile } from '@/hooks/useProfile';
+import { useCommunities } from '@/hooks/useCommunities';
 import { PostCard } from '@/pages/Home';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -503,10 +505,12 @@ export default function Profile() {
   const { currentUser, updateUser } = useAuth();
   const userId = params?.userId;
 
-  // Resolve displayed user — prefer currentUser if it's their own profile
-  const baseUser = mockUsers.find(u => u.id === userId) ?? mockUsers[0];
-  const isOwnProfile = currentUser?.id === userId || currentUser?.id === baseUser.id;
-  const user: User = isOwnProfile && currentUser ? currentUser : baseUser;
+  // Resolve displayed user via hook (handles Firebase + demo mode)
+  const { user: hookUser, posts: hookPosts } = useProfile(userId);
+  const isOwnProfile = currentUser?.id === userId;
+  const user: User = hookUser ?? (isOwnProfile && currentUser ? currentUser : mockUsers[0]);
+
+  const { communities } = useCommunities();
 
   const [activeTab, setActiveTab]       = useState<TabLabel>('Posts');
   const [editOpen, setEditOpen]         = useState(false);
@@ -525,13 +529,13 @@ export default function Profile() {
   };
 
   // Data for each tab
-  const userPosts    = [...mockPosts.filter(p => p.authorId === user.id)];
-  const likedPosts   = mockPosts.filter(p => p.liked);
-  const savedPosts   = mockPosts.filter(p => p.saved);
-  const userCircles  = mockCommunities.filter(c => c.isJoined || c.moderatorIds.includes(user.id));
+  const userPosts    = hookPosts;
+  const likedPosts   = hookPosts.filter(p => p.liked);
+  const savedPosts   = hookPosts.filter(p => p.saved);
+  const userCircles  = communities.filter(c => c.isJoined || c.moderatorIds.includes(user.id));
   const sparks       = MOCK_SPARKS;
 
-  // Followers/following lists (mock)
+  // Followers/following lists (mock for now)
   const followersList = mockUsers.filter(u => u.id !== user.id);
   const followingList = mockUsers.filter(u => u.id !== user.id).slice(0, 3);
 

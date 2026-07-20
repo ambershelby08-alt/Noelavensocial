@@ -1,1 +1,2 @@
 - [Noelaven Firebase demo mode](noelaven-firebase.md) — placeholder env vars intentionally trigger demo mode; `isFirebaseConfigured` detects them explicitly.
+- [Noelaven Firebase integration](noelaven-firebase-integration.md) — full Firebase Auth + Firestore integration implemented; service layer, hooks, and page wiring complete.

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { mockNotifications } from '@/lib/mockData';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Heart, MessageCircle, UserPlus, Users, Sparkles, Check, CheckCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'wouter';
@@ -22,11 +22,7 @@ export default function Notifications() {
     }
   };
 
-  const [notifications, setNotifications] = useState(mockNotifications);
-
-  const markAllRead = () => {
-    setNotifications(notifications.map(n => ({...n, read: true})));
-  };
+  const { notifications, markAllRead } = useNotifications();
 
   return (
     <div className="pb-24 pt-4 md:pt-8 min-h-screen px-4 md:px-6">

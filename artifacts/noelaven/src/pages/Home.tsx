@@ -8,8 +8,9 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { dailySparks, mockPosts, mockUsers } from '@/lib/mockData';
+import { dailySparks, mockUsers } from '@/lib/mockData';
 import type { Post, User } from '@/lib/mockData';
+import { useFeed } from '@/hooks/useFeed';
 import { cn } from '@/lib/utils';
 import { Link } from 'wouter';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
@@ -591,18 +592,33 @@ interface PostCardProps {
   index: number;
   onOpenComments?: (post: Post) => void;
   onOpenShare?: (post: Post) => void;
+  onLike?: (postId: string, newLiked: boolean) => void;
+  onSave?: (postId: string, newSaved: boolean) => void;
 }
 
-export function PostCard({ post, index, onOpenComments, onOpenShare }: PostCardProps) {
+export function PostCard({ post, index, onOpenComments, onOpenShare, onLike, onSave }: PostCardProps) {
   const [liked, setLiked] = useState(post.liked);
   const [likesCount, setLikesCount] = useState(post.likes);
   const [saved, setSaved] = useState(post.saved);
   const [commentsCount, setCommentsCount] = useState(post.comments);
   const [sharesCount, setSharesCount] = useState(post.shares);
 
+  // Sync when post prop changes (Firestore updates)
+  useEffect(() => { setLiked(post.liked); }, [post.liked]);
+  useEffect(() => { setLikesCount(post.likes); }, [post.likes]);
+  useEffect(() => { setSaved(post.saved); }, [post.saved]);
+
   function handleLike() {
-    setLiked(prev => !prev);
-    setLikesCount(prev => liked ? prev - 1 : prev + 1);
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikesCount(prev => newLiked ? prev + 1 : prev - 1);
+    onLike?.(post.id, newLiked);
+  }
+
+  function handleSave() {
+    const newSaved = !saved;
+    setSaved(newSaved);
+    onSave?.(post.id, newSaved);
   }
 
   return (
@@ -688,7 +704,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare }: PostCardP
         {/* Save */}
         <motion.button
           whileTap={{ scale: 0.82 }}
-          onClick={() => setSaved(prev => !prev)}
+          onClick={handleSave}
           className={cn(
             'p-2 rounded-full transition-all',
             saved ? 'text-purple-500 bg-purple-50' : 'text-gray-300 hover:bg-gray-50 hover:text-gray-500'
@@ -709,7 +725,7 @@ export default function Home() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = currentUser?.displayName.split(' ')[0] ?? 'there';
 
-  const [posts, setPosts] = useState<Post[]>(mockPosts);
+  const { posts, addPost, toggleLike, toggleSave } = useFeed();
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
   const [sparkOpen, setSparkOpen] = useState(false);
@@ -732,19 +748,7 @@ export default function Home() {
 
   function handleNewPost(content: string) {
     if (!currentUser) return;
-    const newPost: Post = {
-      id: `post-new-${Date.now()}`,
-      authorId: currentUser.id,
-      author: currentUser as unknown as User,
-      content,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      liked: false,
-      saved: false,
-      createdAt: new Date(),
-    };
-    setPosts(prev => [newPost, ...prev]);
+    addPost(content).catch(console.error);
     showToast('Post shared! ✨');
   }
 
@@ -753,16 +757,11 @@ export default function Home() {
     showToast('Spark shared with the world! ✨');
   }
 
-  function handleCommentAdded(postId: string) {
-    setPosts(prev =>
-      prev.map(p => p.id === postId ? { ...p, comments: p.comments + 1 } : p)
-    );
+  function handleCommentAdded(_postId: string) {
+    // Firestore listener updates the count; in demo mode the count is local only
   }
 
-  function handleShared(postId: string) {
-    setPosts(prev =>
-      prev.map(p => p.id === postId ? { ...p, shares: p.shares + 1 } : p)
-    );
+  function handleShared(_postId: string) {
     showToast('Shared! 🎉');
   }
 
@@ -814,6 +813,8 @@ export default function Home() {
             index={index}
             onOpenComments={p => setCommentsPost(p)}
             onOpenShare={p => setSharePost(p)}
+            onLike={(id, liked) => toggleLike(id, !liked).catch(console.error)}
+            onSave={(id, saved) => toggleSave(id, !saved).catch(console.error)}
           />
         ))}
       </div>

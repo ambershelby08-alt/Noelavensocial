@@ -5,10 +5,10 @@ import {
   Search, Plus, Users, Lock, X, Check, ChevronRight,
   Shield, Sparkles, Globe, AtSign,
 } from 'lucide-react';
-import { mockCommunities } from '@/lib/mockData';
 import type { Community } from '@/lib/mockData';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCommunities } from '@/hooks/useCommunities';
 import { cn } from '@/lib/utils';
 
 // ─── Category metadata ────────────────────────────────────────────────────────
@@ -490,7 +490,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
 
 export default function Communities() {
   const { currentUser } = useAuth();
-  const [communities, setCommunities] = useState(mockCommunities);
+  const { communities, toggleJoin, createCircle } = useCommunities();
   const [search, setSearch]           = useState('');
   const [category, setCategory]       = useState('All');
   const [createOpen, setCreateOpen]   = useState(false);
@@ -504,39 +504,20 @@ export default function Communities() {
   }
 
   function handleJoin(id: string) {
-    setCommunities(prev =>
-      prev.map(c =>
-        c.id === id
-          ? { ...c, isJoined: !c.isJoined, memberCount: c.isJoined ? c.memberCount - 1 : c.memberCount + 1 }
-          : c
-      )
-    );
     const comm = communities.find(c => c.id === id);
     if (comm) showToast(comm.isJoined ? `Left ${comm.name}` : `Joined ${comm.name}! 🎉`);
+    toggleJoin(id);
   }
 
-  function handleCreate(data: NewCircleData) {
+  async function handleCreate(data: NewCircleData) {
     const catEmoji = CATEGORIES.find(c => c.label === data.category)?.emoji ?? '✨';
-    const [from, to] = getCatGradient(data.category);
-    const newComm: Community = {
-      id: `comm-new-${Date.now()}`,
-      name: data.name,
-      description: data.description,
-      bannerUrl: '',
-      emoji: catEmoji,
-      memberCount: 1,
-      postCount: 0,
-      onlineCount: 1,
-      category: data.category,
-      rules: data.rules,
-      moderatorIds: [currentUser?.id ?? 'demo-user'],
-      isJoined: true,
-      isPrivate: data.isPrivate,
-      createdAt: new Date(),
-    };
-    setCommunities(prev => [newComm, ...prev]);
-    setCreateOpen(false);
-    showToast(`${catEmoji} ${data.name} created!`);
+    try {
+      await createCircle(data);
+      setCreateOpen(false);
+      showToast(`${catEmoji} ${data.name} created!`);
+    } catch {
+      showToast('Failed to create circle. Please try again.');
+    }
   }
 
   const myCircles = communities.filter(c => c.isJoined);
