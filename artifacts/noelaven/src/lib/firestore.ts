@@ -126,6 +126,7 @@ function docToPost(id: string, d: DocumentData): Post {
     content: d.content ?? '',
     imageUrl: d.imageUrl ?? undefined,
     communityId: d.communityId ?? undefined,
+    sparkPrompt: d.sparkPrompt ?? undefined,
     likes: d.likes ?? 0,
     comments: d.comments ?? 0,
     shares: d.shares ?? 0,
@@ -139,7 +140,7 @@ function docToPost(id: string, d: DocumentData): Post {
 export async function createPost(
   author: User,
   content: string,
-  opts: { imageUrl?: string; communityId?: string; mood?: string } = {}
+  opts: { imageUrl?: string; communityId?: string; mood?: string; sparkPrompt?: string } = {}
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
   const ref = await addDoc(collection(db, 'posts'), {
@@ -150,6 +151,7 @@ export async function createPost(
     imageUrl: opts.imageUrl ?? null,
     communityId: opts.communityId ?? null,
     mood: opts.mood ?? null,
+    sparkPrompt: opts.sparkPrompt ?? null,
     likes: 0,
     comments: 0,
     shares: 0,

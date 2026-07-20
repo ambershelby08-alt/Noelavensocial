@@ -276,24 +276,44 @@ function ShareSheet({ post, onClose, onShared }: ShareSheetProps) {
 interface SparkModalProps {
   spark: string;
   onClose: () => void;
-  onPosted: (content: string) => void;
+  onPosted: (content: string, imageUrl?: string) => void;
 }
 
 function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
   const { currentUser } = useAuth();
   const [text, setText] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
   const [posted, setPosted] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTimeout(() => textRef.current?.focus(), 300);
   }, []);
 
+  async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const url = await uploadImage(file, 'posts');
+      setImageUrl(url);
+    } catch (err) {
+      console.error('Image upload failed:', err);
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  }
+
+  const canPost = text.trim().length > 0 || imageUrl.length > 0;
+
   function submit() {
-    if (!text.trim()) return;
+    if (!canPost) return;
     setPosted(true);
     setTimeout(() => {
-      onPosted(text.trim());
+      onPosted(text.trim(), imageUrl || undefined);
       onClose();
     }, 900);
   }
@@ -308,6 +328,15 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] shadow-2xl"
       >
+        {/* Hidden image input */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleImageFile}
+        />
+
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
         </div>
@@ -335,17 +364,58 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
         </div>
 
         {/* Compose */}
-        <div className="px-5 pb-5 pb-safe">
-          <div className="flex gap-3 mb-4">
+        <div className="px-5 pb-5">
+          <div className="flex gap-3 mb-3">
             {currentUser && <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={40} className="flex-shrink-0 mt-1" />}
-            <textarea
-              ref={textRef}
-              value={text}
-              onChange={e => setText(e.target.value)}
-              placeholder="Share your spark with the world… ✨"
-              rows={4}
-              className="flex-1 bg-gray-50 rounded-2xl px-4 py-3 text-[14.5px] text-gray-800 placeholder:text-gray-400 outline-none resize-none leading-relaxed"
-            />
+            <div className="flex-1 min-w-0">
+              <textarea
+                ref={textRef}
+                value={text}
+                onChange={e => setText(e.target.value)}
+                placeholder="Share your spark with the world… ✨"
+                rows={3}
+                className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-[14.5px] text-gray-800 placeholder:text-gray-400 outline-none resize-none leading-relaxed"
+              />
+
+              {/* Image preview */}
+              {imageUrl && (
+                <div className="relative mt-2 rounded-2xl overflow-hidden">
+                  <img src={imageUrl} alt="Attached" className="w-full max-h-52 object-cover rounded-2xl" />
+                  <button
+                    onClick={() => setImageUrl('')}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+                  >
+                    <X size={13} className="text-white" />
+                  </button>
+                </div>
+              )}
+
+              {/* Upload indicator */}
+              {imageUploading && (
+                <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-400">
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
+                  Uploading photo…
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-4 pl-[52px]">
+            <button
+              onClick={() => isCloudinaryConfigured && imageInputRef.current?.click()}
+              disabled={imageUploading || !isCloudinaryConfigured}
+              className={cn(
+                'flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full transition-colors',
+                isCloudinaryConfigured
+                  ? 'text-blue-400 hover:bg-blue-50 active:bg-blue-100'
+                  : 'text-gray-300 cursor-not-allowed'
+              )}
+              title={isCloudinaryConfigured ? 'Add photo' : 'Image upload not configured'}
+            >
+              <ImageIcon size={16} />
+              <span>Photo</span>
+            </button>
           </div>
 
           <AnimatePresence mode="wait">
@@ -364,18 +434,18 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
                 key="post"
                 whileTap={{ scale: 0.97 }}
                 onClick={submit}
-                disabled={!text.trim()}
+                disabled={!canPost || imageUploading}
                 className={cn(
                   'w-full py-3.5 rounded-2xl font-bold text-[15px] transition-all',
-                  text.trim() ? 'text-white shadow-lg' : 'bg-gray-100 text-gray-400'
+                  canPost && !imageUploading ? 'text-white shadow-lg' : 'bg-gray-100 text-gray-400'
                 )}
                 style={
-                  text.trim()
+                  canPost && !imageUploading
                     ? { background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)', boxShadow: '0 4px 18px rgba(107,115,255,0.35)' }
                     : {}
                 }
               >
-                Spark it! ✨
+                Share Your Spark ✨
               </motion.button>
             )}
           </AnimatePresence>
@@ -723,6 +793,14 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onLike, onS
         </button>
       </div>
 
+      {/* Spark context badge */}
+      {post.sparkPrompt && (
+        <div className="mb-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-xl w-fit" style={{ background: 'linear-gradient(135deg, #EEF0FF, #FFF0F6)' }}>
+          <Sparkles size={11} className="text-purple-500 flex-shrink-0" />
+          <span className="text-[11.5px] font-semibold text-purple-600 truncate max-w-[230px]">"{post.sparkPrompt}"</span>
+        </div>
+      )}
+
       {/* Content */}
       <p className="text-[14.5px] leading-relaxed text-gray-800 mb-3 whitespace-pre-wrap">{post.content}</p>
 
@@ -820,8 +898,9 @@ export default function Home() {
     showToast('Post shared! ✨');
   }
 
-  function handleSparkPost(content: string) {
-    handleNewPost(`✨ Daily Spark response:\n"${dailySparks[0]}"\n\n${content}`);
+  function handleSparkPost(content: string, imageUrl?: string) {
+    if (!currentUser) return;
+    addPost(content, { imageUrl, sparkPrompt: dailySparks[0] }).catch(console.error);
     showToast('Spark shared with the world! ✨');
   }
 

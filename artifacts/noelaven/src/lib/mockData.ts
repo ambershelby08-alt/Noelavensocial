@@ -21,6 +21,7 @@ export interface Post {
   content: string;
   imageUrl?: string;
   communityId?: string;
+  sparkPrompt?: string;
   likes: number;
   comments: number;
   shares: number;

@@ -475,7 +475,7 @@ function CircleCard({ community }: { community: Community }) {
 
 // ─── Spark card ───────────────────────────────────────────────────────────────
 
-interface SparkItem { id: string; prompt: string; response: string; likes: number; liked: boolean; date: Date; }
+interface SparkItem { id: string; prompt: string; response: string; imageUrl?: string; likes: number; liked: boolean; date: Date; }
 
 function SparkCard({ spark, user }: { spark: SparkItem; user: User }) {
   const [liked, setLiked] = useState(spark.liked);
@@ -504,9 +504,14 @@ function SparkCard({ spark, user }: { spark: SparkItem; user: User }) {
       {/* Response */}
       <div className="px-4 py-3.5">
         <div className="flex items-start gap-3">
-          <GradientAvatar name={user.displayName} size={34} className="flex-shrink-0 mt-0.5" />
+          <GradientAvatar name={user.displayName} src={user.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
           <p className="text-[14.5px] text-gray-800 leading-relaxed flex-1">{spark.response}</p>
         </div>
+        {spark.imageUrl && (
+          <div className="mt-3 rounded-2xl overflow-hidden">
+            <img src={spark.imageUrl} alt="Spark photo" className="w-full max-h-56 object-cover" />
+          </div>
+        )}
       </div>
 
       {/* Actions */}
@@ -589,7 +594,17 @@ export default function Profile() {
   const likedPosts   = hookPosts.filter(p => p.liked);
   const savedPosts   = hookPosts.filter(p => p.saved);
   const userCircles  = communities.filter(c => c.isJoined || c.moderatorIds.includes(user.id));
-  const sparks       = MOCK_SPARKS;
+  const sparks: SparkItem[] = userPosts
+    .filter(p => p.sparkPrompt)
+    .map(p => ({
+      id: p.id,
+      prompt: p.sparkPrompt!,
+      response: p.content,
+      imageUrl: p.imageUrl,
+      likes: p.likes,
+      liked: p.liked,
+      date: p.createdAt,
+    }));
 
   // Followers/following lists (mock for now)
   const followersList = mockUsers.filter(u => u.id !== user.id);
