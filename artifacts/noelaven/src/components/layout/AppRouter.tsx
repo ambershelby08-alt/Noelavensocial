@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppShell } from '@/components/layout/AppShell';
-import { Route, Switch } from 'wouter';
+import { Route, Switch, Redirect, useLocation } from 'wouter';
 
 import Home from '@/pages/Home';
 import Profile from '@/pages/Profile';
@@ -69,9 +69,11 @@ function LoadingScreen() {
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
+const AUTH_ONLY_PATHS = ['/login', '/signup', '/forgot-password'];
+
 export default function AppRouter() {
   const { currentUser, isLoading, isNewUser } = useAuth();
-
+  const [location] = useLocation();
 
   if (isLoading) return <LoadingScreen />;
 
@@ -87,6 +89,12 @@ export default function AppRouter() {
         <Route path="*"                 component={Login} />
       </Switch>
     );
+  }
+
+  // Authenticated user landed on an auth-only path (e.g. /login, /signup after
+  // sign-in completes) — redirect to home so the authenticated shell never 404s.
+  if (AUTH_ONLY_PATHS.some(p => location === p || location.startsWith(p + '/'))) {
+    return <Redirect to="/" />;
   }
 
   return <AuthenticatedApp />;

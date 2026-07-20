@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, AtSign, Sparkles, ChevronRight } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
@@ -254,6 +255,7 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
 
 export default function CreateProfile() {
   const { pendingUser, completeProfile, isLoading } = useAuth();
+  const [, navigate] = useLocation();
 
   const displayName = pendingUser?.displayName ?? 'New User';
 
@@ -284,6 +286,7 @@ export default function CreateProfile() {
 
   async function handleSubmit() {
     await completeProfile({ handle, bio, interests });
+    navigate('/');
   }
 
   return (
