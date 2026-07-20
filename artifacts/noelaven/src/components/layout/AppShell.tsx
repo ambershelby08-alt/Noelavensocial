@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
 
 // ─── Floating Bottom Nav ──────────────────────────────────────────────────────
 
@@ -109,14 +110,8 @@ export function Sidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-black/[0.06] bg-white/80 backdrop-blur-xl pt-8 pb-6 px-4 z-40">
-      <div className="flex items-center gap-2.5 px-3 mb-10">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
-        >
-          <span className="text-white font-black text-base">N</span>
-        </div>
-        <span className="font-black text-xl tracking-tight text-gray-900">Noelaven</span>
+      <div className="flex items-center px-3 mb-10">
+        <NoelavenLogo variant="full" size="md" />
         {isDemoMode && (
           <span className="ml-auto text-[9px] uppercase font-black tracking-wider bg-purple-50 text-purple-500 px-2 py-1 rounded-full">
             Demo
@@ -181,6 +176,22 @@ export function Sidebar() {
   );
 }
 
+// ─── Mobile top header ────────────────────────────────────────────────────────
+
+function MobileHeader() {
+  const { isDemoMode } = useAuth();
+  return (
+    <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-5 bg-[#FDF9F6]/90 backdrop-blur-xl border-b border-black/[0.05]">
+      <NoelavenLogo variant="full" size="sm" />
+      {isDemoMode && (
+        <span className="text-[9px] uppercase font-black tracking-wider bg-purple-50 text-purple-500 px-2 py-1 rounded-full">
+          Demo
+        </span>
+      )}
+    </header>
+  );
+}
+
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -200,8 +211,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground flex">
       <Sidebar />
+      <MobileHeader />
 
-      <main className="flex-1 md:ml-64 w-full relative pb-20 md:pb-0">
+      {/* pt-14 clears the mobile header on small screens; md:pt-0 removes it on desktop (sidebar handles branding) */}
+      <main className="flex-1 md:ml-64 w-full relative pb-20 md:pb-0 pt-14 md:pt-0">
         <AnimatePresence mode="wait">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
