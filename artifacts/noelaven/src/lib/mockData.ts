@@ -20,6 +20,7 @@ export interface Post {
   author: User;
   content: string;
   imageUrl?: string;
+  imagePublicId?: string;
   communityId?: string;
   sparkPrompt?: string;
   likes: number;
@@ -28,6 +29,7 @@ export interface Post {
   liked: boolean;
   saved: boolean;
   mood?: string;
+  commentsDisabled?: boolean;
   createdAt: Date;
 }
 

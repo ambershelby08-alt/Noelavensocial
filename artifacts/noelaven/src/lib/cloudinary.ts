@@ -37,8 +37,41 @@ export async function uploadImage(file: File, folder: UploadFolder = 'posts'): P
     throw new Error(err.error?.message ?? `Upload failed (${res.status})`);
   }
 
-  const data = await res.json() as { secure_url: string };
+  const data = await res.json() as { secure_url: string; public_id: string };
   return data.secure_url;
+}
+
+export type UploadResult = { url: string; publicId: string };
+
+/**
+ * Same as uploadImage but also returns the Cloudinary public_id for future
+ * image management (transforms, deletion, etc.).
+ */
+export async function uploadImageFull(file: File, folder: UploadFolder = 'posts'): Promise<UploadResult> {
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const preset    = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !preset) {
+    throw new Error('Cloudinary is not configured — add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET to your secrets.');
+  }
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', preset);
+  form.append('folder', `noelaven/${folder}`);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? `Upload failed (${res.status})`);
+  }
+
+  const data = await res.json() as { secure_url: string; public_id: string };
+  return { url: data.secure_url, publicId: data.public_id };
 }
 
 /** Pick a file from disk and immediately upload it. Returns the secure URL. */

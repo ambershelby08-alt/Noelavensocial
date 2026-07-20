@@ -13,6 +13,7 @@ import type { User, Post, Community } from '@/lib/mockData';
 import { useProfile } from '@/hooks/useProfile';
 import { useCommunities } from '@/hooks/useCommunities';
 import { PostCard } from '@/pages/Home';
+import { PhotoViewer } from '@/components/ui/PhotoViewer';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -477,7 +478,7 @@ function CircleCard({ community }: { community: Community }) {
 
 interface SparkItem { id: string; prompt: string; response: string; imageUrl?: string; likes: number; liked: boolean; date: Date; }
 
-function SparkCard({ spark, user }: { spark: SparkItem; user: User }) {
+function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User; onOpenPhoto?: (src: string) => void }) {
   const [liked, setLiked] = useState(spark.liked);
   const [likes, setLikes] = useState(spark.likes);
   return (
@@ -508,7 +509,10 @@ function SparkCard({ spark, user }: { spark: SparkItem; user: User }) {
           <p className="text-[14.5px] text-gray-800 leading-relaxed flex-1">{spark.response}</p>
         </div>
         {spark.imageUrl && (
-          <div className="mt-3 rounded-2xl overflow-hidden">
+          <div
+            className="mt-3 rounded-2xl overflow-hidden cursor-pointer"
+            onClick={() => onOpenPhoto?.(spark.imageUrl!)}
+          >
             <img src={spark.imageUrl} alt="Spark photo" className="w-full max-h-56 object-cover" />
           </div>
         )}
@@ -579,6 +583,7 @@ export default function Profile() {
   const [followingOpen, setFollowingOpen] = useState(false);
   const [isFollowing, setIsFollowing]   = useState(false);
   const [followerCount, setFollowerCount] = useState(user.followers);
+  const [photoViewer, setPhotoViewer] = useState<{ src: string } | null>(null);
 
   const tabs = (isOwnProfile ? TABS_OWN : TABS_OTHER) as readonly TabLabel[];
   const tabIcons: Record<TabLabel, React.ReactNode> = {
@@ -852,7 +857,7 @@ export default function Profile() {
           {/* Sparks */}
           {activeTab === 'Sparks' && (
             sparks.length > 0
-              ? sparks.map(s => <SparkCard key={s.id} spark={s} user={user} />)
+              ? sparks.map(s => <SparkCard key={s.id} spark={s} user={user} onOpenPhoto={src => setPhotoViewer({ src })} />)
               : <EmptyState emoji="✨" title="No sparks yet" subtitle="Respond to today's Daily Spark to light up your profile!" />
           )}
 
@@ -904,6 +909,16 @@ export default function Profile() {
             users={followingList}
             currentUserId={currentUser?.id}
             onClose={() => setFollowingOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {photoViewer && (
+          <PhotoViewer
+            key="photo-viewer"
+            src={photoViewer.src}
+            onClose={() => setPhotoViewer(null)}
           />
         )}
       </AnimatePresence>

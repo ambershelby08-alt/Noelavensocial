@@ -125,6 +125,7 @@ function docToPost(id: string, d: DocumentData): Post {
     },
     content: d.content ?? '',
     imageUrl: d.imageUrl ?? undefined,
+    imagePublicId: d.imagePublicId ?? undefined,
     communityId: d.communityId ?? undefined,
     sparkPrompt: d.sparkPrompt ?? undefined,
     likes: d.likes ?? 0,
@@ -133,6 +134,7 @@ function docToPost(id: string, d: DocumentData): Post {
     liked: false,
     saved: false,
     mood: d.mood ?? undefined,
+    commentsDisabled: d.commentsDisabled ?? false,
     createdAt: ts(d.createdAt),
   };
 }
@@ -140,7 +142,7 @@ function docToPost(id: string, d: DocumentData): Post {
 export async function createPost(
   author: User,
   content: string,
-  opts: { imageUrl?: string; communityId?: string; mood?: string; sparkPrompt?: string } = {}
+  opts: { imageUrl?: string; imagePublicId?: string; communityId?: string; mood?: string; sparkPrompt?: string } = {}
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
   const ref = await addDoc(collection(db, 'posts'), {
@@ -149,9 +151,11 @@ export async function createPost(
     authorHandle: author.handle,
     content,
     imageUrl: opts.imageUrl ?? null,
+    imagePublicId: opts.imagePublicId ?? null,
     communityId: opts.communityId ?? null,
     mood: opts.mood ?? null,
     sparkPrompt: opts.sparkPrompt ?? null,
+    commentsDisabled: false,
     likes: 0,
     comments: 0,
     shares: 0,
@@ -159,6 +163,47 @@ export async function createPost(
   });
   await updateDoc(doc(db, 'users', author.id), { postCount: increment(1) });
   return ref.id;
+}
+
+export async function deletePost(postId: string, authorId: string): Promise<void> {
+  if (!db) return;
+  await Promise.all([
+    deleteDoc(doc(db, 'posts', postId)),
+    updateDoc(doc(db, 'users', authorId), { postCount: increment(-1) }),
+  ]);
+}
+
+export async function updatePost(
+  postId: string,
+  updates: { content?: string; imageUrl?: string | null; imagePublicId?: string | null }
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'posts', postId), { ...updates, updatedAt: serverTimestamp() });
+}
+
+export async function reportPost(postId: string, reporterId: string, reason: string): Promise<void> {
+  if (!db) return;
+  await addDoc(collection(db, 'reports'), {
+    postId,
+    reporterId,
+    reason,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function toggleCommentsDisabled(postId: string, disabled: boolean): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'posts', postId), { commentsDisabled: disabled });
+}
+
+export async function unfollowUser(currentUserId: string, targetUserId: string): Promise<void> {
+  if (!db) return;
+  await Promise.all([
+    deleteDoc(doc(db, 'users', currentUserId, 'following', targetUserId)).catch(() => {}),
+    deleteDoc(doc(db, 'users', targetUserId, 'followers', currentUserId)).catch(() => {}),
+    updateDoc(doc(db, 'users', currentUserId), { following: increment(-1) }).catch(() => {}),
+    updateDoc(doc(db, 'users', targetUserId), { followers: increment(-1) }).catch(() => {}),
+  ]);
 }
 
 export function subscribeFeed(

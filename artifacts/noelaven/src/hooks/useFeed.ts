@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { subscribeFeed, createPost as fsCreatePost, togglePostLike, togglePostSave } from '@/lib/firestore';
+import {
+  subscribeFeed, createPost as fsCreatePost, togglePostLike, togglePostSave,
+  deletePost as fsDeletePost, updatePost as fsUpdatePost,
+  toggleCommentsDisabled as fsToggleCommentsDisabled,
+} from '@/lib/firestore';
 import { mockPosts } from '@/lib/mockData';
 import type { Post } from '@/lib/mockData';
 
@@ -83,5 +87,39 @@ export function useFeed() {
     }
   }, [currentUser]);
 
-  return { posts, isLoading, addPost, toggleLike, toggleSave };
+  const deletePost = useCallback(async (postId: string) => {
+    if (!currentUser) return;
+    // Optimistic: remove immediately
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    if (isFirebaseConfigured) {
+      fsDeletePost(postId, currentUser.id).catch(console.error);
+    }
+  }, [currentUser]);
+
+  const updatePost = useCallback(async (postId: string, content: string, imageUrl?: string | null) => {
+    // Optimistic update
+    setPosts(prev => prev.map(p =>
+      p.id === postId
+        ? { ...p, content, imageUrl: imageUrl === null ? undefined : (imageUrl ?? p.imageUrl) }
+        : p
+    ));
+    if (isFirebaseConfigured) {
+      fsUpdatePost(postId, { content, imageUrl }).catch(console.error);
+    }
+  }, []);
+
+  /** Remove a post from the local feed without deleting it globally (Hide post). */
+  const hidePost = useCallback((postId: string) => {
+    setPosts(prev => prev.filter(p => p.id !== postId));
+  }, []);
+
+  const toggleCommentsDisabled = useCallback(async (postId: string, currentlyDisabled: boolean) => {
+    const next = !currentlyDisabled;
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, commentsDisabled: next } : p));
+    if (isFirebaseConfigured) {
+      fsToggleCommentsDisabled(postId, next).catch(console.error);
+    }
+  }, []);
+
+  return { posts, isLoading, addPost, toggleLike, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled };
 }
