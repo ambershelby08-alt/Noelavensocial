@@ -35,7 +35,10 @@ export interface Community {
   name: string;
   description: string;
   bannerUrl: string;
+  emoji: string;
   memberCount: number;
+  postCount: number;
+  onlineCount: number;
   category: string;
   rules: string[];
   moderatorIds: string[];
@@ -269,80 +272,196 @@ export const mockCommunities: Community[] = [
   {
     id: "comm-1",
     name: "Design Mavericks",
-    description: "A place for bold designers to share and critique work.",
+    description: "A place for bold designers to share work, get honest critique, and push the boundaries of visual storytelling. All disciplines welcome.",
     bannerUrl: "https://picsum.photos/800/300?random=21",
+    emoji: "🎨",
     memberCount: 15400,
+    postCount: 3820,
+    onlineCount: 142,
     category: "Design",
-    rules: ["Be kind", "Give constructive feedback", "No spam"],
+    rules: [
+      "Be constructive — critique the work, never the person.",
+      "Give as much as you take. Active members only.",
+      "No AI-generated work without disclosure.",
+      "Original content only. Credit your sources.",
+      "No spam, self-promotion without context."
+    ],
     moderatorIds: ["user-1", "demo-user"],
     isJoined: true,
     isPrivate: false,
-    createdAt: new Date()
+    createdAt: new Date(Date.now() - 86400000 * 300)
   },
   {
     id: "comm-2",
     name: "Tech Enthusiasts",
-    description: "Latest gadgets, code, and tech news.",
+    description: "Your hub for the latest in gadgets, software, and engineering breakthroughs. Deep dives, hot takes, and everything in between.",
     bannerUrl: "https://picsum.photos/800/300?random=22",
+    emoji: "💻",
     memberCount: 8900,
+    postCount: 1540,
+    onlineCount: 87,
     category: "Technology",
-    rules: ["Tech only", "No politics"],
+    rules: [
+      "Keep it tech-focused.",
+      "No politics or off-topic debates.",
+      "Link sources for factual claims.",
+      "Beginner questions are always welcome."
+    ],
     moderatorIds: ["user-2"],
     isJoined: false,
     isPrivate: false,
-    createdAt: new Date()
+    createdAt: new Date(Date.now() - 86400000 * 200)
   },
   {
     id: "comm-3",
     name: "Photography Lovers",
-    description: "Share your best shots and learn new techniques.",
+    description: "Share your best shots, learn from the masters, and grow your eye for light, composition, and the decisive moment.",
     bannerUrl: "https://picsum.photos/800/300?random=23",
+    emoji: "📷",
     memberCount: 23000,
+    postCount: 7200,
+    onlineCount: 310,
     category: "Photography",
-    rules: ["Original content only", "Include EXIF data if possible"],
-    moderatorIds: ["demo-user"],
+    rules: [
+      "Original content only — your photos, your stories.",
+      "Include camera & settings when possible.",
+      "Constructive feedback on request only.",
+      "No heavy filters without disclosure.",
+      "Respect privacy — no identifiable strangers."
+    ],
+    moderatorIds: ["demo-user", "user-1"],
     isJoined: true,
     isPrivate: false,
-    createdAt: new Date()
+    createdAt: new Date(Date.now() - 86400000 * 500)
   },
   {
     id: "comm-4",
     name: "Indie Music Scene",
-    description: "Discover and share independent artists.",
+    description: "Discover emerging artists, share hidden gems, and celebrate the music that never gets radio time. Audiophiles and casual fans alike.",
     bannerUrl: "https://picsum.photos/800/300?random=24",
+    emoji: "🎵",
     memberCount: 5600,
+    postCount: 920,
+    onlineCount: 34,
     category: "Music",
-    rules: ["Support artists", "No piracy"],
+    rules: [
+      "Support artists — link to official sources.",
+      "No piracy or illegal streaming links.",
+      "All genres of indie welcome.",
+      "Share the story behind the music."
+    ],
     moderatorIds: ["user-4"],
     isJoined: false,
     isPrivate: false,
-    createdAt: new Date()
+    createdAt: new Date(Date.now() - 86400000 * 120)
   },
   {
     id: "comm-5",
     name: "Wanderlust",
-    description: "Travel stories, tips, and breathtaking photos.",
+    description: "The world is too big to stay in one place. Travel stories, hidden gems, visa tips, packing lists, and breathtaking photos from every corner of the globe.",
     bannerUrl: "https://picsum.photos/800/300?random=25",
+    emoji: "✈️",
     memberCount: 42000,
+    postCount: 11800,
+    onlineCount: 560,
     category: "Travel",
-    rules: ["Share locations responsibly", "Be respectful of cultures"],
+    rules: [
+      "Share locations responsibly — some places need protection.",
+      "Be respectful of local cultures and customs.",
+      "No hotel or airline spam.",
+      "Tag your content with country/city.",
+      "Practical tips are gold — be specific."
+    ],
     moderatorIds: ["user-1", "user-5"],
     isJoined: true,
     isPrivate: false,
-    createdAt: new Date()
+    createdAt: new Date(Date.now() - 86400000 * 700)
   },
   {
     id: "comm-6",
     name: "Fit & Healthy",
-    description: "Workouts, nutrition, and wellness.",
+    description: "Workouts, nutrition science, mental wellness, and the honest conversations around building sustainable healthy habits. No toxic positivity.",
     bannerUrl: "https://picsum.photos/800/300?random=26",
+    emoji: "💪",
     memberCount: 12500,
+    postCount: 4100,
+    onlineCount: 98,
     category: "Fitness",
-    rules: ["No medical advice", "Encourage others"],
+    rules: [
+      "No medical advice — always consult a professional.",
+      "Encourage, don't shame. All bodies are welcome.",
+      "No diet culture or extreme regimens.",
+      "Share your journey, not your prescription."
+    ],
     moderatorIds: ["user-5"],
     isJoined: false,
     isPrivate: false,
-    createdAt: new Date()
+    createdAt: new Date(Date.now() - 86400000 * 180)
+  },
+  {
+    id: "comm-7",
+    name: "Game Dev Lounge",
+    description: "A private sanctuary for game developers to share WIPs, get feedback, swap war stories, and celebrate each other's launches. 🎮",
+    bannerUrl: "https://picsum.photos/800/300?random=27",
+    emoji: "🎮",
+    memberCount: 3200,
+    postCount: 870,
+    onlineCount: 41,
+    category: "Gaming",
+    rules: [
+      "Members only — apply to join.",
+      "WIPs welcome, be constructive.",
+      "No crunch culture glorification.",
+      "Share resources freely.",
+      "Celebrate each other's wins."
+    ],
+    moderatorIds: ["user-2", "user-4"],
+    isJoined: false,
+    isPrivate: true,
+    createdAt: new Date(Date.now() - 86400000 * 90)
+  },
+  {
+    id: "comm-8",
+    name: "Bookworms",
+    description: "Monthly reads, hot takes on classics, and the joy of finding a book that changes everything. Fiction, non-fiction, poetry — all welcome.",
+    bannerUrl: "https://picsum.photos/800/300?random=28",
+    emoji: "📚",
+    memberCount: 9100,
+    postCount: 2300,
+    onlineCount: 72,
+    category: "Reading",
+    rules: [
+      "Tag spoilers clearly — no exceptions.",
+      "All genres are valid. No gatekeeping.",
+      "Recommend books you've actually read.",
+      "Be kind to readers of all paces."
+    ],
+    moderatorIds: ["user-4", "demo-user"],
+    isJoined: true,
+    isPrivate: false,
+    createdAt: new Date(Date.now() - 86400000 * 240)
+  },
+  {
+    id: "comm-9",
+    name: "Culinary Arts",
+    description: "From weeknight dinners to Michelin-star ambitions. Share recipes, techniques, kitchen fails, and the meals that made you feel alive.",
+    bannerUrl: "https://picsum.photos/800/300?random=29",
+    emoji: "🍳",
+    memberCount: 18700,
+    postCount: 6500,
+    onlineCount: 203,
+    category: "Food",
+    rules: [
+      "Include ingredients list with recipes.",
+      "Dietary tags required (vegan, gluten-free, etc.).",
+      "Kitchen fails are celebrated — share them.",
+      "No plagiarized recipes without credit.",
+      "Food photos must be your own."
+    ],
+    moderatorIds: ["user-1"],
+    isJoined: false,
+    isPrivate: false,
+    createdAt: new Date(Date.now() - 86400000 * 150)
   }
 ];
 
