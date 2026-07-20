@@ -34,10 +34,19 @@ function AuthenticatedApp() {
         <Route path="/notifications"      component={Notifications} />
         <Route path="/settings"           component={Settings} />
         <Route>
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
-            <p className="text-5xl mb-4">🌿</p>
-            <h2 className="text-2xl font-bold mb-2">Page Not Found</h2>
-            <p className="text-gray-400">Looks like you've wandered off the path.</p>
+          <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6">
+            <p className="text-6xl mb-5">🌿</p>
+            <h2 className="text-[22px] font-black text-gray-900 mb-2">Page not found</h2>
+            <p className="text-[14.5px] text-gray-400 mb-8 max-w-[220px] leading-relaxed">
+              Looks like you've wandered off the path.
+            </p>
+            <a
+              href="/"
+              className="px-7 py-3 rounded-full text-[14.5px] font-black text-white"
+              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 4px 16px rgba(107,115,255,0.35)' }}
+            >
+              Back to Home
+            </a>
           </div>
         </Route>
       </Switch>

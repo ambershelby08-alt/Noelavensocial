@@ -716,6 +716,14 @@ export default function Home() {
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
+  // Auto-open SparkModal when navigated here with ?spark=1
+  useEffect(() => {
+    if (window.location.search.includes('spark=1')) {
+      setSparkOpen(true);
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
+
   function showToast(msg: string) {
     setToast(msg);
     setToastVisible(true);

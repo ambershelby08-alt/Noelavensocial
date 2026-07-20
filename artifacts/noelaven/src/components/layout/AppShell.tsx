@@ -23,7 +23,7 @@ export function BottomNav() {
   const navItems = [
     { icon: Home,          path: '/',            label: 'Home'     },
     { icon: Compass,       path: '/discover',    label: 'Discover' },
-    { icon: Sparkles,      path: '/compose',     label: 'Spark',   special: true },
+    { icon: Sparkles,      path: '/?spark=1',    label: 'Spark',   special: true },
     { icon: Users,         path: '/communities', label: 'Circles'  },
     { icon: MessageCircle, path: '/messages',    label: 'Chats'    },
   ];
@@ -94,7 +94,7 @@ export function BottomNav() {
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 export function Sidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { currentUser, isDemoMode } = useAuth();
 
   const navItems = [
@@ -157,6 +157,7 @@ export function Sidebar() {
       </nav>
 
       <button
+        onClick={() => setLocation('/?spark=1')}
         className="mt-auto w-full text-white font-bold py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition-opacity active:scale-95 duration-200 flex items-center justify-center gap-2"
         style={{
           background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)',

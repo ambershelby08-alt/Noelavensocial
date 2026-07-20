@@ -5,8 +5,9 @@ import {
   Edit3, Camera, X, Check, Sparkles, Users, MessageCircle,
   Grid3X3, Heart, Bookmark, Calendar, Share2, UserPlus,
   UserCheck, ChevronRight, AtSign, FileText, Star, Plus,
+  ArrowLeft,
 } from 'lucide-react';
-import { mockUsers, mockPosts, mockCommunities } from '@/lib/mockData';
+import { mockUsers, mockPosts, mockCommunities, mockConversations } from '@/lib/mockData';
 import type { User, Post, Community } from '@/lib/mockData';
 import { PostCard } from '@/pages/Home';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
@@ -562,6 +563,14 @@ export default function Profile() {
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#FDF9F6] to-transparent" />
 
         {/* Top action row */}
+        {!isOwnProfile && (
+          <button
+            onClick={() => window.history.back()}
+            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all z-10"
+          >
+            <ArrowLeft size={18} className="text-gray-700" />
+          </button>
+        )}
         <div className="absolute top-4 right-4 flex gap-2">
           {isOwnProfile ? (
             <button
@@ -619,7 +628,12 @@ export default function Profile() {
               >
                 {isFollowing ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
               </motion.button>
-              <Link href="/messages">
+              <Link href={(() => {
+                const conv = mockConversations.find(c =>
+                  c.type === 'direct' && c.participants.some(p => p.id === user.id)
+                );
+                return conv ? `/messages/${conv.id}` : '/messages';
+              })()}>
                 <button className="w-10 h-10 rounded-full bg-white border border-black/[0.08] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
                   <MessageCircle size={17} className="text-purple-500" />
                 </button>
