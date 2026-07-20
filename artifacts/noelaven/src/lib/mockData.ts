@@ -495,33 +495,37 @@ export const mockConversations: Conversation[] = [
 
 export const mockMessages: Record<string, Message[]> = {
   "conv-1": [
-    {
-      id: "msg-1",
-      senderId: "user-1",
-      content: "Hey Jane! Are we still on for the design review tomorrow?",
-      type: "text",
-      reactions: {},
-      readBy: ["demo-user"],
-      createdAt: new Date(Date.now() - 3600000 * 2)
-    },
-    {
-      id: "msg-2",
-      senderId: "demo-user",
-      content: "Yes! I've prepared the new mockups.",
-      type: "text",
-      reactions: { "👍": ["user-1"] },
-      readBy: ["user-1"],
-      createdAt: new Date(Date.now() - 3600000 * 1.5)
-    },
-    {
-      id: "msg-3",
-      senderId: "user-1",
-      content: "That sounds like a great idea! Let's do it.",
-      type: "text",
-      reactions: {},
-      readBy: ["demo-user"],
-      createdAt: new Date(Date.now() - 3600000)
-    }
+    { id: "c1-1", senderId: "user-1", content: "Hey Jane! Did you see the new design trends? Glassmorphism is genuinely back 😅", type: "text", reactions: {}, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 3.5) },
+    { id: "c1-2", senderId: "demo-user", content: "Haha yes I was literally experimenting with it last night. The blur effects are so satisfying", type: "text", reactions: { "😂": ["user-1"] }, readBy: ["user-1"], createdAt: new Date(Date.now() - 3600000 * 3.4) },
+    { id: "c1-3", senderId: "user-1", content: "RIGHT?? I've been making everything translucent 😂", type: "text", reactions: {}, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 3.3) },
+    { id: "c1-img1", senderId: "user-1", content: "Check out this mockup I made", type: "image", reactions: { "❤️": ["demo-user"] }, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 3.2) },
+    { id: "c1-4", senderId: "demo-user", content: "Omg this is gorgeous 😍 the depth is immaculate", type: "text", reactions: {}, readBy: ["user-1"], createdAt: new Date(Date.now() - 3600000 * 3.1) },
+    { id: "c1-5", senderId: "user-1", content: "Send me your mockups when you're done! I wanna see the portfolio rebrand", type: "text", reactions: {}, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 3) },
+    { id: "c1-6", senderId: "demo-user", content: "On it! btw have you checked out the new Framer updates?", type: "text", reactions: {}, readBy: ["user-1"], createdAt: new Date(Date.now() - 3600000 * 2.5) },
+    { id: "c1-7", senderId: "user-1", content: "Not yet — should I? I've been living in Figma lately", type: "text", reactions: {}, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 2.4) },
+    { id: "c1-8", senderId: "demo-user", content: "100%. The new animation controls are genuinely insane. No code needed for complex sequences 🙌", type: "text", reactions: { "🔥": ["user-1"] }, readBy: ["user-1"], createdAt: new Date(Date.now() - 3600000 * 2.3) },
+    { id: "msg-1", senderId: "user-1", content: "Hey Jane! Are we still on for the design review tomorrow?", type: "text", reactions: {}, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 2) },
+    { id: "msg-2", senderId: "demo-user", content: "Yes! I've prepared the new mockups.", type: "text", reactions: { "👍": ["user-1"] }, readBy: ["user-1"], createdAt: new Date(Date.now() - 3600000 * 1.5) },
+    { id: "msg-3", senderId: "user-1", content: "That sounds like a great idea! Let's do it.", type: "text", reactions: {}, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000) }
+  ],
+  "conv-2": [
+    { id: "c2-1", senderId: "user-2", content: "Yo, you working with React Server Components these days?", type: "text", reactions: {}, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 6) },
+    { id: "c2-2", senderId: "demo-user", content: "Yeah! Just finished a whole social platform. Still wrapping my head around the mental model 😅", type: "text", reactions: {}, readBy: ["user-2"], createdAt: new Date(Date.now() - 3600000 * 5.9) },
+    { id: "c2-3", senderId: "user-2", content: "Nice one! The new server actions are a game changer honestly", type: "text", reactions: {}, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 5.8) },
+    { id: "c2-4", senderId: "demo-user", content: "Send me the link?", type: "text", reactions: {}, readBy: ["user-2"], createdAt: new Date(Date.now() - 3600000 * 5.7) },
+    { id: "c2-5", senderId: "user-2", content: "nextjs.org/blog — the middleware improvements too are 🤌", type: "text", reactions: { "👍": ["demo-user"] }, readBy: ["demo-user"], createdAt: new Date(Date.now() - 3600000 * 5.6) },
+    { id: "c2-6", senderId: "demo-user", content: "Okay adding this to tonight's reading. Also the new hooks docs are WAY clearer?", type: "text", reactions: {}, readBy: ["user-2"], createdAt: new Date(Date.now() - 3600000 * 5.5) },
+    { id: "c2-7", senderId: "user-2", content: "Did you check out the new API update?", type: "text", reactions: {}, readBy: [], createdAt: new Date(Date.now() - 3600000 * 5) }
+  ],
+  "conv-3": [
+    { id: "c3-1", senderId: "user-5", content: "Good morning team! ☀️ Sprint planning in 30 mins", type: "text", reactions: { "👍": ["demo-user", "user-1"] }, readBy: ["demo-user", "user-1"], createdAt: new Date(Date.now() - 3600000 * 25) },
+    { id: "c3-2", senderId: "user-1", content: "On it! Just finishing the last design review", type: "text", reactions: {}, readBy: ["demo-user", "user-5"], createdAt: new Date(Date.now() - 3600000 * 24.9) },
+    { id: "c3-3", senderId: "demo-user", content: "Let's gooo 🚀 I have some exciting updates to share", type: "text", reactions: { "🔥": ["user-1", "user-5"] }, readBy: ["user-1", "user-5"], createdAt: new Date(Date.now() - 3600000 * 24.8) },
+    { id: "c3-img", senderId: "demo-user", content: "New designs are ready!", type: "image", reactions: { "❤️": ["user-1"], "🤩": ["user-5"] }, readBy: ["user-1", "user-5"], createdAt: new Date(Date.now() - 3600000 * 24.5) },
+    { id: "c3-4", senderId: "user-5", content: "This is incredible work Jane!! 🎉", type: "text", reactions: {}, readBy: ["demo-user", "user-1"], createdAt: new Date(Date.now() - 3600000 * 24.3) },
+    { id: "c3-5", senderId: "user-1", content: "Alice: I uploaded the new assets.", type: "text", reactions: {}, readBy: ["demo-user", "user-5"], createdAt: new Date(Date.now() - 3600000 * 24) },
+    { id: "c3-6", senderId: "user-5", content: "Perfect! I'll start the review now", type: "text", reactions: {}, readBy: ["demo-user", "user-1"], createdAt: new Date(Date.now() - 3600000 * 23.5) },
+    { id: "c3-7", senderId: "demo-user", content: "Amazing, this team is genuinely unstoppable 💜", type: "text", reactions: { "💜": ["user-1", "user-5"] }, readBy: ["user-1", "user-5"], createdAt: new Date(Date.now() - 3600000 * 23) }
   ]
 };
 
