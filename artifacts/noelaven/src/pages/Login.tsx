@@ -83,7 +83,19 @@ export default function Login() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-    await signIn(email, password);
+    try {
+      await signIn(email, password);
+    } catch (err) {
+      setErrors(prev => ({ ...prev, form: (err as Error).message }));
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      setErrors(prev => ({ ...prev, form: (err as Error).message }));
+    }
   }
 
   return (
@@ -113,6 +125,11 @@ export default function Login() {
           onSubmit={handleSubmit}
           className="space-y-4 flex-1"
         >
+          {errors.form && (
+            <div className="px-4 py-3 rounded-2xl bg-red-50 border border-red-100">
+              <p className="text-[13px] text-red-600 font-medium text-center">{errors.form}</p>
+            </div>
+          )}
           <Field
             label="Email"
             icon={<Mail size={17} />}
@@ -170,7 +187,7 @@ export default function Login() {
           <motion.button
             type="button"
             whileTap={{ scale: 0.98 }}
-            onClick={signInWithGoogle}
+            onClick={handleGoogleSignIn}
             disabled={isLoading}
             className="w-full bg-white border border-black/[0.08] rounded-2xl py-4 flex items-center justify-center gap-3 font-semibold text-[15px] text-gray-700 shadow-sm hover:shadow-md transition-all disabled:opacity-70"
           >

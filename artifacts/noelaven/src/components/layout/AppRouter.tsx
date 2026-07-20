@@ -97,5 +97,11 @@ export default function AppRouter() {
     return <Redirect to="/" />;
   }
 
+  // Browser at the exact base path without trailing slash (e.g. /noelaven vs /noelaven/)
+  // — wouter strips the base and gets "" which won't match any route.
+  if (location === '') {
+    return <Redirect to="/" />;
+  }
+
   return <AuthenticatedApp />;
 }

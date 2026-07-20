@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail,
+  signInWithPopup, signInWithRedirect, getRedirectResult,
+  GoogleAuthProvider, sendPasswordResetEmail,
   updateProfile, signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { type FirebaseError } from 'firebase/app';
@@ -54,6 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isNewUser, setIsNewUser] = useState(false);
   // Track the Firebase Auth UID so completeProfile can write to the right doc
   const [pendingUid, setPendingUid] = useState<string | null>(null);
+
+  // ─── Handle completed redirect sign-ins (mobile Google flow) ────────────────
+  useEffect(() => {
+    if (isDemoMode || !auth) return;
+    getRedirectResult(auth).catch(err => {
+      const e = err as FirebaseError;
+      // Log but don't crash — onAuthStateChanged handles the success path.
+      // Errors here (e.g. auth/unauthorized-domain) surface on the next sign-in attempt.
+      console.error('[Google Sign-In Redirect Result] error:', e.code, e.message);
+    });
+  }, [isDemoMode]);
 
   // ─── Firebase auth listener ────────────────────────────────────────────────
   useEffect(() => {
@@ -160,12 +172,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!auth) throw new Error('Firebase Auth not initialized');
+
     try {
+      if (isMobileBrowser()) {
+        // Popups are unreliable on mobile — use redirect flow instead.
+        // The page navigates away; onAuthStateChanged picks up the result on return.
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
       await signInWithPopup(auth, googleProvider);
-      // onAuthStateChanged handles the rest
+      // onAuthStateChanged handles session setup
     } catch (err) {
       const e = err as FirebaseError;
-      if (e.code === 'auth/popup-closed-by-user') return; // user dismissed
+      // Always log the original code/message for debugging — never swallow silently.
+      console.error('[Google Sign-In] Firebase error:', e.code, e.message);
+
+      // User-initiated dismissals — no error to surface.
+      if (
+        e.code === 'auth/popup-closed-by-user' ||
+        e.code === 'auth/cancelled-popup-request' ||
+        e.code === 'auth/user-cancelled'
+      ) return;
+
+      // Popup blocked or unsupported environment — fall back to redirect.
+      if (
+        e.code === 'auth/popup-blocked' ||
+        e.code === 'auth/operation-not-supported-in-this-environment'
+      ) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr) {
+          const re = redirectErr as FirebaseError;
+          console.error('[Google Sign-In] Redirect fallback error:', re.code, re.message);
+          throw new Error(friendlyAuthError(re.code));
+        }
+      }
+
+      // All other errors — surface a friendly message without crashing.
       throw new Error(friendlyAuthError(e.code));
     }
   }, [isDemoMode]);
@@ -272,19 +316,33 @@ export function useAuth() {
   return ctx;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** True on phones/tablets where signInWithPopup is unreliable. */
+function isMobileBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    // iPadOS 13+ reports itself as a Mac with touch support
+    (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform))
+  );
+}
+
 // ─── Error messages ───────────────────────────────────────────────────────────
 
 function friendlyAuthError(code: string): string {
   const map: Record<string, string> = {
-    'auth/invalid-email':          "That email address doesn't look right.",
-    'auth/user-not-found':         'No account found with that email.',
-    'auth/wrong-password':         'Incorrect password. Please try again.',
-    'auth/invalid-credential':     'Incorrect email or password.',
-    'auth/email-already-in-use':   'An account with this email already exists.',
-    'auth/weak-password':          'Password must be at least 6 characters.',
-    'auth/too-many-requests':      'Too many attempts. Please wait a moment.',
-    'auth/network-request-failed': 'Network error. Check your connection.',
-    'auth/popup-blocked':          'Pop-up was blocked. Please allow pop-ups and try again.',
+    'auth/invalid-email':                          "That email address doesn't look right.",
+    'auth/user-not-found':                         'No account found with that email.',
+    'auth/wrong-password':                         'Incorrect password. Please try again.',
+    'auth/invalid-credential':                     'Incorrect email or password.',
+    'auth/email-already-in-use':                   'An account with this email already exists.',
+    'auth/weak-password':                          'Password must be at least 6 characters.',
+    'auth/too-many-requests':                      'Too many attempts. Please wait a moment.',
+    'auth/network-request-failed':                 'Network error. Check your connection.',
+    'auth/popup-blocked':                          'Pop-up was blocked — please allow pop-ups and try again.',
+    'auth/unauthorized-domain':                    'Google sign-in is not enabled for this domain. Use email and password instead.',
+    'auth/operation-not-supported-in-this-environment': 'Google sign-in is not supported in this browser. Use email and password instead.',
   };
   return map[code] ?? 'Something went wrong. Please try again.';
 }
