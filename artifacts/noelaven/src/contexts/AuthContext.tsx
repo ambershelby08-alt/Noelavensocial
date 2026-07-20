@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import { type FirebaseError } from 'firebase/app';
 import { auth, isFirebaseConfigured } from '@/lib/firebase';
-import { getUserDoc, createUserDoc, updateUserDoc, seedCommunitiesIfNeeded } from '@/lib/firestore';
+import { getUserDoc, createUserDoc, updateUserDoc, upsertUserBaseDoc, seedCommunitiesIfNeeded } from '@/lib/firestore';
 import { User, mockUsers } from '@/lib/mockData';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -15,6 +15,8 @@ import { User, mockUsers } from '@/lib/mockData';
 export interface PendingUser {
   displayName: string;
   email: string;
+  /** Pre-filled from Google/OAuth provider photo — used as avatar fallback in CreateProfile */
+  avatarUrl?: string;
 }
 
 export interface ProfileData {
@@ -87,30 +89,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Detect Google (or other OAuth) sign-in so we can pre-fill profile data.
+      const isGoogleUser = firebaseUser.providerData.some(
+        p => p.providerId === 'google.com'
+      );
+      const googleAvatarUrl = isGoogleUser ? (firebaseUser.photoURL ?? '') : '';
+
       try {
         const profile = await getUserDoc(firebaseUser.uid);
 
         if (profile && profile.handle) {
-          // Existing complete profile
+          // Existing complete profile — go straight to Home.
           setCurrentUser(profile);
           setPendingUser(null);
           setPendingUid(null);
           setIsNewUser(false);
         } else {
-          // New user — profile not yet created (or created but missing handle)
+          // New or incomplete profile — needs handle/bio/interests.
+          // For Google users: persist base identity immediately so it's
+          // recoverable if the user closes before finishing profile setup.
+          if (isGoogleUser) {
+            await upsertUserBaseDoc(firebaseUser.uid, {
+              displayName: firebaseUser.displayName ?? '',
+              email: firebaseUser.email ?? '',
+              avatarUrl: googleAvatarUrl,
+            });
+          }
+
           setPendingUser({
             displayName: firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'New User',
             email: firebaseUser.email ?? '',
+            avatarUrl: googleAvatarUrl,
           });
           setPendingUid(firebaseUser.uid);
           setCurrentUser(null);
           setIsNewUser(true);
         }
       } catch {
-        // Firestore error (e.g. offline) — treat as new user
+        // Firestore error (e.g. offline) — treat as new user so they can retry.
         setPendingUser({
           displayName: firebaseUser.displayName ?? 'New User',
           email: firebaseUser.email ?? '',
+          avatarUrl: googleAvatarUrl,
         });
         setPendingUid(firebaseUser.uid);
         setCurrentUser(null);
@@ -251,7 +271,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         bio: data.bio,
         interests: data.interests,
         email: pendingUser?.email,
-        avatarUrl: data.avatarUrl,
+        // Use explicitly uploaded avatar first; fall back to Google/OAuth photo.
+        avatarUrl: data.avatarUrl ?? pendingUser?.avatarUrl,
       });
       const profile = await getUserDoc(pendingUid);
       if (profile) {

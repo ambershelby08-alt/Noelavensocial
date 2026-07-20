@@ -117,7 +117,9 @@ function Step1({ displayName, handle, setHandle, handleError, onNext, avatarUrl,
         <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Display Name</label>
         <div className="flex items-center bg-gray-50 border border-black/[0.06] rounded-2xl px-4 py-3.5 gap-3">
           <span className="text-[15px] text-gray-800 font-medium">{displayName}</span>
-          <span className="ml-auto text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">from sign-up</span>
+          <span className="ml-auto text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+            {pendingUser?.avatarUrl ? 'from Google' : 'from sign-up'}
+          </span>
         </div>
       </div>
 
@@ -289,7 +291,8 @@ export default function CreateProfile() {
   const [handleError, setHandleError] = useState('');
   const [bio, setBio]                 = useState('');
   const [interests, setInterests]     = useState<string[]>([]);
-  const [avatarUrl, setAvatarUrl]     = useState('');
+  // Seed from Google/OAuth photo if available; user can override by uploading.
+  const [avatarUrl, setAvatarUrl]     = useState(pendingUser?.avatarUrl ?? '');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 

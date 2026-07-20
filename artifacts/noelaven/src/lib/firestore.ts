@@ -75,6 +75,25 @@ export async function updateUserDoc(uid: string, updates: Partial<User>): Promis
   await updateDoc(doc(db, 'users', uid), { ...rest, updatedAt: serverTimestamp() });
 }
 
+/**
+ * Upsert base identity fields for a social/OAuth sign-in.
+ * Uses merge:true so any existing handle, bio, interests, etc. are preserved.
+ * joinedAt is intentionally omitted here — createUserDoc sets it when the
+ * user completes their profile for the first time.
+ */
+export async function upsertUserBaseDoc(
+  uid: string,
+  data: { displayName: string; email: string; avatarUrl?: string }
+): Promise<void> {
+  if (!db) return;
+  await setDoc(doc(db, 'users', uid), {
+    displayName: data.displayName,
+    email: data.email,
+    avatarUrl: data.avatarUrl ?? '',
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
 // Search users by handle prefix (simple prefix search)
 export async function searchUsers(q: string): Promise<User[]> {
   if (!db || !q) return [];
