@@ -589,8 +589,8 @@ export function PostComposer({ onPost }: PostComposerProps) {
 interface PostCardProps {
   post: Post;
   index: number;
-  onOpenComments: (post: Post) => void;
-  onOpenShare: (post: Post) => void;
+  onOpenComments?: (post: Post) => void;
+  onOpenShare?: (post: Post) => void;
 }
 
 export function PostCard({ post, index, onOpenComments, onOpenShare }: PostCardProps) {
@@ -668,7 +668,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare }: PostCardP
 
           {/* Comment */}
           <button
-            onClick={() => onOpenComments(post)}
+            onClick={() => onOpenComments?.(post)}
             className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-blue-50 hover:text-blue-500 transition-all"
           >
             <MessageCircle size={16} />
@@ -677,7 +677,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare }: PostCardP
 
           {/* Share */}
           <button
-            onClick={() => onOpenShare(post)}
+            onClick={() => onOpenShare?.(post)}
             className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-purple-50 hover:text-purple-500 transition-all"
           >
             <Share2 size={16} />
