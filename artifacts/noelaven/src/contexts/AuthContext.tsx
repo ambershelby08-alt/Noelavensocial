@@ -27,6 +27,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   completeProfile: (data: ProfileData) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -112,11 +113,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPendingUser(null);
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    setCurrentUser(prev => (prev ? { ...prev, ...updates } : prev));
+  };
+
   return (
     <AuthContext.Provider
       value={{
         currentUser, pendingUser, isLoading, isNewUser, isDemoMode,
         signIn, signUp, signInWithGoogle, signOut, completeProfile, resetPassword,
+        updateUser,
       }}
     >
       {children}

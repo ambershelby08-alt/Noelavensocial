@@ -1,157 +1,823 @@
-import React, { useState } from 'react';
-import { useRoute } from 'wouter';
-import { mockUsers, mockPosts } from '@/lib/mockData';
+import React, { useState, useRef, useEffect } from 'react';
+import { useRoute, Link } from 'wouter';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Edit3, Camera, X, Check, Sparkles, Users, MessageCircle,
+  Grid3X3, Heart, Bookmark, Calendar, Share2, UserPlus,
+  UserCheck, ChevronRight, AtSign, FileText, Star, Plus,
+} from 'lucide-react';
+import { mockUsers, mockPosts, mockCommunities } from '@/lib/mockData';
+import type { User, Post, Community } from '@/lib/mockData';
 import { PostCard } from '@/pages/Home';
-import { Settings, MapPin, Link as LinkIcon, Calendar, Grid, Heart, Bookmark, Edit3, Image as ImageIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
-export default function Profile() {
-  const [match, params] = useRoute('/profile/:userId');
-  const userId = params?.userId;
-  const { currentUser } = useAuth();
-  
-  const user = mockUsers.find(u => u.id === userId) || mockUsers[0];
-  const isOwnProfile = currentUser?.id === user.id;
-  
-  const [activeTab, setActiveTab] = useState<'posts'|'liked'|'saved'>('posts');
-  
-  const userPosts = mockPosts.filter(p => p.authorId === user.id);
-  const likedPosts = mockPosts.filter(p => p.liked); // mock data
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-  if (!user) return <div className="p-8 text-center">User not found</div>;
+const INTEREST_GRADIENTS: Record<string, [string, string]> = {
+  'Art & Design':   ['#FF6B9D', '#C44FDB'],
+  'Technology':     ['#4F75FF', '#6EC6F5'],
+  'Photography':    ['#FF8C42', '#FF6B9D'],
+  'Travel':         ['#3CC2A8', '#4F75FF'],
+  'Music':          ['#FFD93D', '#FF8C42'],
+  'Food & Cooking': ['#FF6B9D', '#FFD93D'],
+  'Fitness':        ['#2ECC71', '#3CC2A8'],
+  'Gaming':         ['#9B59B6', '#4F75FF'],
+  'Reading':        ['#FF8C42', '#C44FDB'],
+  'Nature':         ['#2ECC71', '#4F75FF'],
+  'Movies & TV':    ['#C44FDB', '#FF6B9D'],
+  'Science':        ['#4F75FF', '#2ECC71'],
+  'Fashion':        ['#FF6B9D', '#FFD93D'],
+  'DIY & Making':   ['#FF8C42', '#2ECC71'],
+  'Wellness':       ['#3CC2A8', '#C44FDB'],
+  'Pets':           ['#FFD93D', '#FF6B9D'],
+};
+
+const ALL_INTERESTS = [
+  { label: 'Art & Design', emoji: '🎨' },
+  { label: 'Technology',   emoji: '💻' },
+  { label: 'Music',        emoji: '🎵' },
+  { label: 'Travel',       emoji: '✈️' },
+  { label: 'Photography',  emoji: '📷' },
+  { label: 'Food & Cooking', emoji: '🍳' },
+  { label: 'Fitness',      emoji: '💪' },
+  { label: 'Gaming',       emoji: '🎮' },
+  { label: 'Reading',      emoji: '📚' },
+  { label: 'Nature',       emoji: '🌿' },
+  { label: 'Movies & TV',  emoji: '🎬' },
+  { label: 'Science',      emoji: '🔬' },
+  { label: 'Fashion',      emoji: '👗' },
+  { label: 'DIY & Making', emoji: '🛠️' },
+  { label: 'Wellness',     emoji: '🧘' },
+  { label: 'Pets',         emoji: '🐾' },
+];
+
+const BADGE_STYLES: Record<string, { bg: string; text: string; icon: string }> = {
+  'Verified':      { bg: '#EEF0FF', text: '#6B73FF', icon: '✓' },
+  'Top Creator':   { bg: '#FFF0F6', text: '#FF6B9D', icon: '🌟' },
+  'Early Adopter': { bg: '#FFF8EE', text: '#FF8C42', icon: '🚀' },
+  'Hero':          { bg: '#EEF8F0', text: '#2ECC71', icon: '🦸' },
+  'Community Builder': { bg: '#F5EEF8', text: '#9B59B6', icon: '🏘️' },
+  'New Member':    { bg: '#F0FAFF', text: '#4F75FF', icon: '👋' },
+};
+
+const MOCK_SPARKS = [
+  {
+    id: 'spark-1',
+    prompt: 'What made you smile today?',
+    response: "Found a butterfly landing on my camera lens while shooting in the park. Those unexpected moments are the best! 🦋",
+    likes: 87, liked: false,
+    date: new Date(Date.now() - 86400000),
+  },
+  {
+    id: 'spark-2',
+    prompt: "Share a song that's been stuck in your head.",
+    response: "Been humming 'Vienna' by Billy Joel all week. Some songs just age like fine wine. 🎵",
+    likes: 54, liked: true,
+    date: new Date(Date.now() - 86400000 * 3),
+  },
+  {
+    id: 'spark-3',
+    prompt: "What's a small win you had this week?",
+    response: "Finally finished that photography course I started 6 months ago. Better late than never — now I feel unstoppable! 📷✨",
+    likes: 102, liked: false,
+    date: new Date(Date.now() - 86400000 * 5),
+  },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmtNum(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+function relDate(d: Date) {
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7)  return `${days}d ago`;
+  return format(d, 'MMM d');
+}
+
+function getInterestGradient(label: string): [string, string] {
+  return INTEREST_GRADIENTS[label] ?? getGradientPair(label);
+}
+
+// ─── Backdrop ─────────────────────────────────────────────────────────────────
+
+function Backdrop({ onClose }: { onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+      onClick={onClose}
+    />
+  );
+}
+
+// ─── Followers / Following sheet ──────────────────────────────────────────────
+
+interface UserListSheetProps {
+  title: string;
+  users: User[];
+  currentUserId?: string;
+  onClose: () => void;
+}
+
+function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetProps) {
+  const [followed, setFollowed] = useState<Set<string>>(new Set());
 
   return (
-    <div className="pb-24 md:pb-8 min-h-screen bg-background">
-      {/* Cover Photo */}
-      <div className="relative h-48 md:h-64 w-full bg-muted">
-        {user.coverUrl ? (
-          <img src={user.coverUrl} alt="Cover" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full gradient-bg opacity-50" />
-        )}
-        
-        {isOwnProfile && (
-          <button className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full backdrop-blur-sm transition-colors">
-            <ImageIcon size={18} />
+    <>
+      <Backdrop onClose={onClose} />
+      <motion.div
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] shadow-2xl max-h-[75vh] flex flex-col"
+      >
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
+          <span className="font-bold text-[16px] text-gray-900">{title}</span>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={18} className="text-gray-500" />
           </button>
+        </div>
+        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1">
+          {users.map((u, i) => {
+            const isMe = u.id === currentUserId;
+            const isFollowing = followed.has(u.id);
+            return (
+              <motion.div
+                key={u.id}
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="flex items-center gap-3 py-2.5 px-1"
+              >
+                <Link href={`/profile/${u.id}`} onClick={onClose}>
+                  <GradientAvatar name={u.displayName} size={46} className="cursor-pointer hover:scale-105 transition-transform flex-shrink-0" />
+                </Link>
+                <div className="flex-1 min-w-0">
+                  <Link href={`/profile/${u.id}`} onClick={onClose}>
+                    <p className="font-bold text-[14px] text-gray-900 hover:underline truncate">{u.displayName}</p>
+                  </Link>
+                  <p className="text-[12px] text-gray-400 truncate">@{u.handle} · {fmtNum(u.followers)} followers</p>
+                </div>
+                {!isMe && (
+                  <motion.button
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() => setFollowed(prev => {
+                      const s = new Set(prev);
+                      s.has(u.id) ? s.delete(u.id) : s.add(u.id);
+                      return s;
+                    })}
+                    className={cn(
+                      'flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold transition-all flex-shrink-0',
+                      isFollowing
+                        ? 'bg-gray-100 text-gray-600'
+                        : 'text-white shadow-sm'
+                    )}
+                    style={!isFollowing ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 2px 10px rgba(107,115,255,0.30)' } : {}}
+                  >
+                    {isFollowing ? <><UserCheck size={13} /> Following</> : <><UserPlus size={13} /> Follow</>}
+                  </motion.button>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+// ─── Edit Profile Drawer ──────────────────────────────────────────────────────
+
+interface EditDrawerProps {
+  user: User;
+  onSave: (updates: Partial<User>) => void;
+  onClose: () => void;
+}
+
+function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
+  const [displayName, setDisplayName] = useState(user.displayName);
+  const [handle, setHandle]           = useState(user.handle);
+  const [bio, setBio]                 = useState(user.bio);
+  const [interests, setInterests]     = useState<string[]>(user.interests);
+  const [saving, setSaving]           = useState(false);
+
+  function toggleInterest(label: string) {
+    setInterests(prev => prev.includes(label) ? prev.filter(i => i !== label) : [...prev, label]);
+  }
+
+  async function handleSave() {
+    if (!displayName.trim()) return;
+    setSaving(true);
+    await new Promise(r => setTimeout(r, 700));
+    onSave({ displayName: displayName.trim(), handle: handle.trim() || user.handle, bio: bio.trim(), interests });
+    setSaving(false);
+    onClose();
+  }
+
+  return (
+    <>
+      <Backdrop onClose={onClose} />
+      <motion.div
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+        className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[32px] shadow-2xl flex flex-col"
+        style={{ maxHeight: '92vh' }}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={20} className="text-gray-600" />
+          </button>
+          <span className="font-black text-[16px] text-gray-900">Edit Profile</span>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSave}
+            disabled={!displayName.trim() || saving}
+            className="px-5 py-2 rounded-full text-[14px] font-bold text-white disabled:opacity-50 flex items-center gap-1.5"
+            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.35)' }}
+          >
+            {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Check size={14} /> Save</>}
+          </motion.button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-6 pb-safe">
+          {/* Avatar preview */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative">
+              <GradientAvatar name={displayName || user.displayName} size={88} />
+              <button
+                className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-md"
+                style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              >
+                <Camera size={14} className="text-white" />
+              </button>
+            </div>
+            <p className="text-[12px] text-gray-400">Your avatar updates as you type your name</p>
+          </div>
+
+          {/* Display name */}
+          <div>
+            <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Display Name</label>
+            <input
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+              maxLength={50}
+              placeholder="Your name"
+              className="w-full bg-white border border-black/[0.08] rounded-2xl px-4 py-3.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+            />
+          </div>
+
+          {/* Handle */}
+          <div>
+            <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Username</label>
+            <div className="flex items-center bg-white border border-black/[0.08] rounded-2xl px-4 py-3.5 gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
+              <AtSign size={16} className="text-purple-400 flex-shrink-0" />
+              <input
+                value={handle}
+                onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                maxLength={30}
+                placeholder="yourhandle"
+                className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 outline-none"
+              />
+              <span className="text-[12px] text-gray-400">{handle.length}/30</span>
+            </div>
+          </div>
+
+          {/* Bio */}
+          <div>
+            <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Bio</label>
+            <textarea
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              maxLength={160}
+              rows={4}
+              placeholder="Tell the world what makes you, you… ✨"
+              className="w-full bg-white border border-black/[0.08] rounded-2xl px-4 py-3.5 text-[14.5px] text-gray-900 placeholder:text-gray-400 outline-none resize-none leading-relaxed focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+            />
+            <p className="text-[12px] text-gray-400 text-right mt-1 mr-1">{bio.length}/160</p>
+          </div>
+
+          {/* Interests */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-[13px] font-semibold text-gray-600 ml-1">Interests</label>
+              <span className="text-[12px] text-purple-500 font-semibold">{interests.length} selected</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ALL_INTERESTS.map(({ label, emoji }) => {
+                const sel = interests.includes(label);
+                const [from, to] = getInterestGradient(label);
+                return (
+                  <motion.button
+                    key={label}
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() => toggleInterest(label)}
+                    className={cn('flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all border',
+                      sel ? 'text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-black/[0.08] hover:border-purple-200'
+                    )}
+                    style={sel ? { background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 2px 10px ${from}44` } : {}}
+                  >
+                    <span>{emoji}</span>
+                    <span>{label}</span>
+                    {sel && <Check size={11} strokeWidth={3} />}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+// ─── Interest chip ────────────────────────────────────────────────────────────
+
+function InterestChip({ label }: { label: string }) {
+  const emoji = ALL_INTERESTS.find(i => i.label === label)?.emoji ?? '✨';
+  const [from, to] = getInterestGradient(label);
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-white"
+      style={{ background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 2px 8px ${from}44` }}
+    >
+      <span>{emoji}</span>
+      {label}
+    </span>
+  );
+}
+
+// ─── Badge chip ───────────────────────────────────────────────────────────────
+
+function BadgeChip({ label }: { label: string }) {
+  const style = BADGE_STYLES[label] ?? { bg: '#F3F4F6', text: '#6B7280', icon: '🏅' };
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold"
+      style={{ background: style.bg, color: style.text }}
+    >
+      <span className="text-[10px]">{style.icon}</span>
+      {label}
+    </span>
+  );
+}
+
+// ─── Circle card (community) ──────────────────────────────────────────────────
+
+function CircleCard({ community }: { community: Community }) {
+  const [joined, setJoined] = useState(community.isJoined);
+  const [from, to] = getGradientPair(community.name);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-[20px] shadow-sm border border-black/[0.04] overflow-hidden"
+    >
+      {/* Mini banner */}
+      <div className="h-16 relative" style={{ background: `linear-gradient(135deg, ${from}cc, ${to}cc)` }}>
+        {community.bannerUrl && (
+          <img src={community.bannerUrl} alt="" className="w-full h-full object-cover opacity-60 mix-blend-overlay" />
         )}
       </div>
+      <div className="px-3.5 pt-2.5 pb-3.5">
+        <p className="font-bold text-[14px] text-gray-900 truncate">{community.name}</p>
+        <p className="text-[12px] text-gray-400 mt-0.5 line-clamp-1">{fmtNum(community.memberCount)} members</p>
+        <motion.button
+          whileTap={{ scale: 0.93 }}
+          onClick={() => setJoined(v => !v)}
+          className={cn(
+            'mt-3 w-full py-2 rounded-full text-[12.5px] font-bold transition-all',
+            joined ? 'bg-gray-100 text-gray-500' : 'text-white shadow-sm'
+          )}
+          style={!joined ? { background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 2px 8px ${from}55` } : {}}
+        >
+          {joined ? '✓ Joined' : '+ Join'}
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
 
-      <div className="px-4 md:px-8 relative -mt-16 sm:-mt-20">
-        <div className="flex justify-between items-end mb-4">
-          <div className="relative">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-background overflow-hidden bg-muted">
-              <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover bg-white" />
-            </div>
-            {isOwnProfile && (
-              <button className="absolute bottom-2 right-2 bg-primary text-white p-2 rounded-full border-2 border-background hover:scale-105 transition-transform shadow-md">
-                <Edit3 size={16} />
-              </button>
-            )}
-          </div>
-          
-          <div className="mb-2">
-            {isOwnProfile ? (
-              <button className="px-5 py-2 rounded-full bg-secondary/10 text-secondary font-semibold text-sm hover:bg-secondary/20 transition-colors">
-                Edit Profile
-              </button>
-            ) : (
-              <button className="px-6 py-2 rounded-full gradient-bg text-white font-bold text-sm shadow-lg shadow-primary/25 hover:opacity-90 transition-all active:scale-95">
-                Follow
-              </button>
-            )}
-          </div>
+// ─── Spark card ───────────────────────────────────────────────────────────────
+
+interface SparkItem { id: string; prompt: string; response: string; likes: number; liked: boolean; date: Date; }
+
+function SparkCard({ spark, user }: { spark: SparkItem; user: User }) {
+  const [liked, setLiked] = useState(spark.liked);
+  const [likes, setLikes] = useState(spark.likes);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mx-4 mb-4 bg-white rounded-[24px] border border-black/[0.04] shadow-sm overflow-hidden"
+    >
+      {/* Gradient spark header */}
+      <div
+        className="px-4 py-3 flex items-center gap-2"
+        style={{ background: 'linear-gradient(135deg, #6B73FF22, #FF6B9D15)' }}
+      >
+        <div
+          className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+        >
+          <Sparkles size={12} className="text-white" />
         </div>
+        <p className="text-[12px] font-semibold text-purple-600 flex-1 truncate">"{spark.prompt}"</p>
+        <span className="text-[11px] text-gray-400 flex-shrink-0">{relDate(spark.date)}</span>
+      </div>
 
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            {user.displayName}
-            {user.badges.includes("Verified") && (
-              <span className="text-primary" title="Verified">✓</span>
-            )}
-          </h1>
-          <p className="text-muted-foreground font-medium">@{user.handle}</p>
+      {/* Response */}
+      <div className="px-4 py-3.5">
+        <div className="flex items-start gap-3">
+          <GradientAvatar name={user.displayName} size={34} className="flex-shrink-0 mt-0.5" />
+          <p className="text-[14.5px] text-gray-800 leading-relaxed flex-1">{spark.response}</p>
         </div>
-        
-        <p className="text-foreground text-[15px] leading-relaxed mb-4 max-w-xl">
-          {user.bio}
-        </p>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
-          <div className="flex items-center gap-1">
-            <Calendar size={16} />
-            <span>Joined {format(user.joinedAt, 'MMMM yyyy')}</span>
-          </div>
-        </div>
+      {/* Actions */}
+      <div className="px-4 pb-3.5 flex items-center gap-2">
+        <motion.button
+          whileTap={{ scale: 0.82 }}
+          onClick={() => { setLiked(v => !v); setLikes(n => liked ? n - 1 : n + 1); }}
+          className={cn(
+            'flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full transition-all',
+            liked ? 'text-pink-500 bg-pink-50' : 'text-gray-400 hover:bg-gray-50'
+          )}
+        >
+          <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
+            <Heart size={15} className={cn(liked && 'fill-pink-500 stroke-pink-500')} />
+          </motion.span>
+          <span>{likes}</span>
+        </motion.button>
+        <button className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-gray-50 transition-all">
+          <MessageCircle size={15} />
+          <span>Reply</span>
+        </button>
+        <button className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-gray-50 transition-all ml-auto">
+          <Share2 size={15} />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
-        <div className="flex items-center gap-6 mb-8">
-          <button className="flex gap-1.5 hover:underline group">
-            <strong className="text-foreground">{user.following}</strong> 
-            <span className="text-muted-foreground group-hover:text-foreground transition-colors">Following</span>
-          </button>
-          <button className="flex gap-1.5 hover:underline group">
-            <strong className="text-foreground">{user.followers}</strong> 
-            <span className="text-muted-foreground group-hover:text-foreground transition-colors">Followers</span>
-          </button>
-        </div>
+// ─── Empty state ──────────────────────────────────────────────────────────────
 
-        {user.interests && user.interests.length > 0 && (
-          <div className="mb-8">
-            <div className="flex flex-wrap gap-2">
-              {user.interests.map(interest => (
-                <span key={interest} className="px-3 py-1 rounded-full bg-muted text-xs font-medium text-foreground">
-                  {interest}
-                </span>
-              ))}
-            </div>
-          </div>
+function EmptyState({ emoji, title, subtitle }: { emoji: string; title: string; subtitle: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+      <div className="text-5xl mb-4">{emoji}</div>
+      <h3 className="font-bold text-[17px] text-gray-800 mb-1.5">{title}</h3>
+      <p className="text-[14px] text-gray-400 leading-relaxed max-w-[220px]">{subtitle}</p>
+    </div>
+  );
+}
+
+// ─── Tab bar ──────────────────────────────────────────────────────────────────
+
+const TABS_OWN    = ['Posts', 'Circles', 'Sparks', 'Liked', 'Saved'] as const;
+const TABS_OTHER  = ['Posts', 'Circles', 'Sparks'] as const;
+type TabLabel = typeof TABS_OWN[number];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function Profile() {
+  const [, params]   = useRoute('/profile/:userId');
+  const { currentUser, updateUser } = useAuth();
+  const userId = params?.userId;
+
+  // Resolve displayed user — prefer currentUser if it's their own profile
+  const baseUser = mockUsers.find(u => u.id === userId) ?? mockUsers[0];
+  const isOwnProfile = currentUser?.id === userId || currentUser?.id === baseUser.id;
+  const user: User = isOwnProfile && currentUser ? currentUser : baseUser;
+
+  const [activeTab, setActiveTab]       = useState<TabLabel>('Posts');
+  const [editOpen, setEditOpen]         = useState(false);
+  const [followersOpen, setFollowersOpen] = useState(false);
+  const [followingOpen, setFollowingOpen] = useState(false);
+  const [isFollowing, setIsFollowing]   = useState(false);
+  const [followerCount, setFollowerCount] = useState(user.followers);
+
+  const tabs = (isOwnProfile ? TABS_OWN : TABS_OTHER) as readonly TabLabel[];
+  const tabIcons: Record<TabLabel, React.ReactNode> = {
+    Posts:   <Grid3X3 size={15} />,
+    Circles: <Users size={15} />,
+    Sparks:  <Sparkles size={15} />,
+    Liked:   <Heart size={15} />,
+    Saved:   <Bookmark size={15} />,
+  };
+
+  // Data for each tab
+  const userPosts    = [...mockPosts.filter(p => p.authorId === user.id)];
+  const likedPosts   = mockPosts.filter(p => p.liked);
+  const savedPosts   = mockPosts.filter(p => p.saved);
+  const userCircles  = mockCommunities.filter(c => c.isJoined || c.moderatorIds.includes(user.id));
+  const sparks       = MOCK_SPARKS;
+
+  // Followers/following lists (mock)
+  const followersList = mockUsers.filter(u => u.id !== user.id);
+  const followingList = mockUsers.filter(u => u.id !== user.id).slice(0, 3);
+
+  const [from, to] = getGradientPair(user.displayName);
+
+  function handleFollow() {
+    setIsFollowing(v => !v);
+    setFollowerCount(n => isFollowing ? n - 1 : n + 1);
+  }
+
+  function handleSave(updates: Partial<User>) {
+    if (isOwnProfile) updateUser(updates);
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FDF9F6] pb-32">
+
+      {/* ── Cover ───────────────────────────────────────────────────────── */}
+      <div className="relative h-48 overflow-hidden">
+        {/* Gradient fallback (always shown underneath) */}
+        <div
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(135deg, ${from}55 0%, ${to}44 50%, ${from}33 100%)` }}
+        />
+        {user.coverUrl && (
+          <img src={user.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80" />
         )}
+        {/* Bottom fade to page bg */}
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#FDF9F6] to-transparent" />
 
-        <div className="border-b border-border flex mb-2 sticky top-0 bg-background/95 backdrop-blur z-10 pt-2">
-          <button 
-            onClick={() => setActiveTab('posts')}
-            className={cn("flex-1 pb-4 text-sm font-semibold relative transition-colors flex items-center justify-center gap-2", activeTab === 'posts' ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
-          >
-            <Grid size={16} />
-            <span className="hidden sm:inline">Posts</span>
-            {activeTab === 'posts' && <div className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full bg-primary" />}
-          </button>
-          <button 
-            onClick={() => setActiveTab('liked')}
-            className={cn("flex-1 pb-4 text-sm font-semibold relative transition-colors flex items-center justify-center gap-2", activeTab === 'liked' ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
-          >
-            <Heart size={16} />
-            <span className="hidden sm:inline">Likes</span>
-            {activeTab === 'liked' && <div className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full bg-primary" />}
-          </button>
-          <button 
-            onClick={() => setActiveTab('saved')}
-            className={cn("flex-1 pb-4 text-sm font-semibold relative transition-colors flex items-center justify-center gap-2", activeTab === 'saved' ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
-          >
-            <Bookmark size={16} />
-            <span className="hidden sm:inline">Saved</span>
-            {activeTab === 'saved' && <div className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full bg-primary" />}
-          </button>
-        </div>
-
-        <div className="space-y-2 mt-4 -mx-4 md:mx-0">
-          {activeTab === 'posts' && userPosts.length > 0 ? (
-            userPosts.map((post, i) => <PostCard key={post.id} post={post} index={i} />)
-          ) : activeTab === 'liked' && likedPosts.length > 0 ? (
-            likedPosts.map((post, i) => <PostCard key={post.id} post={post} index={i} />)
+        {/* Top action row */}
+        <div className="absolute top-4 right-4 flex gap-2">
+          {isOwnProfile ? (
+            <button
+              onClick={() => setEditOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold bg-white/85 backdrop-blur-sm text-gray-700 shadow-sm hover:bg-white transition-all"
+            >
+              <Edit3 size={14} /> Edit
+            </button>
           ) : (
-            <div className="py-20 text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-4">
-                {activeTab === 'posts' ? <Grid size={24} /> : activeTab === 'liked' ? <Heart size={24} /> : <Bookmark size={24} />}
-              </div>
-              <h3 className="font-bold text-lg mb-1">Nothing to see here yet</h3>
-              <p className="text-muted-foreground text-sm">When they post, it will show up here.</p>
-            </div>
+            <button className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all">
+              <Share2 size={16} className="text-gray-700" />
+            </button>
           )}
         </div>
       </div>
+
+      {/* ── Avatar row ──────────────────────────────────────────────────── */}
+      <div className="px-4 -mt-12 flex items-end justify-between">
+        {/* Avatar */}
+        <div className="relative">
+          <div className="ring-4 ring-[#FDF9F6] rounded-full shadow-xl">
+            <GradientAvatar name={user.displayName} size={88} />
+          </div>
+          {isOwnProfile && (
+            <button
+              onClick={() => setEditOpen(true)}
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center border-2 border-[#FDF9F6] shadow-md"
+              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+            >
+              <Camera size={12} className="text-white" />
+            </button>
+          )}
+        </div>
+
+        {/* CTA buttons */}
+        <div className="flex items-center gap-2 mb-1">
+          {isOwnProfile ? (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setEditOpen(true)}
+              className="px-5 py-2.5 rounded-full bg-white border border-black/[0.08] text-gray-700 font-bold text-[13.5px] shadow-sm hover:shadow-md transition-all flex items-center gap-1.5"
+            >
+              <Edit3 size={14} /> Edit Profile
+            </motion.button>
+          ) : (
+            <>
+              <motion.button
+                whileTap={{ scale: 0.93 }}
+                onClick={handleFollow}
+                className={cn(
+                  'px-5 py-2.5 rounded-full font-bold text-[13.5px] transition-all flex items-center gap-1.5',
+                  isFollowing ? 'bg-white border border-black/[0.08] text-gray-700 shadow-sm' : 'text-white shadow-md'
+                )}
+                style={!isFollowing ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 14px rgba(107,115,255,0.35)' } : {}}
+              >
+                {isFollowing ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
+              </motion.button>
+              <Link href="/messages">
+                <button className="w-10 h-10 rounded-full bg-white border border-black/[0.08] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
+                  <MessageCircle size={17} className="text-purple-500" />
+                </button>
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Profile info ─────────────────────────────────────────────────── */}
+      <div className="px-4 mt-4">
+        {/* Name + badges */}
+        <div className="flex items-start gap-2 flex-wrap mb-0.5">
+          <h1 className="text-[22px] font-black text-gray-900 tracking-tight leading-tight">{user.displayName}</h1>
+        </div>
+        <p className="text-[14px] text-gray-400 font-medium mb-1">@{user.handle}</p>
+
+        {/* Badges */}
+        {user.badges.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {user.badges.map(b => <BadgeChip key={b} label={b} />)}
+          </div>
+        )}
+
+        {/* Bio */}
+        {user.bio ? (
+          <p className="text-[14.5px] text-gray-700 leading-relaxed mb-3 max-w-sm">{user.bio}</p>
+        ) : isOwnProfile ? (
+          <button
+            onClick={() => setEditOpen(true)}
+            className="flex items-center gap-1.5 text-[13.5px] text-purple-400 font-semibold mb-3 hover:text-purple-600 transition-colors"
+          >
+            <Plus size={14} /> Add a bio
+          </button>
+        ) : null}
+
+        {/* Joined date */}
+        <div className="flex items-center gap-1.5 text-[12.5px] text-gray-400 mb-4">
+          <Calendar size={13} />
+          <span>Joined {format(user.joinedAt, 'MMMM yyyy')}</span>
+        </div>
+
+        {/* Stats row */}
+        <div className="flex items-center gap-5 mb-4">
+          <div className="flex items-baseline gap-1">
+            <span className="text-[18px] font-black text-gray-900">{fmtNum(user.postCount || userPosts.length)}</span>
+            <span className="text-[13px] text-gray-400 font-medium">Posts</span>
+          </div>
+          <div className="w-px h-5 bg-gray-200" />
+          <button
+            onClick={() => setFollowersOpen(true)}
+            className="flex items-baseline gap-1 hover:opacity-75 transition-opacity"
+          >
+            <span className="text-[18px] font-black text-gray-900">{fmtNum(followerCount)}</span>
+            <span className="text-[13px] text-gray-400 font-medium">Followers</span>
+          </button>
+          <div className="w-px h-5 bg-gray-200" />
+          <button
+            onClick={() => setFollowingOpen(true)}
+            className="flex items-baseline gap-1 hover:opacity-75 transition-opacity"
+          >
+            <span className="text-[18px] font-black text-gray-900">{fmtNum(user.following)}</span>
+            <span className="text-[13px] text-gray-400 font-medium">Following</span>
+          </button>
+        </div>
+
+        {/* Interests */}
+        {user.interests.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {user.interests.map(i => <InterestChip key={i} label={i} />)}
+            {isOwnProfile && (
+              <button
+                onClick={() => setEditOpen(true)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-purple-500 border border-purple-200 bg-white hover:bg-purple-50 transition-colors"
+              >
+                <Plus size={11} /> Edit
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Sticky tab bar ───────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-30 bg-[#FDF9F6]/95 backdrop-blur-md border-b border-black/[0.06] px-2">
+        <div className="flex overflow-x-auto scrollbar-none">
+          {tabs.map(tab => {
+            const active = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-3.5 text-[13.5px] font-semibold whitespace-nowrap relative flex-shrink-0 transition-colors',
+                  active ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
+                )}
+              >
+                {tabIcons[tab]}
+                {tab}
+                {active && (
+                  <motion.div
+                    layoutId="profileTabIndicator"
+                    className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full"
+                    style={{ background: 'linear-gradient(90deg, #6B73FF, #FF6B9D)' }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Tab content ──────────────────────────────────────────────────── */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18 }}
+          className="mt-4"
+        >
+          {/* Posts */}
+          {activeTab === 'Posts' && (
+            userPosts.length > 0
+              ? userPosts.map((p, i) => <PostCard key={p.id} post={p} index={i} />)
+              : <EmptyState emoji="📝" title="No posts yet" subtitle={isOwnProfile ? "Share your first thought with the world!" : "This user hasn't posted yet."} />
+          )}
+
+          {/* Circles */}
+          {activeTab === 'Circles' && (
+            userCircles.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 px-4">
+                {userCircles.map(c => <CircleCard key={c.id} community={c} />)}
+              </div>
+            ) : (
+              <EmptyState emoji="🌐" title="No circles yet" subtitle={isOwnProfile ? "Join a Circle to connect with people who share your interests!" : "This user hasn't joined any Circles yet."} />
+            )
+          )}
+
+          {/* Sparks */}
+          {activeTab === 'Sparks' && (
+            sparks.length > 0
+              ? sparks.map(s => <SparkCard key={s.id} spark={s} user={user} />)
+              : <EmptyState emoji="✨" title="No sparks yet" subtitle="Respond to today's Daily Spark to light up your profile!" />
+          )}
+
+          {/* Liked (own only) */}
+          {activeTab === 'Liked' && (
+            likedPosts.length > 0
+              ? likedPosts.map((p, i) => <PostCard key={p.id} post={p} index={i} />)
+              : <EmptyState emoji="❤️" title="No liked posts" subtitle="Posts you like will appear here." />
+          )}
+
+          {/* Saved (own only) */}
+          {activeTab === 'Saved' && (
+            savedPosts.length > 0
+              ? savedPosts.map((p, i) => <PostCard key={p.id} post={p} index={i} />)
+              : <EmptyState emoji="🔖" title="No saved posts" subtitle="Tap the bookmark on any post to save it here." />
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* ── Overlays ─────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {editOpen && (
+          <EditProfileDrawer
+            key="edit"
+            user={user}
+            onSave={handleSave}
+            onClose={() => setEditOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {followersOpen && (
+          <UserListSheet
+            key="followers"
+            title={`Followers · ${fmtNum(followerCount)}`}
+            users={followersList}
+            currentUserId={currentUser?.id}
+            onClose={() => setFollowersOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {followingOpen && (
+          <UserListSheet
+            key="following"
+            title={`Following · ${fmtNum(user.following)}`}
+            users={followingList}
+            currentUserId={currentUser?.id}
+            onClose={() => setFollowingOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

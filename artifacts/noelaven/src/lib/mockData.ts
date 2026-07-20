@@ -220,6 +220,48 @@ export const mockPosts: Post[] = [
     mood: "Energetic",
     communityId: "comm-6",
     createdAt: new Date(Date.now() - 3600000 * 72)
+  },
+  {
+    id: "post-6",
+    authorId: "demo-user",
+    author: mockUsers[2],
+    content: "Spent the weekend exploring the botanical gardens. There's something magical about slowing down and noticing the details we usually walk past. 🌸",
+    imageUrl: "https://picsum.photos/600/400?random=31",
+    likes: 892,
+    comments: 67,
+    shares: 23,
+    liked: false,
+    saved: true,
+    mood: "Peaceful",
+    createdAt: new Date(Date.now() - 3600000 * 96)
+  },
+  {
+    id: "post-7",
+    authorId: "demo-user",
+    author: mockUsers[2],
+    content: "New camera gear arrived today and I immediately took it to the rooftop. The city looks completely different from up here. Obsessed. 🏙️📷",
+    imageUrl: "https://picsum.photos/600/400?random=42",
+    likes: 2340,
+    comments: 198,
+    shares: 87,
+    liked: true,
+    saved: false,
+    mood: "Excited",
+    createdAt: new Date(Date.now() - 3600000 * 120)
+  },
+  {
+    id: "post-8",
+    authorId: "user-1",
+    author: mockUsers[0],
+    content: "Color theory is not just for designers — it's for everyone who wants to communicate better. Here's what I learned this week about using complementary palettes in UI. 🎨",
+    likes: 511,
+    comments: 38,
+    shares: 19,
+    liked: false,
+    saved: false,
+    mood: "Inspired",
+    communityId: "comm-1",
+    createdAt: new Date(Date.now() - 3600000 * 30)
   }
 ];
 
