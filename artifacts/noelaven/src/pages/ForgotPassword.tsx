@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'wouter';
+import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
 
 export default function ForgotPassword() {
   const { resetPassword } = useAuth();
@@ -50,12 +51,7 @@ export default function ForgotPassword() {
               className="flex-1 flex flex-col"
             >
               {/* Icon */}
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)', boxShadow: '0 8px 24px rgba(107,115,255,0.38)' }}
-              >
-                <Mail size={28} className="text-white" />
-              </div>
+              <NoelavenLogo variant="mark" size="lg" className="mb-6" />
 
               <h1 className="text-[28px] font-black text-gray-900 tracking-tight leading-tight mb-2">
                 Forgot your<br />password?

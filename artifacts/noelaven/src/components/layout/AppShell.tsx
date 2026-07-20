@@ -199,11 +199,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDF9F6]">
-        <div
-          className="w-12 h-12 rounded-2xl animate-pulse"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
-        />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-[#FDF9F6]">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="flex flex-col items-center gap-4"
+        >
+          <NoelavenLogo variant="mark" size="xl" />
+          <NoelavenLogo variant="full" size="md" />
+          <p className="text-[11.5px] font-bold tracking-[0.18em] uppercase" style={{ color: '#7C3AED' }}>
+            Connect. Create. Belong.
+          </p>
+        </motion.div>
+        <div className="w-6 h-6 rounded-full border-2 border-purple-200 border-t-[#7C3AED] animate-spin" />
       </div>
     );
   }

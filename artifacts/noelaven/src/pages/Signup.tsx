@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'wouter';
+import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
 
 function GoogleIcon() {
   return (
@@ -97,12 +98,7 @@ export default function Signup() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)', boxShadow: '0 6px 20px rgba(107,115,255,0.38)' }}
-          >
-            <span className="text-white font-black text-xl">N</span>
-          </div>
+          <NoelavenLogo variant="mark" size="lg" className="mb-5" />
           <h1 className="text-[28px] font-black text-gray-900 tracking-tight leading-tight">
             Create your account
           </h1>

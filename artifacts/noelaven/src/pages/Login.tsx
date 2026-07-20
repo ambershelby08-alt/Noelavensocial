@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'wouter';
+import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
 
 // ─── Google icon ──────────────────────────────────────────────────────────────
 
@@ -96,14 +97,12 @@ export default function Login() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center mb-10"
         >
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-xl"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)', boxShadow: '0 8px 24px rgba(107,115,255,0.40)' }}
-          >
-            <span className="text-white font-black text-2xl">N</span>
-          </div>
+          <NoelavenLogo variant="mark" size="xl" className="mb-4" />
           <h1 className="text-[28px] font-black text-gray-900 tracking-tight">Welcome back</h1>
-          <p className="text-[14px] text-gray-400 font-medium mt-1">Sign in to your Noelaven account</p>
+          <p className="text-[13px] font-semibold tracking-widest uppercase mt-1.5"
+             style={{ color: '#7C3AED', letterSpacing: '0.12em' }}>
+            Connect. Create. Belong.
+          </p>
         </motion.div>
 
         {/* Form */}

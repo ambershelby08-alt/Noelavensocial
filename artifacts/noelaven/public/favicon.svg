@@ -1,3 +1,46 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <linearGradient id="a" x1="80" y1="25" x2="18" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EC4899"/>
+      <stop offset=".5" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="b" x1="14" y1="80" x2="86" y2="80" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ring arc  (pink → purple → blue), opens at bottom -->
+  <path d="M 19,76 A 35,35 0 1 1 81,76"
+        stroke="url(#a)" stroke-width="5.5" stroke-linecap="round"/>
+
+  <!-- Light beam -->
+  <path d="M 55,34 L 86,14 L 80,39" fill="#F59E0B" opacity="0.50"/>
+
+  <!-- Lighthouse roof -->
+  <polygon points="50,30 41,40 59,40" fill="#1A1B4B"/>
+  <!-- Lantern housing -->
+  <rect x="42" y="40" width="16" height="10" rx="2" fill="#1A1B4B"/>
+  <!-- Lantern glow -->
+  <circle cx="50" cy="45" r="4" fill="#FCD34D"/>
+  <circle cx="50" cy="45" r="2.2" fill="#FEFCE8"/>
+  <!-- Tower body -->
+  <rect x="44" y="49" width="12" height="21" rx="2" fill="#1A1B4B"/>
+  <!-- Base -->
+  <path d="M 42,70 L 43,74 L 57,74 L 58,70 Z" fill="#1A1B4B"/>
+
+  <!-- Heart -->
+  <path d="M50,57 C50,57 46.5,54 46.5,56.2 C46.5,58.2 50,61 50,61 C50,61 53.5,58.2 53.5,56.2 C53.5,54 50,57 50,57Z"
+        fill="white" opacity="0.88"/>
+
+  <!-- Waves -->
+  <path d="M14,78 Q26,73 38,77 Q50,81 62,76 Q74,71 86,75 L86,85 Q74,82 62,86 Q50,90 38,86 Q26,82 14,85Z"
+        fill="url(#b)" opacity="0.88"/>
+
+  <!-- Sparkle stars -->
+  <path d="M29,32 L30.2,29.2 L31.4,32 L34.2,33.2 L31.4,34.4 L30.2,37.2 L29,34.4 L26.2,33.2Z" fill="#EC4899"/>
+  <path d="M71,27 L71.9,24.8 L72.8,27 L75,27.9 L72.8,28.8 L71.9,31 L71,28.8 L68.8,27.9Z" fill="#7C3AED"/>
+  <circle cx="23" cy="54" r="1.8" fill="#2563EB" opacity="0.85"/>
+  <circle cx="67" cy="34" r="1.4" fill="#EC4899" opacity="0.70"/>
 </svg>
