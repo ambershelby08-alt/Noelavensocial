@@ -63,7 +63,7 @@ function Field({ label, icon, error, right, ...props }: InputProps) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function Login() {
-  const { signIn, signInWithGoogle, isLoading } = useAuth();
+  const { signIn, signInWithGoogle, isLoading, redirectError } = useAuth();
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -125,9 +125,11 @@ export default function Login() {
           onSubmit={handleSubmit}
           className="space-y-4 flex-1"
         >
-          {errors.form && (
+          {(redirectError || errors.form) && (
             <div className="px-4 py-3 rounded-2xl bg-red-50 border border-red-100">
-              <p className="text-[13px] text-red-600 font-medium text-center">{errors.form}</p>
+              <p className="text-[13px] text-red-600 font-medium text-center">
+                {redirectError ?? errors.form}
+              </p>
             </div>
           )}
           <Field

@@ -32,6 +32,8 @@ interface AuthContextType {
   isLoading: boolean;
   isNewUser: boolean;
   isDemoMode: boolean;
+  /** Non-null when getRedirectResult throws — shows the raw Firebase error code */
+  redirectError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -55,41 +57,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null);
   const [isLoading, setIsLoading] = useState(!isDemoMode);
   const [isNewUser, setIsNewUser] = useState(false);
+  const [redirectError, setRedirectError] = useState<string | null>(null);
   // Track the Firebase Auth UID so completeProfile can write to the right doc
   const [pendingUid, setPendingUid] = useState<string | null>(null);
 
-  // ─── Handle completed redirect sign-ins (mobile Google flow) ────────────────
-  useEffect(() => {
-    if (isDemoMode || !auth) return;
-    getRedirectResult(auth).catch(err => {
-      const e = err as FirebaseError;
-      // Log but don't crash — onAuthStateChanged handles the success path.
-      // Errors here (e.g. auth/unauthorized-domain) surface on the next sign-in attempt.
-      console.error('[Google Sign-In Redirect Result] error:', e.code, e.message);
-    });
-  }, [isDemoMode]);
-
-  // ─── Firebase auth listener ────────────────────────────────────────────────
+  // ─── Auth initialization ──────────────────────────────────────────────────
+  //
+  // getRedirectResult MUST settle before onAuthStateChanged is registered.
+  // If we register the listener first, it fires with null (no user yet) while
+  // the redirect result is still pending — the route guard would incorrectly
+  // show the Login page before the OAuth user is available.
+  //
+  // By chaining: getRedirectResult → register listener, Firebase's internal
+  // auth state already reflects the redirect user by the time the listener
+  // fires, so it fires exactly once with the correct state.
   useEffect(() => {
     if (isDemoMode || !auth) {
       setIsLoading(false);
       return;
     }
 
-    // Seed default communities once (no-op if already seeded)
     seedCommunitiesIfNeeded();
 
-    const unsub = onAuthStateChanged(auth, async firebaseUser => {
+    // Shared logic: resolve a Firebase user to app state (Firestore profile check).
+    async function resolveUser(firebaseUser: import('firebase/auth').User | null) {
       if (!firebaseUser) {
         setCurrentUser(null);
         setPendingUser(null);
         setPendingUid(null);
         setIsNewUser(false);
-        setIsLoading(false);
         return;
       }
 
-      // Detect Google (or other OAuth) sign-in so we can pre-fill profile data.
       const isGoogleUser = firebaseUser.providerData.some(
         p => p.providerId === 'google.com'
       );
@@ -99,14 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profile = await getUserDoc(firebaseUser.uid);
 
         if (profile && profile.handle) {
-          // Existing complete profile — go straight to Home.
+          // Complete profile — route to Home.
           setCurrentUser(profile);
           setPendingUser(null);
           setPendingUid(null);
           setIsNewUser(false);
         } else {
-          // New or incomplete profile — needs handle/bio/interests.
-          // For Google users: persist base identity immediately so it's
+          // New or incomplete — persist base Google identity so it's
           // recoverable if the user closes before finishing profile setup.
           if (isGoogleUser) {
             await upsertUserBaseDoc(firebaseUser.uid, {
@@ -115,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               avatarUrl: googleAvatarUrl,
             });
           }
-
           setPendingUser({
             displayName: firebaseUser.displayName ?? firebaseUser.email?.split('@')[0] ?? 'New User',
             email: firebaseUser.email ?? '',
@@ -126,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsNewUser(true);
         }
       } catch {
-        // Firestore error (e.g. offline) — treat as new user so they can retry.
+        // Firestore error (offline etc.) — treat as new user so they can retry.
         setPendingUser({
           displayName: firebaseUser.displayName ?? 'New User',
           email: firebaseUser.email ?? '',
@@ -135,12 +132,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setPendingUid(firebaseUser.uid);
         setCurrentUser(null);
         setIsNewUser(true);
-      } finally {
-        setIsLoading(false);
       }
-    });
+    }
 
-    return unsub;
+    // auth is confirmed non-null by the guard above; narrow once for closures.
+    const _auth = auth;
+    let unsub: (() => void) | null = null;
+    let cancelled = false;
+
+    // Step 1 — process any pending redirect result. isLoading stays true.
+    getRedirectResult(_auth)
+      .then(result => {
+        if (result?.user) {
+          console.log('[Auth] Redirect result received for uid:', result.user.uid);
+        }
+      })
+      .catch(err => {
+        if (cancelled) return;
+        const e = err as FirebaseError;
+        console.error('[Auth] getRedirectResult error:', e.code, e.message);
+        setRedirectError(`${e.message} [${e.code}]`);
+      })
+      .finally(() => {
+        if (cancelled) return;
+
+        // Step 2 — register the auth listener only after the redirect result
+        // has been applied to Firebase's internal auth state.
+        unsub = onAuthStateChanged(_auth, async firebaseUser => {
+          if (cancelled) return;
+          try {
+            await resolveUser(firebaseUser);
+          } finally {
+            if (!cancelled) setIsLoading(false);
+          }
+        });
+      });
+
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, [isDemoMode]);
 
   // ─── Auth actions (demo mode stubs + real Firebase) ────────────────────────
@@ -322,7 +353,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        currentUser, pendingUser, isLoading, isNewUser, isDemoMode,
+        currentUser, pendingUser, isLoading, isNewUser, isDemoMode, redirectError,
         signIn, signUp, signInWithGoogle, signOut,
         completeProfile, resetPassword, updateUser,
       }}

@@ -50,6 +50,7 @@ function StepDots({ step }: { step: 1 | 2 }) {
 
 interface Step1Props {
   displayName: string;
+  isGoogleUser: boolean;
   handle: string;
   setHandle: (v: string) => void;
   handleError: string;
@@ -59,7 +60,7 @@ interface Step1Props {
   onAvatarClick: () => void;
 }
 
-function Step1({ displayName, handle, setHandle, handleError, onNext, avatarUrl, avatarUploading, onAvatarClick }: Step1Props) {
+function Step1({ displayName, isGoogleUser, handle, setHandle, handleError, onNext, avatarUrl, avatarUploading, onAvatarClick }: Step1Props) {
   return (
     <motion.div
       key="step1"
@@ -118,7 +119,7 @@ function Step1({ displayName, handle, setHandle, handleError, onNext, avatarUrl,
         <div className="flex items-center bg-gray-50 border border-black/[0.06] rounded-2xl px-4 py-3.5 gap-3">
           <span className="text-[15px] text-gray-800 font-medium">{displayName}</span>
           <span className="ml-auto text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-            {pendingUser?.avatarUrl ? 'from Google' : 'from sign-up'}
+            {isGoogleUser ? 'from Google' : 'from sign-up'}
           </span>
         </div>
       </div>
@@ -365,6 +366,7 @@ export default function CreateProfile() {
             <Step1
               key="step1"
               displayName={displayName}
+              isGoogleUser={!!pendingUser?.avatarUrl}
               handle={handle}
               setHandle={v => { setHandle(v); setHandleError(''); }}
               handleError={handleError}
