@@ -177,10 +177,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (isMobileBrowser()) {
         // Popups are unreliable on mobile — use redirect flow instead.
         // The page navigates away; onAuthStateChanged picks up the result on return.
-        await signInWithRedirect(auth, googleProvider);
+        await signInWithRedirect(auth, new GoogleAuthProvider());
         return;
       }
-      await signInWithPopup(auth, googleProvider);
+      await signInWithPopup(auth, new GoogleAuthProvider());
       // onAuthStateChanged handles session setup
     } catch (err) {
       const e = err as FirebaseError;
@@ -200,17 +200,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         e.code === 'auth/operation-not-supported-in-this-environment'
       ) {
         try {
-          await signInWithRedirect(auth, googleProvider);
+          await signInWithRedirect(auth, new GoogleAuthProvider());
           return;
         } catch (redirectErr) {
           const re = redirectErr as FirebaseError;
           console.error('[Google Sign-In] Redirect fallback error:', re.code, re.message);
-          throw new Error(friendlyAuthError(re.code));
+          // Show exact code so it's diagnosable if redirect also fails.
+          throw new Error(`${friendlyAuthError(re.code)} [${re.code}]`);
         }
       }
 
-      // All other errors — surface a friendly message without crashing.
-      throw new Error(friendlyAuthError(e.code));
+      // All other errors — show friendly message plus the exact Firebase code for diagnosis.
+      throw new Error(`${friendlyAuthError(e.code)} [${e.code}]`);
     }
   }, [isDemoMode]);
 
@@ -341,7 +342,6 @@ function friendlyAuthError(code: string): string {
     'auth/too-many-requests':                      'Too many attempts. Please wait a moment.',
     'auth/network-request-failed':                 'Network error. Check your connection.',
     'auth/popup-blocked':                          'Pop-up was blocked — please allow pop-ups and try again.',
-    'auth/unauthorized-domain':                    'Google sign-in is not enabled for this domain. Use email and password instead.',
     'auth/operation-not-supported-in-this-environment': 'Google sign-in is not supported in this browser. Use email and password instead.',
   };
   return map[code] ?? 'Something went wrong. Please try again.';
