@@ -35,4 +35,8 @@ if (isFirebaseConfigured) {
   storage = getStorage(app);
 }
 
+if (import.meta.env.DEV) {
+  console.log('[Firebase] isFirebaseConfigured:', isFirebaseConfigured, '| projectId:', import.meta.env.VITE_FIREBASE_PROJECT_ID ?? '(missing)');
+}
+
 export { app, auth, db, storage };
