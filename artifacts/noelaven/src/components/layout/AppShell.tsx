@@ -165,7 +165,7 @@ export function Sidebar() {
 
       {currentUser && (
         <Link href={`/profile/${currentUser.id}`} className="mt-5 flex items-center gap-3 px-2 py-2 rounded-2xl hover:bg-gray-50 transition-colors">
-          <GradientAvatar name={currentUser.displayName} size={38} />
+          <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={38} />
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-sm font-bold text-gray-900 truncate">{currentUser.displayName}</span>
             <span className="text-xs text-gray-400 truncate">@{currentUser.handle}</span>

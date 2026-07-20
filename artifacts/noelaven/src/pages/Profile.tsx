@@ -652,7 +652,7 @@ export default function Profile() {
         {/* Avatar */}
         <div className="relative">
           <div className="ring-4 ring-[#FDF9F6] rounded-full shadow-xl">
-            <GradientAvatar name={user.displayName} size={88} />
+            <GradientAvatar name={user.displayName} src={user.avatarUrl || undefined} size={88} />
           </div>
           {isOwnProfile && (
             <button

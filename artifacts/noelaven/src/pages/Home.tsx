@@ -139,7 +139,7 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
         {/* Input */}
         <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0 pb-safe">
           <div className="flex items-end gap-2.5">
-            {currentUser && <GradientAvatar name={currentUser.displayName} size={36} className="flex-shrink-0 mb-0.5" />}
+            {currentUser && <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={36} className="flex-shrink-0 mb-0.5" />}
             <div className="flex-1 bg-gray-50 rounded-2xl px-3.5 py-2.5 flex items-end gap-2">
               <textarea
                 ref={inputRef}
@@ -337,7 +337,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
         {/* Compose */}
         <div className="px-5 pb-5 pb-safe">
           <div className="flex gap-3 mb-4">
-            {currentUser && <GradientAvatar name={currentUser.displayName} size={40} className="flex-shrink-0 mt-1" />}
+            {currentUser && <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={40} className="flex-shrink-0 mt-1" />}
             <textarea
               ref={textRef}
               value={text}
@@ -418,7 +418,7 @@ function StoriesRow() {
         {currentUser && (
           <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
             <div className="relative">
-              <GradientAvatar name={currentUser.displayName} size={56} />
+              <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={56} />
               <div
                 className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white"
                 style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB)' }}
@@ -435,7 +435,7 @@ function StoriesRow() {
             <button key={user.id} className="flex flex-col items-center gap-1.5 flex-shrink-0 group">
               <div className="p-[2.5px] rounded-full" style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}>
                 <div className="p-[2px] bg-[#FDF9F6] rounded-full">
-                  <GradientAvatar name={user.displayName} size={50} />
+                  <GradientAvatar name={user.displayName} src={user.avatarUrl || undefined} size={50} />
                 </div>
               </div>
               <span className="text-[10px] text-gray-400 font-medium max-w-[56px] truncate text-center">
@@ -700,7 +700,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onLike, onS
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <Link href={`/profile/${post.authorId}`}>
-            <GradientAvatar name={post.author.displayName} size={42} className="cursor-pointer hover:scale-105 transition-transform" />
+            <GradientAvatar name={post.author.displayName} src={post.author.avatarUrl || undefined} size={42} className="cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -858,7 +858,7 @@ export default function Home() {
             </Link>
             {currentUser && (
               <Link href={`/profile/${currentUser.id}`}>
-                <GradientAvatar name={currentUser.displayName} size={40} className="cursor-pointer hover:scale-105 transition-transform" />
+                <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={40} className="cursor-pointer hover:scale-105 transition-transform" />
               </Link>
             )}
           </div>
