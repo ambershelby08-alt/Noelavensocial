@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { dailySparks, mockUsers } from '@/lib/mockData';
 import type { Post, User } from '@/lib/mockData';
 import { useFeed } from '@/hooks/useFeed';
+import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { cn } from '@/lib/utils';
 import { Link } from 'wouter';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
@@ -500,19 +501,40 @@ export function DailySpark({ onRespond }: DailySparkProps) {
 // ─── Post Composer ────────────────────────────────────────────────────────────
 
 interface PostComposerProps {
-  onPost: (content: string) => void;
+  onPost: (content: string, imageUrl?: string) => void;
 }
 
 export function PostComposer({ onPost }: PostComposerProps) {
   const { currentUser } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [content, setContent] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const canPost = content.trim().length > 0 || imageUrl.length > 0;
 
   function handlePost() {
-    if (!content.trim()) return;
-    onPost(content.trim());
+    if (!canPost) return;
+    onPost(content.trim(), imageUrl || undefined);
     setContent('');
+    setImageUrl('');
     setIsExpanded(false);
+  }
+
+  async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const url = await uploadImage(file, 'posts');
+      setImageUrl(url);
+    } catch (err) {
+      console.error('Image upload failed:', err);
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
   }
 
   return (
@@ -524,8 +546,24 @@ export function PostComposer({ onPost }: PostComposerProps) {
           : '0 2px 8px rgba(0,0,0,0.04)',
       }}
     >
+      {/* Hidden image file input */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={handleImageFile}
+      />
+
       <div className="flex gap-3">
-        {currentUser && <GradientAvatar name={currentUser.displayName} size={44} className="mt-0.5 flex-shrink-0" />}
+        {currentUser && (
+          <GradientAvatar
+            name={currentUser.displayName}
+            src={currentUser.avatarUrl || undefined}
+            size={44}
+            className="mt-0.5 flex-shrink-0"
+          />
+        )}
         <div className="flex-1 min-w-0">
           <textarea
             placeholder="Share something kind… 💛"
@@ -535,6 +573,28 @@ export function PostComposer({ onPost }: PostComposerProps) {
             className="w-full bg-transparent resize-none outline-none text-gray-800 text-[15px] placeholder:text-gray-400 min-h-[44px] pt-2.5 leading-relaxed"
             rows={isExpanded ? 3 : 1}
           />
+
+          {/* Image preview */}
+          {imageUrl && (
+            <div className="relative mt-2 rounded-2xl overflow-hidden">
+              <img src={imageUrl} alt="Post image" className="w-full max-h-64 object-cover rounded-2xl" />
+              <button
+                onClick={() => setImageUrl('')}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+              >
+                <X size={13} className="text-white" />
+              </button>
+            </div>
+          )}
+
+          {/* Uploading indicator */}
+          {imageUploading && (
+            <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-400">
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
+              Uploading image…
+            </div>
+          )}
+
           {isExpanded && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -542,8 +602,16 @@ export function PostComposer({ onPost }: PostComposerProps) {
               className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100"
             >
               <div className="flex items-center gap-0.5">
-                <button className="p-2 hover:bg-gray-50 rounded-full transition-colors" title="Add image">
-                  <ImageIcon size={18} className="text-blue-400" />
+                <button
+                  onClick={() => isCloudinaryConfigured && imageInputRef.current?.click()}
+                  disabled={imageUploading || !isCloudinaryConfigured}
+                  className={cn(
+                    'p-2 rounded-full transition-colors',
+                    isCloudinaryConfigured ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-40 cursor-not-allowed'
+                  )}
+                  title={isCloudinaryConfigured ? 'Add image' : 'Image upload not configured'}
+                >
+                  <ImageIcon size={18} className={imageUrl ? 'text-blue-500' : 'text-blue-400'} />
                 </button>
                 <button className="p-2 hover:bg-gray-50 rounded-full transition-colors" title="Add emoji">
                   <Smile size={18} className="text-yellow-400" />
@@ -554,7 +622,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => { setContent(''); setIsExpanded(false); }}
+                  onClick={() => { setContent(''); setImageUrl(''); setIsExpanded(false); }}
                   className="px-3 py-1.5 rounded-full text-[13px] font-semibold text-gray-400 hover:bg-gray-100 transition-colors"
                 >
                   Cancel
@@ -562,13 +630,13 @@ export function PostComposer({ onPost }: PostComposerProps) {
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={handlePost}
-                  disabled={!content.trim()}
+                  disabled={!canPost || imageUploading}
                   className={cn(
                     'px-5 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-1.5',
-                    !content.trim() && 'bg-gray-100 text-gray-400'
+                    (!canPost || imageUploading) && 'bg-gray-100 text-gray-400'
                   )}
                   style={
-                    content.trim()
+                    canPost && !imageUploading
                       ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', color: '#fff', boxShadow: '0 4px 14px rgba(107,115,255,0.35)' }
                       : {}
                   }
@@ -746,9 +814,9 @@ export default function Home() {
     setTimeout(() => setToastVisible(false), 2200);
   }
 
-  function handleNewPost(content: string) {
+  function handleNewPost(content: string, imageUrl?: string) {
     if (!currentUser) return;
-    addPost(content).catch(console.error);
+    addPost(content, imageUrl ? { imageUrl } : undefined).catch(console.error);
     showToast('Post shared! ✨');
   }
 

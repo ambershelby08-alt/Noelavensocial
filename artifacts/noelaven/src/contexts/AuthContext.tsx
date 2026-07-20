@@ -20,6 +20,7 @@ export interface ProfileData {
   handle: string;
   bio: string;
   interests: string[];
+  avatarUrl?: string;
 }
 
 interface AuthContextType {
@@ -205,6 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         bio: data.bio,
         interests: data.interests,
         email: pendingUser?.email,
+        avatarUrl: data.avatarUrl,
       });
       const profile = await getUserDoc(pendingUid);
       if (profile) {

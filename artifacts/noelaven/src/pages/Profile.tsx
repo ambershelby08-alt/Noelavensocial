@@ -7,6 +7,7 @@ import {
   UserCheck, ChevronRight, AtSign, FileText, Star, Plus,
   ArrowLeft,
 } from 'lucide-react';
+import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { mockUsers, mockConversations } from '@/lib/mockData';
 import type { User, Post, Community } from '@/lib/mockData';
 import { useProfile } from '@/hooks/useProfile';
@@ -213,16 +214,40 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
   const [bio, setBio]                 = useState(user.bio);
   const [interests, setInterests]     = useState<string[]>(user.interests);
   const [saving, setSaving]           = useState(false);
+  const [avatarUrl, setAvatarUrl]     = useState(user.avatarUrl ?? '');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   function toggleInterest(label: string) {
     setInterests(prev => prev.includes(label) ? prev.filter(i => i !== label) : [...prev, label]);
   }
 
+  async function handleAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadImage(file, 'avatars');
+      setAvatarUrl(url);
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  }
+
   async function handleSave() {
     if (!displayName.trim()) return;
     setSaving(true);
-    await new Promise(r => setTimeout(r, 700));
-    onSave({ displayName: displayName.trim(), handle: handle.trim() || user.handle, bio: bio.trim(), interests });
+    await new Promise(r => setTimeout(r, 400));
+    onSave({
+      displayName: displayName.trim(),
+      handle: handle.trim() || user.handle,
+      bio: bio.trim(),
+      interests,
+      ...(avatarUrl !== (user.avatarUrl ?? '') ? { avatarUrl } : {}),
+    });
     setSaving(false);
     onClose();
   }
@@ -260,18 +285,49 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
 
         {/* Scrollable content */}
         <div className="overflow-y-auto flex-1 px-5 py-5 space-y-6 pb-safe">
+          {/* Hidden file input for avatar upload */}
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarFile}
+          />
+
           {/* Avatar preview */}
           <div className="flex flex-col items-center gap-3">
-            <div className="relative">
-              <GradientAvatar name={displayName || user.displayName} size={88} />
-              <button
+            <button
+              type="button"
+              onClick={isCloudinaryConfigured ? () => avatarInputRef.current?.click() : undefined}
+              className={`relative group ${isCloudinaryConfigured ? 'cursor-pointer' : 'cursor-default'}`}
+              title={isCloudinaryConfigured ? 'Upload profile photo' : undefined}
+            >
+              <GradientAvatar
+                name={displayName || user.displayName}
+                src={avatarUrl || undefined}
+                size={88}
+              />
+              {avatarUploading ? (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                </div>
+              ) : isCloudinaryConfigured ? (
+                <div className="absolute inset-0 rounded-full bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Camera size={20} className="text-white" />
+                </div>
+              ) : null}
+              <div
                 className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-md"
                 style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
               >
                 <Camera size={14} className="text-white" />
-              </button>
-            </div>
-            <p className="text-[12px] text-gray-400">Your avatar updates as you type your name</p>
+              </div>
+            </button>
+            <p className="text-[12px] text-gray-400">
+              {isCloudinaryConfigured
+                ? (avatarUrl && avatarUrl !== (user.avatarUrl ?? '') ? 'Photo ready — save to apply' : 'Tap to upload a profile photo')
+                : 'Your avatar updates as you type your name'}
+            </p>
           </div>
 
           {/* Display name */}

@@ -17,12 +17,14 @@ export function getGradientPair(name: string): [string, string] {
 
 interface GradientAvatarProps {
   name: string;
+  /** If provided and non-empty, renders a photo instead of the gradient initials. */
+  src?: string;
   size?: number;
   className?: string;
   style?: React.CSSProperties;
 }
 
-export function GradientAvatar({ name, size = 40, className = '', style }: GradientAvatarProps) {
+export function GradientAvatar({ name, src, size = 40, className = '', style }: GradientAvatarProps) {
   const [from, to] = getGradientPair(name);
   const initials = name
     .split(' ')
@@ -30,6 +32,17 @@ export function GradientAvatar({ name, size = 40, className = '', style }: Gradi
     .slice(0, 2)
     .join('')
     .toUpperCase();
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className={`rounded-full object-cover flex-shrink-0 select-none ${className}`}
+        style={{ width: size, height: size, boxShadow: `0 3px 10px rgba(0,0,0,0.15)`, ...style }}
+      />
+    );
+  }
 
   return (
     <div

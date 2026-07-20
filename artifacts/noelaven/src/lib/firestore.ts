@@ -49,14 +49,14 @@ function docToUser(id: string, d: DocumentData): User {
 
 export async function createUserDoc(
   uid: string,
-  data: { displayName: string; handle: string; bio?: string; interests?: string[]; email?: string }
+  data: { displayName: string; handle: string; bio?: string; interests?: string[]; email?: string; avatarUrl?: string }
 ): Promise<void> {
   if (!db) return;
   await setDoc(doc(db, 'users', uid), {
     displayName: data.displayName,
     handle: data.handle,
     bio: data.bio ?? '',
-    avatarUrl: '',
+    avatarUrl: data.avatarUrl ?? '',
     coverUrl: '',
     interests: data.interests ?? [],
     followers: 0,

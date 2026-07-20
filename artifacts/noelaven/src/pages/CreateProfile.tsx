@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, AtSign, Sparkles, ChevronRight } from 'lucide-react';
+import { Check, AtSign, ChevronRight, Camera } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
+import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -53,9 +54,12 @@ interface Step1Props {
   setHandle: (v: string) => void;
   handleError: string;
   onNext: () => void;
+  avatarUrl: string;
+  avatarUploading: boolean;
+  onAvatarClick: () => void;
 }
 
-function Step1({ displayName, handle, setHandle, handleError, onNext }: Step1Props) {
+function Step1({ displayName, handle, setHandle, handleError, onNext, avatarUrl, avatarUploading, onAvatarClick }: Step1Props) {
   return (
     <motion.div
       key="step1"
@@ -75,16 +79,37 @@ function Step1({ displayName, handle, setHandle, handleError, onNext }: Step1Pro
 
       {/* Avatar preview */}
       <div className="flex flex-col items-center mb-8">
-        <div className="relative">
-          <GradientAvatar name={displayName} size={96} />
+        <button
+          type="button"
+          onClick={isCloudinaryConfigured ? onAvatarClick : undefined}
+          className={cn('relative group', isCloudinaryConfigured && 'cursor-pointer')}
+          title={isCloudinaryConfigured ? 'Upload profile photo' : undefined}
+        >
+          <GradientAvatar name={displayName} src={avatarUrl || undefined} size={96} />
+          {/* Upload spinner */}
+          {avatarUploading && (
+            <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            </div>
+          )}
+          {/* Hover overlay */}
+          {isCloudinaryConfigured && !avatarUploading && (
+            <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              <Camera size={22} className="text-white" />
+            </div>
+          )}
           <div
-            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full border-3 border-white flex items-center justify-center shadow-md"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', borderWidth: 3 }}
+            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-md"
+            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', width: 32, height: 32, borderRadius: '50%', border: '3px solid white' }}
           >
-            <Sparkles size={14} className="text-white" />
+            {avatarUrl ? <Check size={14} className="text-white" /> : <Camera size={14} className="text-white" />}
           </div>
-        </div>
-        <p className="mt-3 text-[13px] text-gray-400 font-medium">Your gradient avatar is auto-generated</p>
+        </button>
+        <p className="mt-3 text-[13px] text-gray-400 font-medium">
+          {isCloudinaryConfigured
+            ? (avatarUrl ? 'Tap to change photo' : 'Tap to add a profile photo')
+            : 'Your gradient avatar is auto-generated'}
+        </p>
       </div>
 
       {/* Display name (read-only) */}
@@ -259,17 +284,35 @@ export default function CreateProfile() {
 
   const displayName = pendingUser?.displayName ?? 'New User';
 
-  const [step, setStep]           = useState<1 | 2>(1);
-  const [handle, setHandle]       = useState('');
+  const [step, setStep]               = useState<1 | 2>(1);
+  const [handle, setHandle]           = useState('');
   const [handleError, setHandleError] = useState('');
-  const [bio, setBio]             = useState('');
-  const [interests, setInterests] = useState<string[]>([]);
+  const [bio, setBio]                 = useState('');
+  const [interests, setInterests]     = useState<string[]>([]);
+  const [avatarUrl, setAvatarUrl]     = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-suggest handle from display name
   useEffect(() => {
     const suggested = displayName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
     setHandle(suggested);
   }, [displayName]);
+
+  async function handleAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadImage(file, 'avatars');
+      setAvatarUrl(url);
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  }
 
   function goToStep2() {
     if (!handle.trim()) { setHandleError('Username is required'); return; }
@@ -285,12 +328,21 @@ export default function CreateProfile() {
   }
 
   async function handleSubmit() {
-    await completeProfile({ handle, bio, interests });
+    await completeProfile({ handle, bio, interests, avatarUrl: avatarUrl || undefined });
     navigate('/');
   }
 
   return (
     <div className="min-h-screen bg-[#FDF9F6] relative overflow-hidden flex flex-col">
+      {/* Hidden file input for avatar upload */}
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleAvatarFile}
+      />
+
       {/* Background blobs */}
       <div className="absolute top-[-15%] right-[-20%] w-[75%] h-[75%] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(255,107,157,0.18) 0%, rgba(196,79,219,0.10) 40%, transparent 70%)' }} />
@@ -314,6 +366,9 @@ export default function CreateProfile() {
               setHandle={v => { setHandle(v); setHandleError(''); }}
               handleError={handleError}
               onNext={goToStep2}
+              avatarUrl={avatarUrl}
+              avatarUploading={avatarUploading}
+              onAvatarClick={() => avatarInputRef.current?.click()}
             />
           ) : (
             <Step2

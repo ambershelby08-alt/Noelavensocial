@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   User, Bell, Lock, Shield, AlertTriangle, LogOut,
-  ChevronRight, Paintbrush, FileText, HelpCircle, X, Check,
+  ChevronRight, Paintbrush, FileText, HelpCircle, Check, Camera,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation, Link } from 'wouter';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 
@@ -33,10 +34,12 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Settings() {
-  const { signOut, currentUser } = useAuth();
+  const { signOut, currentUser, updateUser } = useAuth();
   const [, setLocation] = useLocation();
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -47,6 +50,23 @@ export default function Settings() {
   function handleSignOut() {
     signOut();
     setLocation('/login');
+  }
+
+  async function handleAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    setAvatarUploading(true);
+    try {
+      const url = await uploadImage(file, 'avatars');
+      updateUser({ avatarUrl: url });
+      showToast('Profile photo updated!');
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+      showToast('Upload failed — please try again');
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
   }
 
   const sections = [
@@ -124,13 +144,47 @@ export default function Settings() {
         <h1 className="text-[26px] font-black text-gray-900 tracking-tight">Settings</h1>
       </div>
 
+      {/* Hidden file input for avatar upload */}
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleAvatarFile}
+      />
+
       {/* Profile card */}
       {currentUser && (
         <div className="bg-white rounded-[24px] border border-black/[0.05] shadow-sm p-5 mb-8 flex items-center gap-4">
-          <GradientAvatar name={currentUser.displayName} size={64} />
+          <button
+            type="button"
+            onClick={isCloudinaryConfigured ? () => avatarInputRef.current?.click() : undefined}
+            className={`relative group flex-shrink-0 ${isCloudinaryConfigured ? 'cursor-pointer' : 'cursor-default'}`}
+            title={isCloudinaryConfigured ? 'Change profile photo' : undefined}
+          >
+            <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={64} />
+            {avatarUploading ? (
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              </div>
+            ) : isCloudinaryConfigured ? (
+              <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Camera size={18} className="text-white" />
+              </div>
+            ) : null}
+          </button>
           <div className="flex-1 min-w-0">
             <h2 className="font-black text-[17px] text-gray-900 truncate">{currentUser.displayName}</h2>
             <p className="text-[13.5px] text-gray-400 truncate">@{currentUser.handle}</p>
+            {isCloudinaryConfigured && (
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="text-[12px] text-purple-500 font-semibold mt-0.5 hover:text-purple-700 transition-colors"
+              >
+                Change photo
+              </button>
+            )}
           </div>
           <Link href={`/profile/${currentUser.id}`}>
             <motion.button
