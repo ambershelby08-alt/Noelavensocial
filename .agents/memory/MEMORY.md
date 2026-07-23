@@ -9,3 +9,4 @@
 - [Noelaven UserCacheContext](noelaven-user-cache.md) — real-time deduped avatar cache; use UserAvatar (not GradientAvatar) whenever you have a non-currentUser userId.
 - [Noelaven messaging architecture](noelaven-messaging-arch.md) — production messaging layer: extended Message/Conversation types, Firestore helpers, hooks (useMessages/useConversations/useVoiceRecorder), Chat.tsx + Messages.tsx patterns.
 - [Noelaven page wiring sweep](noelaven-page-wiring.md) — Discover/Profile/Notifications/Communities/PostDetail all wired to Firestore; see file for per-page details.
+- [Noelaven voice/video calls](noelaven-calls.md) — WebRTC + Firestore signaling; CallContext singleton; ICE candidate queuing pattern; demo mode simulates ring+connect.

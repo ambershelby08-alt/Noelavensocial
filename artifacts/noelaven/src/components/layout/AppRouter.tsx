@@ -18,11 +18,13 @@ import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import ForgotPassword from '@/pages/ForgotPassword';
 import CreateProfile from '@/pages/CreateProfile';
+import { CallProvider } from '@/contexts/CallContext';
 
 // ─── Authenticated shell ──────────────────────────────────────────────────────
 
 function AuthenticatedApp() {
   return (
+    <CallProvider>
     <AppShell>
       <Switch>
         <Route path="/"                   component={Home} />
@@ -53,6 +55,7 @@ function AuthenticatedApp() {
         </Route>
       </Switch>
     </AppShell>
+    </CallProvider>
   );
 }
 

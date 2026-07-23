@@ -13,6 +13,7 @@ import type { Message, User, Conversation } from '@/lib/mockData';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversations } from '@/hooks/useConversations';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { useCall } from '@/contexts/CallContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
   blockUser as fsBlockUser,
@@ -756,38 +757,6 @@ function VoiceRecordingUI({ duration, onStop, onCancel }: {
   );
 }
 
-// ─── Coming soon sheet (for calls) ───────────────────────────────────────────
-
-function ComingSoonSheet({ type, onClose }: { type: 'voice' | 'video'; onClose: () => void }) {
-  return (
-    <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={onClose} />
-      <motion.div
-        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[28px] shadow-2xl pb-10 flex flex-col items-center pt-8 px-6"
-      >
-        <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-          style={{ background: 'linear-gradient(135deg, #6B73FF22, #FF6B9D22)' }}>
-          {type === 'voice' ? <Phone size={28} className="text-purple-400" /> : <Video size={28} className="text-purple-400" />}
-        </div>
-        <h3 className="font-black text-[20px] text-gray-900 mb-2">
-          {type === 'voice' ? 'Voice Calls' : 'Video Calls'}
-        </h3>
-        <p className="text-[14px] text-gray-400 text-center leading-relaxed mb-6">
-          Calling is coming soon to Noelaven! We're working hard to bring you high-quality calls.
-        </p>
-        <button onClick={onClose}
-          className="px-8 py-3 rounded-full text-white font-black text-[15px]"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}>
-          Got it
-        </button>
-      </motion.div>
-    </>
-  );
-}
-
 // ─── Safety menu sheet ────────────────────────────────────────────────────────
 
 function SafetyMenuSheet({ isGroup, isDirect, onMute, onBlock, onReport, onLeave, onClose, isMuted }: {
@@ -1000,6 +969,7 @@ export default function Chat() {
 
   const { conversations, muteConversation } = useConversations();
   const voiceRecorder = useVoiceRecorder();
+  const { startCall } = useCall();
 
   // In demo mode, seed from mockMessages
   const initMsgs = isFirebaseConfigured ? [] : (mockMessages[convId] ?? []) as LocalMsg[];
@@ -1021,7 +991,7 @@ export default function Chat() {
   const [actionMsg, setActionMsg]         = useState<LocalMsg | null>(null);
   const [replyingTo, setReplyingTo]       = useState<LocalMsg | null>(null);
   const [editingMsg, setEditingMsg]       = useState<LocalMsg | null>(null);
-  const [callingSheet, setCallingSheet]   = useState<'voice' | 'video' | null>(null);
+  // call overlay is managed globally by CallContext / AppShell
   const [safetySheet, setSafetySheet]     = useState(false);
   const [forwardMsg, setForwardMsg]       = useState<LocalMsg | null>(null);
   const [atBottom, setAtBottom]           = useState(true);
@@ -1384,11 +1354,13 @@ export default function Chat() {
         </div>
 
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <button onClick={() => setCallingSheet('voice')}
+          <button
+            onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'voice')}
             className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
             <Phone size={18} />
           </button>
-          <button onClick={() => setCallingSheet('video')}
+          <button
+            onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'video')}
             className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
             <Video size={20} />
           </button>
@@ -1590,9 +1562,7 @@ export default function Chat() {
             onForward={() => { setForwardMsg(actionMsg); }}
           />
         )}
-        {callingSheet && (
-          <ComingSoonSheet key="calling" type={callingSheet} onClose={() => setCallingSheet(null)} />
-        )}
+        {/* Call overlay managed globally by AppShell via CallContext */}
         {safetySheet && (
           <SafetyMenuSheet
             key="safety"

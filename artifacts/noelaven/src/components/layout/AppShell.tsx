@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useCall } from '@/contexts/CallContext';
+import { CallScreen, IncomingCallBanner } from '@/components/calls/CallScreen';
 import {
   Home,
   Compass,
@@ -254,6 +256,7 @@ function InAppMsgToast({ toast, onClose }: { toast: MsgToast; onClose: () => voi
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading, currentUser } = useAuth();
   const { conversations } = useConversations();
+  const { call, endCall, toggleMute, toggleCamera, toggleSpeaker, incomingCall, answerIncoming, declineIncoming } = useCall();
   const [location] = useLocation();
   const totalUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
   const [msgToast, setMsgToast] = useState<MsgToast | null>(null);
@@ -336,6 +339,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             key={`toast-${msgToast.convId}`}
             toast={msgToast}
             onClose={() => setMsgToast(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Incoming call banner ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {incomingCall && !call.callId && (
+          <IncomingCallBanner
+            key="incoming"
+            callerName={incomingCall.callerName}
+            callerAvatar={incomingCall.callerAvatar}
+            callerId={incomingCall.callerId}
+            type={incomingCall.type}
+            onAccept={answerIncoming}
+            onDecline={declineIncoming}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Active / ringing call overlay ────────────────────────────────── */}
+      <AnimatePresence>
+        {(call.callId || call.isRinging) && (
+          <CallScreen
+            key="call-screen"
+            call={call}
+            onEnd={endCall}
+            onToggleMute={toggleMute}
+            onToggleCamera={toggleCamera}
+            onToggleSpeaker={toggleSpeaker}
           />
         )}
       </AnimatePresence>
