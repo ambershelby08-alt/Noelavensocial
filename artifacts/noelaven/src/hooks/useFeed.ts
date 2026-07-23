@@ -29,12 +29,13 @@ export function useFeed() {
 
   const addPost = useCallback(async (
     content: string,
-    opts?: { imageUrl?: string; mood?: string; communityId?: string; sparkPrompt?: string }
-  ) => {
-    if (!currentUser) return;
+    opts?: { imageUrl?: string; mood?: string; communityId?: string; sparkPrompt?: string; sparkAudience?: string }
+  ): Promise<string | undefined> => {
+    if (!currentUser) return undefined;
     if (!isFirebaseConfigured) {
+      const id = `post-${Date.now()}`;
       const newPost: Post = {
-        id: `post-${Date.now()}`,
+        id,
         authorId: currentUser.id,
         author: currentUser,
         content,
@@ -44,13 +45,15 @@ export function useFeed() {
         imageUrl: opts?.imageUrl,
         communityId: opts?.communityId,
         sparkPrompt: opts?.sparkPrompt,
+        sparkAudience: opts?.sparkAudience as Post['sparkAudience'],
         createdAt: new Date(),
       };
       setPosts(prev => [newPost, ...prev]);
-      return;
+      return id;
     }
-    await fsCreatePost(currentUser, content, opts);
+    const postId = await fsCreatePost(currentUser, content, opts);
     // onSnapshot will update posts automatically
+    return postId;
   }, [currentUser]);
 
   const toggleLike = useCallback(async (postId: string, currentlyLiked: boolean) => {

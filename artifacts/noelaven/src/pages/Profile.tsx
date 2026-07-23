@@ -5,20 +5,32 @@ import {
   Edit3, Camera, X, Check, Sparkles, Users, MessageCircle,
   Grid3X3, Heart, Bookmark, Calendar, Share2, UserPlus,
   UserCheck, ChevronRight, AtSign, FileText, Star, Plus,
-  ArrowLeft,
+  ArrowLeft, Globe, Lock, UserCircle, Flame,
 } from 'lucide-react';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { CoverPhotoEditor, type CoverSavePayload } from '@/components/profile/CoverPhotoEditor';
 import { mockUsers, mockConversations } from '@/lib/mockData';
-import type { User, Post, Community } from '@/lib/mockData';
+import type { User, Post, Community, SparkAudience } from '@/lib/mockData';
 import { useProfile } from '@/hooks/useProfile';
 import { useCommunities } from '@/hooks/useCommunities';
 import { PostCard } from '@/pages/Home';
 import { PhotoViewer } from '@/components/ui/PhotoViewer';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { updatePostSparkAudience } from '@/lib/firestore';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+
+// ─── Audience helpers ─────────────────────────────────────────────────────────
+
+const SPARK_AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: React.ReactNode }[] = [
+  { value: 'public',  label: '🌍 Public',      icon: <Globe      size={11} /> },
+  { value: 'friends', label: '👥 Friends',     icon: <Users      size={11} /> },
+  { value: 'private', label: '🔒 Private',     icon: <Lock       size={11} /> },
+  { value: 'only_me', label: '🙋 Only Me',     icon: <UserCircle size={11} /> },
+];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -477,11 +489,34 @@ function CircleCard({ community }: { community: Community }) {
 
 // ─── Spark card ───────────────────────────────────────────────────────────────
 
-interface SparkItem { id: string; prompt: string; response: string; imageUrl?: string; likes: number; liked: boolean; date: Date; }
+interface SparkItem {
+  id: string;
+  prompt: string;
+  response: string;
+  imageUrl?: string;
+  likes: number;
+  liked: boolean;
+  date: Date;
+  audience: SparkAudience;
+  isOwn: boolean;
+}
 
 function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User; onOpenPhoto?: (src: string) => void }) {
-  const [liked, setLiked] = useState(spark.liked);
-  const [likes, setLikes] = useState(spark.likes);
+  const [liked,    setLiked]    = useState(spark.liked);
+  const [likes,    setLikes]    = useState(spark.likes);
+  const [audience, setAudience] = useState<SparkAudience>(spark.audience);
+  const [showAudience, setShowAudience] = useState(false);
+
+  async function changeAudience(next: SparkAudience) {
+    setAudience(next);
+    setShowAudience(false);
+    if (isFirebaseConfigured) {
+      await updatePostSparkAudience(spark.id, next).catch(console.error);
+    }
+  }
+
+  const audienceMeta = SPARK_AUDIENCE_OPTIONS.find(o => o.value === audience) ?? SPARK_AUDIENCE_OPTIONS[0];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -500,7 +535,7 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
           <Sparkles size={12} className="text-white" />
         </div>
         <p className="text-[12px] font-semibold text-purple-600 flex-1 truncate">"{spark.prompt}"</p>
-        <span className="text-[11px] text-gray-400 flex-shrink-0">{relDate(spark.date)}</span>
+        <span className="text-[11px] text-gray-400 flex-shrink-0 mr-1">{relDate(spark.date)}</span>
       </div>
 
       {/* Response */}
@@ -541,8 +576,122 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
         <button className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-gray-50 transition-all ml-auto">
           <Share2 size={15} />
         </button>
+
+        {/* Audience picker — own sparks only */}
+        {spark.isOwn && (
+          <div className="relative ml-1">
+            <button
+              onClick={() => setShowAudience(v => !v)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors text-[11px] font-bold text-gray-500"
+            >
+              {audienceMeta.icon}
+              <span className="ml-0.5">{audienceMeta.label.split(' ')[1]}</span>
+            </button>
+            <AnimatePresence>
+              {showAudience && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92, y: -6 }}
+                  animate={{ opacity: 1, scale: 1,    y: 0  }}
+                  exit={{   opacity: 0, scale: 0.92, y: -6  }}
+                  className="absolute bottom-full right-0 mb-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-20 min-w-[140px]"
+                >
+                  {SPARK_AUDIENCE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => changeAudience(opt.value)}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-4 py-2.5 text-[12.5px] font-semibold transition-colors hover:bg-gray-50',
+                        audience === opt.value ? 'text-purple-600 bg-purple-50/60' : 'text-gray-700'
+                      )}
+                    >
+                      {opt.icon}
+                      <span>{opt.label}</span>
+                      {audience === opt.value && <Check size={12} className="ml-auto text-purple-500" />}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </motion.div>
+  );
+}
+
+// ─── Spark Tab Content (streak banner + archived responses) ──────────────────
+
+function SparkTabContent({
+  sparks, user, isOwn, onOpenPhoto,
+}: {
+  sparks: SparkItem[];
+  user: User;
+  isOwn: boolean;
+  onOpenPhoto?: (src: string) => void;
+}) {
+  const { streak } = useDailySpark();
+  const badges = streakBadges(streak);
+
+  if (sparks.length === 0) {
+    return (
+      <EmptyState
+        emoji="✨"
+        title="No sparks yet"
+        subtitle={isOwn ? 'Respond to today\'s Daily Spark to light up your profile!' : 'This user hasn\'t answered any Daily Sparks yet.'}
+      />
+    );
+  }
+
+  return (
+    <>
+      {/* Streak banner — own profile only */}
+      {isOwn && streak > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mb-4 px-4 py-3.5 rounded-[20px] flex items-center gap-3"
+          style={{ background: 'linear-gradient(135deg, #FFF7ED, #FEF3C7)', border: '1px solid #FDE68A' }}
+        >
+          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+            <Flame size={20} className="text-orange-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-orange-700 text-[14px]">🔥 {streak}-day streak!</p>
+            <p className="text-orange-600/70 text-[12px] mt-0.5">Keep answering to grow your streak</p>
+          </div>
+          {badges.length > 0 && (
+            <div className="flex flex-col gap-1 items-end">
+              {badges.slice(-1).map(b => (
+                <span key={b} className="text-[10.5px] font-bold text-orange-600 bg-orange-100 border border-orange-200 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  {b}
+                </span>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* All-time badges */}
+      {isOwn && badges.length > 0 && (
+        <div className="px-4 mb-4 flex flex-wrap gap-2">
+          {badges.map(b => (
+            <span key={b} className="text-[11.5px] font-bold text-purple-600 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full">
+              {b}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="px-4 mb-3">
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+          {sparks.length} {sparks.length === 1 ? 'response' : 'responses'} · newest first
+        </p>
+      </div>
+
+      {sparks.map(s => (
+        <SparkCard key={s.id} spark={s} user={user} onOpenPhoto={onOpenPhoto} />
+      ))}
+    </>
   );
 }
 
@@ -603,14 +752,17 @@ export default function Profile() {
   const userCircles  = communities.filter(c => c.isJoined || c.moderatorIds.includes(user.id));
   const sparks: SparkItem[] = userPosts
     .filter(p => p.sparkPrompt)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map(p => ({
-      id: p.id,
-      prompt: p.sparkPrompt!,
+      id:       p.id,
+      prompt:   p.sparkPrompt!,
       response: p.content,
       imageUrl: p.imageUrl,
-      likes: p.likes,
-      liked: p.liked,
-      date: p.createdAt,
+      likes:    p.likes,
+      liked:    p.liked,
+      date:     p.createdAt,
+      audience: (p.sparkAudience ?? 'public') as SparkAudience,
+      isOwn:    isOwnProfile,
     }));
 
   // Followers/following lists (mock for now)
@@ -881,9 +1033,12 @@ export default function Profile() {
 
           {/* Sparks */}
           {activeTab === 'Sparks' && (
-            sparks.length > 0
-              ? sparks.map(s => <SparkCard key={s.id} spark={s} user={user} onOpenPhoto={src => setPhotoViewer({ src })} />)
-              : <EmptyState emoji="✨" title="No sparks yet" subtitle="Respond to today's Daily Spark to light up your profile!" />
+            <SparkTabContent
+              sparks={sparks}
+              user={user}
+              isOwn={isOwnProfile}
+              onOpenPhoto={(src: string) => setPhotoViewer({ src })}
+            />
           )}
 
           {/* Liked (own only) */}

@@ -7,12 +7,14 @@ import {
   Link as LinkIcon, Users, MessageSquare, Check,
   ChevronDown, Trash2, Flag, EyeOff, UserMinus,
   Edit2, MessageCircleOff, ClipboardCopy,
+  Globe, Lock, UserCircle, Flame,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { dailySparks, mockUsers } from '@/lib/mockData';
-import type { Post, User } from '@/lib/mockData';
+import type { Post, User, SparkAudience } from '@/lib/mockData';
 import { useFeed } from '@/hooks/useFeed';
-import { useDailySpark } from '@/hooks/useDailySpark';
+import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
+import { useSparkCommunity, type CommunitySort } from '@/hooks/useSparkCommunity';
 import { useStories } from '@/hooks/useStories';
 import { StoriesRow } from '@/components/stories/StoriesRow';
 import { StoryViewer } from '@/components/stories/StoryViewer';
@@ -427,10 +429,19 @@ function ShareSheet({ post, onClose, onShared }: ShareSheetProps) {
 
 // ─── Daily Spark Response Modal ───────────────────────────────────────────────
 
+// ─── Audience options ─────────────────────────────────────────────────────────
+
+const AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: React.ReactNode }[] = [
+  { value: 'public',   label: 'Public',   icon: <Globe      size={11} /> },
+  { value: 'friends',  label: 'Friends',  icon: <Users      size={11} /> },
+  { value: 'private',  label: 'Private',  icon: <Lock       size={11} /> },
+  { value: 'only_me',  label: 'Only Me',  icon: <UserCircle size={11} /> },
+];
+
 interface SparkModalProps {
   spark: string;
   onClose: () => void;
-  onPosted: (content: string, imageUrl?: string) => void;
+  onPosted: (content: string, imageUrl?: string, audience?: SparkAudience) => void;
 }
 
 function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
@@ -439,6 +450,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
   const [imageUrl, setImageUrl] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
   const [posted, setPosted] = useState(false);
+  const [audience, setAudience] = useState<SparkAudience>('public');
   const textRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -467,7 +479,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
     if (!canPost) return;
     setPosted(true);
     setTimeout(() => {
-      onPosted(text.trim(), imageUrl || undefined);
+      onPosted(text.trim(), imageUrl || undefined, audience);
       onClose();
     }, 900);
   }
@@ -556,6 +568,24 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
 
         {/* ── Sticky footer: photo button + submit ───────────────────────── */}
         <div className="flex-shrink-0 px-5 pt-3 border-t border-gray-100" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}>
+          {/* Audience selector */}
+          <div className="flex gap-1.5 mb-3">
+            {AUDIENCE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setAudience(opt.value)}
+                className={cn(
+                  'flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-bold transition-all flex-1 justify-center',
+                  audience === opt.value ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                )}
+                style={audience === opt.value ? { background: 'linear-gradient(135deg, #6B73FF, #9B59B6)' } : {}}
+              >
+                {opt.icon}
+                <span className="ml-0.5">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+
           {/* Photo row — full-width tap target */}
           <motion.button
             whileTap={{ scale: 0.98 }}
@@ -662,15 +692,66 @@ function Toast({
 interface DailySparkProps {
   onRespond: () => void;
   spark?: string;
+  hasAnsweredToday: boolean;
+  justCompleted: boolean;
+  streak: number;
 }
 
-export function DailySpark({ onRespond, spark }: DailySparkProps) {
+export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, streak }: DailySparkProps) {
   const [dismissed, setDismissed] = useState(false);
 
-  if (dismissed) return null;
+  // Already answered (not the just-completed transition) or user skipped → hide
+  if ((hasAnsweredToday && !justCompleted) || dismissed) return null;
 
+  // ── Completion state ────────────────────────────────────────────────────────
+  if (justCompleted) {
+    return (
+      <motion.div
+        key="spark-done"
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.88, y: -8 }}
+        transition={{ type: 'spring', damping: 18, stiffness: 260 }}
+        className="mx-4 mb-5 rounded-[28px] overflow-hidden relative shadow-lg"
+        style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+      >
+        <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-white/10 blur-2xl -mr-10 -mt-10 pointer-events-none" />
+        <div className="relative z-10 p-6 flex items-center gap-4">
+          <motion.div
+            className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', damping: 10, stiffness: 220, delay: 0.08 }}
+          >
+            <Check size={28} className="text-white" />
+          </motion.div>
+          <div className="flex-1 min-w-0">
+            <motion.p
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 }}
+              className="text-white font-black text-[17px] leading-tight"
+            >
+              Today's Spark completed!
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 }}
+              className="text-white/80 text-[13px] font-medium mt-0.5"
+            >
+              {streak > 1 ? `🔥 ${streak}-day streak — keep it up!` : 'You\'re sparking! ✨'}
+            </motion.p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ── Default: unanswered prompt card ─────────────────────────────────────────
   return (
     <motion.div
+      key="spark-prompt"
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -685,6 +766,12 @@ export function DailySpark({ onRespond, spark }: DailySparkProps) {
             <Sparkles size={12} className="text-yellow-200" />
             <span className="text-white/90 text-[10px] font-black uppercase tracking-[0.12em]">Daily Spark</span>
           </div>
+          {streak > 0 && (
+            <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1">
+              <Flame size={11} className="text-orange-200" />
+              <span className="text-white/90 text-[10px] font-bold">{streak}d streak</span>
+            </div>
+          )}
         </div>
         <p className="text-white text-xl font-bold leading-snug mb-5">{spark ?? dailySparks[0]}</p>
         <div className="flex gap-3">
@@ -703,6 +790,181 @@ export function DailySpark({ onRespond, spark }: DailySparkProps) {
           </button>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+// ─── Community Reveal ─────────────────────────────────────────────────────────
+
+interface CommunityRevealProps {
+  prompt: string;
+  streak: number;
+  memoryLane: import('@/hooks/useDailySpark').MemoryLaneEntry | null;
+  currentUserId?: string;
+  onOpenComments: (post: Post) => void;
+  onOpenShare: (post: Post) => void;
+  onLike: (postId: string, liked: boolean) => void;
+  onOpenMenu: (post: Post) => void;
+  onOpenPhoto: (src: string) => void;
+}
+
+function CommunityReveal({
+  prompt, streak, memoryLane, currentUserId,
+  onOpenComments, onOpenShare, onLike, onOpenMenu, onOpenPhoto,
+}: CommunityRevealProps) {
+  const [sort, setSort] = useState<CommunitySort>('everyone');
+  const { posts, loading } = useSparkCommunity(prompt, true);
+
+  const SORT_TABS: { key: CommunitySort; label: string }[] = [
+    { key: 'friends',   label: 'Friends'   },
+    { key: 'following', label: 'Following' },
+    { key: 'everyone',  label: 'Everyone'  },
+  ];
+
+  // Exclude the current user (their post is already in the main feed)
+  const community = posts.filter(p => p.authorId !== currentUserId);
+  // Shuffle featured responses so the same users aren't always first
+  const featured = community.slice(0, 2);
+  const rest     = community.slice(2);
+  const total    = community.length + 1; // +1 for the current user
+
+  const badges = streakBadges(streak);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+    >
+      {/* ── Unlock banner ───────────────────────────────────────────────────── */}
+      <div
+        className="mx-4 mb-4 px-5 py-4 rounded-[24px] flex items-center gap-3"
+        style={{ background: 'linear-gradient(135deg, #6B73FF18, #FF6B9D12)', border: '1px solid #6B73FF22' }}
+      >
+        <div
+          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+        >
+          <Sparkles size={18} className="text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-gray-900 text-[14px] leading-snug">✨ Community responses unlocked!</p>
+          <p className="text-[12px] text-gray-500 mt-0.5">
+            {total > 1 ? `${total} people answered today's spark` : 'Be the first to inspire others!'}
+          </p>
+        </div>
+        {streak > 1 && (
+          <div className="flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-full px-3 py-1.5 flex-shrink-0">
+            <Flame size={13} className="text-orange-500" />
+            <span className="text-orange-600 font-bold text-[12px]">{streak}</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Memory Lane ─────────────────────────────────────────────────────── */}
+      {memoryLane && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mx-4 mb-4 px-4 py-3.5 rounded-[20px] border border-purple-100 bg-purple-50/60 flex items-start gap-3"
+        >
+          <span className="text-2xl leading-none mt-0.5">🌅</span>
+          <div>
+            <p className="text-[13px] font-bold text-purple-700">Memory Lane</p>
+            <p className="text-[12px] text-purple-600/80 mt-0.5 leading-relaxed">
+              You answered this same prompt {memoryLane.yearsAgo === 1 ? 'one year' : `${memoryLane.yearsAgo} years`} ago today!
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Streak badges ───────────────────────────────────────────────────── */}
+      {badges.length > 0 && (
+        <div className="px-4 mb-4 flex flex-wrap gap-2">
+          {badges.map(b => (
+            <span key={b} className="text-[11.5px] font-bold text-purple-600 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full">
+              {b}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Section header + sort tabs ──────────────────────────────────────── */}
+      <div className="px-4 mb-3 flex items-center justify-between">
+        <h2 className="font-black text-[16px] text-gray-900">Today's Community Sparks</h2>
+        <div className="flex gap-1">
+          {SORT_TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setSort(t.key)}
+              className={cn(
+                'px-2.5 py-1 rounded-full text-[11px] font-bold transition-all',
+                sort === t.key ? 'text-white' : 'text-gray-400 bg-gray-100 hover:bg-gray-200'
+              )}
+              style={sort === t.key ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Responses ───────────────────────────────────────────────────────── */}
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <div className="w-6 h-6 border-2 border-purple-200 border-t-purple-500 rounded-full animate-spin" />
+        </div>
+      ) : community.length === 0 ? (
+        <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-2 text-center">
+          <span className="text-3xl">🌱</span>
+          <p className="font-bold text-gray-700 text-[14px]">No other responses yet</p>
+          <p className="text-gray-400 text-[12.5px] max-w-[200px] leading-relaxed">Encourage your friends — share today's spark!</p>
+        </div>
+      ) : (
+        <>
+          {featured.length > 0 && (
+            <div className="px-4 mb-2">
+              <span className="text-[10.5px] font-bold text-amber-600 uppercase tracking-wider">✦ Featured</span>
+            </div>
+          )}
+          {featured.map((post, idx) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              index={idx}
+              onOpenComments={onOpenComments}
+              onOpenShare={onOpenShare}
+              onLike={(id, liked) => onLike(id, liked)}
+              onSave={() => {}}
+              onOpenMenu={onOpenMenu}
+              onOpenPhoto={onOpenPhoto}
+            />
+          ))}
+          {rest.length > 0 && (
+            <>
+              <div className="px-4 my-2">
+                <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider">More responses</span>
+              </div>
+              {rest.map((post, idx) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  index={featured.length + idx}
+                  onOpenComments={onOpenComments}
+                  onOpenShare={onOpenShare}
+                  onLike={(id, liked) => onLike(id, liked)}
+                  onSave={() => {}}
+                  onOpenMenu={onOpenMenu}
+                  onOpenPhoto={onOpenPhoto}
+                />
+              ))}
+            </>
+          )}
+        </>
+      )}
+
+      {/* ── Divider ─────────────────────────────────────────────────────────── */}
+      <div className="mx-4 mt-2 mb-5 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
     </motion.div>
   );
 }
@@ -1394,7 +1656,7 @@ export default function Home() {
 
   const { posts, addPost, toggleLike, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   const { unreadCount } = useNotifications();
-  const { prompt: sparkPrompt } = useDailySpark();
+  const { prompt: sparkPrompt, hasAnsweredToday, streak, memoryLane, markAnswered } = useDailySpark();
   const { groups: storyGroups, publishStory, markViewed, deleteStory } = useStories();
 
   // ── Story composer state ──────────────────────────────────────────────────
@@ -1413,6 +1675,7 @@ export default function Home() {
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
   const [sparkOpen, setSparkOpen] = useState(false);
+  const [sparkJustCompleted, setSparkJustCompleted] = useState(false);
   const [menuPost, setMenuPost] = useState<Post | null>(null);
   const [editPost, setEditPost] = useState<Post | null>(null);
   const [photoViewer, setPhotoViewer] = useState<{ src: string } | null>(null);
@@ -1496,9 +1759,21 @@ export default function Home() {
     showToast('Post shared! ✨');
   }
 
-  function handleSparkPost(content: string, imageUrl?: string) {
+  async function handleSparkPost(content: string, imageUrl?: string, audience?: SparkAudience) {
     if (!currentUser) return;
-    addPost(content, { imageUrl, sparkPrompt: dailySparks[0] }).catch(console.error);
+    try {
+      const postId = await addPost(content, {
+        imageUrl,
+        sparkPrompt,
+        sparkAudience: audience ?? 'public',
+      });
+      markAnswered(postId ?? 'done');
+      setSparkJustCompleted(true);
+      // Brief "completed" card → then community reveal takes over
+      setTimeout(() => setSparkJustCompleted(false), 2200);
+    } catch (err) {
+      console.error('Spark post failed:', err);
+    }
     showToast('Spark shared with the world! ✨');
   }
 
@@ -1582,9 +1857,30 @@ export default function Home() {
         onViewGroup={(idx) => setViewingGroupIdx(idx)}
       />
 
-      <AnimatePresence>
-        <DailySpark key="spark" onRespond={() => setSparkOpen(true)} spark={sparkPrompt} />
+      <AnimatePresence mode="wait">
+        <DailySpark
+          key="spark"
+          onRespond={() => setSparkOpen(true)}
+          spark={sparkPrompt}
+          hasAnsweredToday={hasAnsweredToday}
+          justCompleted={sparkJustCompleted}
+          streak={streak}
+        />
       </AnimatePresence>
+
+      {hasAnsweredToday && (
+        <CommunityReveal
+          prompt={sparkPrompt}
+          streak={streak}
+          memoryLane={memoryLane}
+          currentUserId={currentUser?.id}
+          onOpenComments={p => setCommentsPost(p)}
+          onOpenShare={p => setSharePost(p)}
+          onLike={(id, liked) => toggleLike(id, !liked).catch(console.error)}
+          onOpenMenu={p => setMenuPost(p)}
+          onOpenPhoto={src => setPhotoViewer({ src })}
+        />
+      )}
 
       <PostComposer onPost={handleNewPost} />
 

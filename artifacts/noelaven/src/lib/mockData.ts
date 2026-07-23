@@ -18,6 +18,8 @@ export interface User {
   joinedAt: Date;
 }
 
+export type SparkAudience = 'public' | 'friends' | 'only_me' | 'private';
+
 export interface Post {
   id: string;
   authorId: string;
@@ -27,6 +29,7 @@ export interface Post {
   imagePublicId?: string;
   communityId?: string;
   sparkPrompt?: string;
+  sparkAudience?: SparkAudience;
   likes: number;
   comments: number;
   shares: number;

@@ -131,6 +131,7 @@ function docToPost(id: string, d: DocumentData): Post {
     imagePublicId: d.imagePublicId ?? undefined,
     communityId: d.communityId ?? undefined,
     sparkPrompt: d.sparkPrompt ?? undefined,
+    sparkAudience: d.sparkAudience ?? undefined,
     likes: d.likes ?? 0,
     comments: d.comments ?? 0,
     shares: d.shares ?? 0,
@@ -145,7 +146,7 @@ function docToPost(id: string, d: DocumentData): Post {
 export async function createPost(
   author: User,
   content: string,
-  opts: { imageUrl?: string; imagePublicId?: string; communityId?: string; mood?: string; sparkPrompt?: string } = {}
+  opts: { imageUrl?: string; imagePublicId?: string; communityId?: string; mood?: string; sparkPrompt?: string; sparkAudience?: string } = {}
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
   const ref = await addDoc(collection(db, 'posts'), {
@@ -158,6 +159,7 @@ export async function createPost(
     communityId: opts.communityId ?? null,
     mood: opts.mood ?? null,
     sparkPrompt: opts.sparkPrompt ?? null,
+    sparkAudience: opts.sparkAudience ?? null,
     commentsDisabled: false,
     likes: 0,
     comments: 0,
@@ -166,6 +168,37 @@ export async function createPost(
   });
   await updateDoc(doc(db, 'users', author.id), { postCount: increment(1) });
   return ref.id;
+}
+
+/**
+ * Subscribe to community spark responses for today's prompt.
+ * Returns all public posts matching the given spark prompt text, ordered by recency.
+ */
+export function subscribeCommunitySparkPosts(
+  prompt: string,
+  onData: (posts: Post[]) => void,
+  pageSize = 50
+): Unsubscribe {
+  if (!db) return () => {};
+  // Query posts matching today's spark prompt, ordered by createdAt desc
+  const q = query(
+    collection(db, 'posts'),
+    where('sparkPrompt', '==', prompt),
+    orderBy('createdAt', 'desc'),
+    limit(pageSize)
+  );
+  return onSnapshot(q, snap => {
+    // Filter out private/only_me posts from other users (client-side)
+    const posts = snap.docs
+      .map(d => docToPost(d.id, d.data()))
+      .filter(p => !p.sparkAudience || p.sparkAudience === 'public' || p.sparkAudience === 'friends');
+    onData(posts);
+  });
+}
+
+export async function updatePostSparkAudience(postId: string, audience: string): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'posts', postId), { sparkAudience: audience });
 }
 
 export async function deletePost(postId: string, authorId: string): Promise<void> {
