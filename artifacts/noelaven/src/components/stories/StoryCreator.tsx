@@ -9,6 +9,19 @@
  * visible regardless of how many items are queued.
  *
  * Each item is published as a separate story segment in order.
+ *
+ * ─── Bug-fix notes ────────────────────────────────────────────────────────
+ * • We use a real <input ref> in JSX instead of document.createElement().
+ *   Dynamic inputs created off-DOM cause iOS/Android file-picker dialogs to
+ *   fire a phantom "click" on the page when they close, which hits the
+ *   backdrop's onClick={handleClose} and unmounts the sheet.
+ *
+ * • The backdrop ignores click events for 1 200 ms after openPicker() is
+ *   called (pickerGuardRef). The native file-picker dialog steals focus and
+ *   returns it with a synthesised click; the guard swallows it.
+ *
+ * • onMediaReady is called ONLY from handlePublishAll (user explicit action).
+ *   No auto-transition happens after file selection.
  */
 
 import React, { useState, useRef } from 'react';
@@ -27,7 +40,7 @@ export interface StoryPickItem {
 
 interface StoryCreatorProps {
   onClose: () => void;
-  /** Called with the ordered queue; parent drives each item through StoryEditor. */
+  /** Called with the ordered queue only when the user taps "Publish All". */
   onMediaReady: (items: StoryPickItem[]) => void;
 }
 
@@ -164,39 +177,49 @@ function Tile({ item, idx, total, onRemove, onMove }: TileProps) {
 
 export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
   const [queue, setQueue] = useState<StoryPickItem[]>([]);
-  const blobUrls = useRef(new Set<string>());
+  const blobUrls      = useRef(new Set<string>());
+  // Hidden <input> in JSX — more reliable than document.createElement on mobile
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+  // Guards the backdrop from phantom clicks fired when the native file-picker
+  // dialog closes. Set to Date.now() + guard-ms when the picker opens.
+  const pickerGuardRef = useRef(0);
 
   // ── Picker ────────────────────────────────────────────────────────────────
 
   function openPicker() {
-    const input    = document.createElement('input');
-    input.type     = 'file';
-    input.multiple = true;                        // multi-select enabled
-    input.accept   = [
-      'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-      'video/mp4', 'video/quicktime', 'video/webm',
-    ].join(',');
+    // Block backdrop click for 1 200 ms — native pickers fire a phantom click
+    // on the document when they are dismissed, which otherwise hits handleClose.
+    pickerGuardRef.current = Date.now() + 1200;
 
-    input.onchange = () => {
-      const files = Array.from(input.files ?? []);
-      if (!files.length) return;
+    const el = fileInputRef.current;
+    if (!el) return;
+    el.value = '';   // reset so the same file can be re-selected
+    el.click();
+  }
 
-      const items: StoryPickItem[] = files.map(f => {
-        const url = URL.createObjectURL(f);
-        blobUrls.current.add(url);
-        return {
-          id:         nextId(),
-          file:       f,
-          previewUrl: url,
-          mediaType:  f.type.startsWith('video/') ? 'video' : 'image',
-        };
-      });
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // Clear the guard immediately — the real change event has fired.
+    pickerGuardRef.current = 0;
 
-      // APPEND — never replace existing items.
-      setQueue(prev => [...prev, ...items]);
-    };
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
 
-    input.click();
+    const items: StoryPickItem[] = files.map(f => {
+      const url = URL.createObjectURL(f);
+      blobUrls.current.add(url);
+      return {
+        id:        nextId(),
+        file:      f,
+        previewUrl: url,
+        mediaType: f.type.startsWith('video/') ? 'video' : 'image',
+      };
+    });
+
+    // APPEND — never replace existing items.
+    setQueue(prev => [...prev, ...items]);
+
+    // Reset input so the same file can be picked again later.
+    e.target.value = '';
   }
 
   // ── Queue mutations ───────────────────────────────────────────────────────
@@ -225,6 +248,9 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   function handleClose() {
+    // Don't allow close if the picker guard is still active.
+    // (phantom click from the native file-picker dialog closing)
+    if (Date.now() < pickerGuardRef.current) return;
     blobUrls.current.forEach(u => URL.revokeObjectURL(u));
     blobUrls.current.clear();
     onClose();
@@ -234,6 +260,8 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
     if (!queue.length) return;
     blobUrls.current.clear();   // ownership transfers to parent
     onMediaReady([...queue]);   // pass a copy so parent owns the array
+    // NOTE: the parent (Home.tsx) closes this composer after receiving items.
+    //       Do NOT call onClose() here — parent handles it.
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -242,7 +270,20 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Hidden file input — stays in the DOM, avoids phantom-click bugs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept={[
+          'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+          'video/mp4', 'video/quicktime', 'video/webm',
+        ].join(',')}
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      {/* Backdrop — guarded against phantom clicks from the file-picker */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={handleClose}
@@ -352,7 +393,7 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
             </div>
           )}
 
-          {/* ── Queue ── */}
+          {/* ── Queue state ── */}
           {hasItems && (
             <>
               {/* Counter row */}
@@ -384,7 +425,6 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
                 <div
                   style={{
                     display: 'flex', gap: 12, paddingBottom: 12,
-                    // Extra right padding so last tile doesn't butt up against the edge
                     paddingRight: 4,
                   }}
                 >
@@ -403,8 +443,11 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
                 </div>
               </div>
 
-              {/* ── + Add Another — ALWAYS VISIBLE, outside the scroll ── */}
-              <div style={{ padding: '8px 20px 4px' }}>
+              {/* ── + Add Another Photo or Video ──────────────────────────────
+                  Rendered OUTSIDE the scroll strip — always visible.
+                  NEVER conditional on any upload or preview state.
+              ────────────────────────────────────────────────────────────── */}
+              <div style={{ padding: '8px 20px 4px', flexShrink: 0 }}>
                 <button
                   onClick={openPicker}
                   style={{
