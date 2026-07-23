@@ -1,28 +1,23 @@
 /**
- * StoryComposer — curation screen between the OS file picker and publishing.
+ * StoryComposer — curation + editing screen between the OS file picker and publishing.
  *
- * Flow (managed by Home.tsx):
- *   1. User taps "Add Story" → Home fires the hidden <input type="file">.
- *   2. Files selected → Home sets composerItems → StoryComposer mounts.
- *   3. User adds more, removes, reorders.
- *   4. Tap "Publish All" → per-item upload + Firestore write via onPublishItem.
+ * Flow:
+ *   1. initialItems arrive from Home's hidden <input>.
+ *   2. User can reorder/remove items and tap a thumbnail to open StoryItemEditor.
+ *   3. Edits (layers, crop, trim, filter) are stored per-item in editDataMap.
+ *   4. "Publish All" calls onPublishItem(item, editData) for each item.
  *   5. All succeed → onAllPublished() → Home opens StoryViewer.
- *
- * Design notes:
- *   • The picker in Home fires BEFORE StoryComposer mounts, so no backdrop
- *     exists during file selection — phantom-click dismissal is impossible.
- *   • The internal "+ Add More" picker uses its own persistent <input ref>
- *     (same technique), also immune to phantom clicks.
- *   • z-index: backdrop 55, sheet 60 — same slot as the retired StoryCreator.
  */
 
 import React, { useRef, useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Plus, ChevronUp, ChevronDown,
-  Loader2, CheckCircle2, AlertCircle, Layers,
+  Loader2, CheckCircle2, AlertCircle, Layers, Pencil,
 } from 'lucide-react';
 import type { StoryMediaType } from '@/lib/stories';
+import type { ItemEditData } from '@/components/stories/editor/types';
+import { StoryItemEditor } from './StoryItemEditor';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -30,6 +25,10 @@ const ACCEPT =
   'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm';
 
 const GRAD = 'linear-gradient(135deg,#FF6B9D,#C44FDB,#6B73FF)';
+
+const DEFAULT_EDIT_DATA: ItemEditData = {
+  layers: [], cropData: null, trimData: null, filterName: 'normal',
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,8 +44,8 @@ type ItemStatus = 'idle' | 'uploading' | 'done' | 'error';
 export interface StoryComposerProps {
   initialItems:   ComposerItem[];
   onCancel:       () => void;
-  /** Upload + write ONE story. Throw to signal failure. */
-  onPublishItem:  (item: ComposerItem) => Promise<void>;
+  /** Upload + write ONE story. editData carries layers/crop/trim/filter. Throw to signal failure. */
+  onPublishItem:  (item: ComposerItem, editData: ItemEditData) => Promise<void>;
   /** Called after every item succeeds. */
   onAllPublished: () => void;
 }
@@ -63,9 +62,13 @@ export function makeComposerId(): string {
 function Thumb({
   item,
   status,
+  edited,
+  onEdit,
 }: {
-  item:   ComposerItem;
-  status: ItemStatus;
+  item:    ComposerItem;
+  status:  ItemStatus;
+  edited:  boolean;
+  onEdit:  () => void;
 }) {
   const overlay: Record<ItemStatus, React.ReactNode> = {
     idle:      null,
@@ -75,37 +78,67 @@ function Thumb({
   };
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        width: 72, height: 72,
-        borderRadius: 12,
-        overflow: 'hidden',
-        flexShrink: 0,
-        background: '#E5E7EB',
-      }}
-    >
-      {item.mediaType === 'image' ? (
-        <img
-          src={item.previewUrl} alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
-      ) : (
-        <video
-          src={item.previewUrl} muted playsInline
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-        />
-      )}
-      {/* Status overlay */}
-      {status !== 'idle' && (
-        <div
-          style={{
+    <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+      <div
+        style={{
+          width: 72, height: 72,
+          borderRadius: 12,
+          overflow: 'hidden',
+          background: '#E5E7EB',
+          border: edited ? '2.5px solid #FF6B9D' : '2.5px solid transparent',
+          boxSizing: 'border-box',
+        }}
+      >
+        {item.mediaType === 'image' ? (
+          <img
+            src={item.previewUrl} alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        ) : (
+          <video
+            src={item.previewUrl} muted playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        )}
+        {status !== 'idle' && (
+          <div style={{
             position: 'absolute', inset: 0,
             background: 'rgba(0,0,0,0.45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: 10,
+          }}>
+            {overlay[status]}
+          </div>
+        )}
+      </div>
+
+      {/* Edit button — pencil in corner */}
+      {status === 'idle' && (
+        <button
+          onClick={onEdit}
+          style={{
+            position: 'absolute', top: -6, right: -6,
+            width: 24, height: 24, borderRadius: 12,
+            background: edited ? 'linear-gradient(135deg,#FF6B9D,#C44FDB)' : '#6B73FF',
+            border: '2px solid white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
           }}
         >
-          {overlay[status]}
+          <Pencil size={11} color="white" />
+        </button>
+      )}
+
+      {/* Edited badge */}
+      {edited && status === 'idle' && (
+        <div style={{
+          position: 'absolute', bottom: -8, left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'linear-gradient(135deg,#FF6B9D,#C44FDB)',
+          borderRadius: 6, padding: '1px 6px',
+          fontSize: 9, fontWeight: 700, color: 'white', whiteSpace: 'nowrap',
+        }}>
+          EDITED
         </div>
       )}
     </div>
@@ -125,6 +158,11 @@ export function StoryComposer({
   const [publishing,  setPublishing]  = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
+  // Per-item edit data keyed by item.id
+  const [editDataMap, setEditDataMap] = useState<Record<string, ItemEditData>>({});
+  // Which item is currently open in the editor (null = no editor open)
+  const [editingItem, setEditingItem] = useState<ComposerItem | null>(null);
+
   // Track blob URLs so we can revoke on unmount
   const blobUrls = useRef<Set<string>>(
     new Set(initialItems.map(i => i.previewUrl)),
@@ -133,7 +171,6 @@ export function StoryComposer({
   const addMoreRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Revoke any un-claimed blobs when the composer unmounts
     return () => {
       blobUrls.current.forEach(u => URL.revokeObjectURL(u));
     };
@@ -177,6 +214,7 @@ export function StoryComposer({
       }
       return prev.filter(x => x.id !== id);
     });
+    setEditDataMap(prev => { const next = { ...prev }; delete next[id]; return next; });
   }
 
   // ── Reorder ───────────────────────────────────────────────────────────────
@@ -192,6 +230,19 @@ export function StoryComposer({
     });
   }
 
+  // ── Editor callbacks ──────────────────────────────────────────────────────
+
+  function openEditor(item: ComposerItem) {
+    if (publishing) return;
+    setEditingItem(item);
+  }
+
+  function handleEditorDone(data: ItemEditData) {
+    if (!editingItem) return;
+    setEditDataMap(prev => ({ ...prev, [editingItem.id]: data }));
+    setEditingItem(null);
+  }
+
   // ── Publish ───────────────────────────────────────────────────────────────
 
   async function handlePublishAll() {
@@ -199,16 +250,18 @@ export function StoryComposer({
     setPublishing(true);
     setGlobalError(null);
 
-    // Initialise all statuses to idle
     const init: Record<string, ItemStatus> = {};
     queue.forEach(it => { init[it.id] = 'idle'; });
     setStatuses(init);
 
     let hadError = false;
     for (const item of queue) {
+      // Skip already-succeeded items on retry
+      if (statuses[item.id] === 'done') continue;
       setStatuses(prev => ({ ...prev, [item.id]: 'uploading' }));
       try {
-        await onPublishItem(item);
+        const editData = editDataMap[item.id] ?? DEFAULT_EDIT_DATA;
+        await onPublishItem(item, editData);
         setStatuses(prev => ({ ...prev, [item.id]: 'done' }));
       } catch {
         setStatuses(prev => ({ ...prev, [item.id]: 'error' }));
@@ -219,18 +272,17 @@ export function StoryComposer({
     setPublishing(false);
 
     if (!hadError) {
-      // Ownership of blobs transfers to Cloudinary / caller; stop tracking
       blobUrls.current.clear();
       onAllPublished();
     } else {
-      setGlobalError('Some uploads failed. You can try again — successful items won\'t be re-sent.');
+      setGlobalError('Some uploads failed. Tap "Publish All" to retry — successful items won\'t be re-sent.');
     }
   }
 
-  // Derived counts for progress display
-  const doneCount  = queue.filter(i => statuses[i.id] === 'done').length;
-  const errCount   = queue.filter(i => statuses[i.id] === 'error').length;
-  const progress   = queue.length > 0
+  // Derived counts
+  const doneCount = queue.filter(i => statuses[i.id] === 'done').length;
+  const errCount  = queue.filter(i => statuses[i.id] === 'error').length;
+  const progress  = queue.length > 0
     ? ((doneCount + errCount) / queue.length) * 100
     : 0;
 
@@ -238,7 +290,7 @@ export function StoryComposer({
 
   return (
     <>
-      {/* ── Hidden Add More input (persistent in JSX — no phantom-click risk) ── */}
+      {/* ── Hidden Add More input ── */}
       <input
         ref={addMoreRef}
         type="file"
@@ -253,7 +305,7 @@ export function StoryComposer({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={() => { if (!publishing) onCancel(); }}
+        onClick={() => { if (!publishing && !editingItem) onCancel(); }}
         style={{
           position: 'fixed', inset: 0,
           zIndex: 55,
@@ -280,10 +332,7 @@ export function StoryComposer({
         }}
       >
         {/* Drag handle */}
-        <div style={{
-          display: 'flex', justifyContent: 'center',
-          padding: '12px 0 4px', flexShrink: 0,
-        }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px', flexShrink: 0 }}>
           <div style={{ width: 40, height: 4, borderRadius: 99, background: '#E5E7EB' }} />
         </div>
 
@@ -293,7 +342,6 @@ export function StoryComposer({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '8px 20px 14px',
         }}>
-          {/* Cancel */}
           <button
             onClick={() => { if (!publishing) onCancel(); }}
             disabled={publishing}
@@ -305,31 +353,23 @@ export function StoryComposer({
           >
             Cancel
           </button>
-
-          {/* Title */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#111827' }}>
-              New Story
-            </div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#111827' }}>New Story</div>
             <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>
-              {queue.length} {queue.length === 1 ? 'item' : 'items'} selected
+              {queue.length} {queue.length === 1 ? 'item' : 'items'}
+              {Object.keys(editDataMap).length > 0 && (
+                <span style={{ color: '#FF6B9D', marginLeft: 4 }}>
+                  · {Object.keys(editDataMap).length} edited
+                </span>
+              )}
             </div>
           </div>
-
-          {/* Spacer to balance Cancel */}
           <div style={{ width: 52 }} />
         </div>
 
-        {/* ── Progress bar (visible while publishing) ── */}
+        {/* ── Progress bar ── */}
         {publishing && (
-          <div style={{
-            flexShrink: 0,
-            height: 3,
-            background: '#F3F4F6',
-            margin: '0 20px 12px',
-            borderRadius: 99,
-            overflow: 'hidden',
-          }}>
+          <div style={{ flexShrink: 0, height: 3, background: '#F3F4F6', margin: '0 20px 12px', borderRadius: 99, overflow: 'hidden' }}>
             <motion.div
               style={{ height: '100%', background: GRAD, borderRadius: 99 }}
               animate={{ width: `${progress}%` }}
@@ -341,24 +381,18 @@ export function StoryComposer({
         {/* ── Error banner ── */}
         {globalError && (
           <div style={{
-            flexShrink: 0,
-            margin: '0 20px 12px',
-            padding: '10px 14px',
-            background: '#FEF2F2',
-            border: '1px solid #FECACA',
-            borderRadius: 12,
-            fontSize: 13, color: '#DC2626',
-            display: 'flex', alignItems: 'flex-start', gap: 8,
+            flexShrink: 0, margin: '0 20px 12px', padding: '10px 14px',
+            background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12,
+            fontSize: 13, color: '#DC2626', display: 'flex', alignItems: 'flex-start', gap: 8,
           }}>
             <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
             <span>{globalError}</span>
           </div>
         )}
 
-        {/* ── Item list (scrollable) ── */}
+        {/* ── Item list ── */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px' }}>
           {queue.length === 0 ? (
-            /* Empty state after removing all items */
             <div style={{
               padding: '48px 0',
               display: 'flex', flexDirection: 'column',
@@ -372,9 +406,7 @@ export function StoryComposer({
                 <Plus size={24} color="#6B73FF" />
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#374151' }}>
-                  No items selected
-                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#374151' }}>No items selected</div>
                 <div style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>
                   Tap "+ Add More" below to pick photos or videos.
                 </div>
@@ -382,22 +414,24 @@ export function StoryComposer({
             </div>
           ) : (
             queue.map((item, idx) => {
-              const status = statuses[item.id] ?? 'idle';
+              const status  = statuses[item.id] ?? 'idle';
+              const edited  = Boolean(editDataMap[item.id]);
               return (
                 <div
                   key={item.id}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    padding: '12px 0',
-                    borderBottom: idx < queue.length - 1
-                      ? '1px solid #F3F4F6'
-                      : 'none',
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '14px 0',
+                    borderBottom: idx < queue.length - 1 ? '1px solid #F3F4F6' : 'none',
                   }}
                 >
-                  {/* Thumbnail */}
-                  <Thumb item={item} status={status} />
+                  {/* Thumbnail with edit button */}
+                  <Thumb
+                    item={item}
+                    status={status}
+                    edited={edited}
+                    onEdit={() => openEditor(item)}
+                  />
 
                   {/* File info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -409,54 +443,55 @@ export function StoryComposer({
                     </div>
                     <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
                       {item.mediaType === 'video' ? 'Video' : 'Photo'}
-                      {' · '}
-                      {(item.file.size / 1_048_576).toFixed(1)} MB
+                      {' · '}{(item.file.size / 1_048_576).toFixed(1)} MB
                     </div>
+                    {edited && status === 'idle' && (
+                      <button
+                        onClick={() => openEditor(item)}
+                        style={{
+                          marginTop: 4, background: 'none', border: 'none', padding: 0,
+                          fontSize: 12, color: '#FF6B9D', fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        ✏️ Tap to edit
+                      </button>
+                    )}
+                    {!edited && status === 'idle' && (
+                      <button
+                        onClick={() => openEditor(item)}
+                        style={{
+                          marginTop: 4, background: 'none', border: 'none', padding: 0,
+                          fontSize: 12, color: '#6B73FF', fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        + Add text, filters…
+                      </button>
+                    )}
                     {status === 'error' && (
-                      <div style={{
-                        fontSize: 12, color: '#EF4444',
-                        fontWeight: 600, marginTop: 3,
-                      }}>
+                      <div style={{ fontSize: 12, color: '#EF4444', fontWeight: 600, marginTop: 3 }}>
                         Upload failed — will retry
                       </div>
                     )}
                     {status === 'done' && (
-                      <div style={{
-                        fontSize: 12, color: '#10B981',
-                        fontWeight: 600, marginTop: 3,
-                      }}>
+                      <div style={{ fontSize: 12, color: '#10B981', fontWeight: 600, marginTop: 3 }}>
                         Published ✓
                       </div>
                     )}
                   </div>
 
-                  {/* Reorder buttons */}
+                  {/* Reorder */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <button
                       onClick={() => move(idx, -1)}
                       disabled={publishing || idx === 0}
-                      aria-label="Move up"
-                      style={{
-                        width: 32, height: 32, borderRadius: 8,
-                        background: idx === 0 ? '#F9FAFB' : '#F3F4F6',
-                        border: 'none',
-                        cursor: idx === 0 || publishing ? 'default' : 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
+                      style={reorderBtnStyle(idx === 0 || publishing)}
                     >
                       <ChevronUp size={16} color={idx === 0 ? '#D1D5DB' : '#6B7280'} />
                     </button>
                     <button
                       onClick={() => move(idx, 1)}
                       disabled={publishing || idx === queue.length - 1}
-                      aria-label="Move down"
-                      style={{
-                        width: 32, height: 32, borderRadius: 8,
-                        background: idx === queue.length - 1 ? '#F9FAFB' : '#F3F4F6',
-                        border: 'none',
-                        cursor: idx === queue.length - 1 || publishing ? 'default' : 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
+                      style={reorderBtnStyle(idx === queue.length - 1 || publishing)}
                     >
                       <ChevronDown size={16} color={idx === queue.length - 1 ? '#D1D5DB' : '#6B7280'} />
                     </button>
@@ -466,11 +501,9 @@ export function StoryComposer({
                   <button
                     onClick={() => removeItem(item.id)}
                     disabled={publishing}
-                    aria-label="Remove"
                     style={{
                       width: 32, height: 32, borderRadius: 8,
-                      background: '#FEF2F2',
-                      border: 'none',
+                      background: '#FEF2F2', border: 'none',
                       cursor: publishing ? 'default' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       opacity: publishing ? 0.4 : 1,
@@ -490,11 +523,8 @@ export function StoryComposer({
           padding: '14px 20px',
           paddingBottom: 'max(env(safe-area-inset-bottom), 20px)',
           borderTop: '1px solid #F3F4F6',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
+          display: 'flex', flexDirection: 'column', gap: 10,
         }}>
-          {/* + Add More */}
           <button
             onClick={openAddMore}
             disabled={publishing}
@@ -502,11 +532,9 @@ export function StoryComposer({
               width: '100%', padding: '13px 0',
               background: 'none',
               border: '2px dashed rgba(107,115,255,0.4)',
-              borderRadius: 14,
-              cursor: publishing ? 'default' : 'pointer',
+              borderRadius: 14, cursor: publishing ? 'default' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               opacity: publishing ? 0.5 : 1,
-              transition: 'opacity 0.15s',
             }}
           >
             <Plus size={18} color="#6B73FF" strokeWidth={2.5} />
@@ -515,7 +543,6 @@ export function StoryComposer({
             </span>
           </button>
 
-          {/* Publish All */}
           <motion.button
             whileTap={{ scale: queue.length && !publishing ? 0.97 : 1 }}
             onClick={handlePublishAll}
@@ -529,23 +556,41 @@ export function StoryComposer({
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               cursor: !queue.length || publishing ? 'default' : 'pointer',
               letterSpacing: '-0.01em',
-              transition: 'background 0.2s, color 0.2s',
             }}
           >
             {publishing ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Publishing {doneCount + errCount} of {queue.length}…
-              </>
+              <><Loader2 size={18} className="animate-spin" />Publishing {doneCount + errCount} of {queue.length}…</>
             ) : (
-              <>
-                <Layers size={18} />
-                Publish All ({queue.length}) →
-              </>
+              <><Layers size={18} />Publish All ({queue.length}) →</>
             )}
           </motion.button>
         </div>
       </motion.div>
+
+      {/* ── Per-item editor (z-70, full-screen) ── */}
+      <AnimatePresence>
+        {editingItem && (
+          <StoryItemEditor
+            key={editingItem.id}
+            item={editingItem}
+            initial={editDataMap[editingItem.id]}
+            onDone={handleEditorDone}
+            onCancel={() => setEditingItem(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
+}
+
+// ─── Style helpers ────────────────────────────────────────────────────────────
+
+function reorderBtnStyle(disabled: boolean): React.CSSProperties {
+  return {
+    width: 32, height: 32, borderRadius: 8,
+    background: disabled ? '#F9FAFB' : '#F3F4F6',
+    border: 'none',
+    cursor: disabled ? 'default' : 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  };
 }

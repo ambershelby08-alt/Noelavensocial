@@ -6,13 +6,15 @@
  */
 
 import React, { useRef, useCallback } from 'react';
-import type { CropData } from './types';
 
+// Local rectangle type for the draggable crop overlay.
+// Intentionally decoupled from the exported CropData (which is transform-based).
+type CropRect = { x: number; y: number; w: number; h: number };
 type Handle = 'tl'|'tc'|'tr'|'ml'|'mr'|'bl'|'bc'|'br'|'body';
 
 interface CropOverlayProps {
-  crop: CropData;
-  onChange: (c: CropData) => void;
+  crop: CropRect;
+  onChange: (c: CropRect) => void;
   onApply:  () => void;
   onCancel: () => void;
 }
@@ -21,7 +23,7 @@ const MIN = 10;
 
 export function CropOverlay({ crop, onChange, onApply, onCancel }: CropOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ handle: Handle; sx: number; sy: number; sc: CropData } | null>(null);
+  const drag = useRef<{ handle: Handle; sx: number; sy: number; sc: CropRect } | null>(null);
 
   const startDrag = useCallback((handle: Handle, e: React.PointerEvent) => {
     e.stopPropagation();

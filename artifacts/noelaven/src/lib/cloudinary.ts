@@ -78,10 +78,11 @@ export async function uploadImageFull(file: File, folder: UploadFolder = 'posts'
 /**
  * Upload an image or video file for stories.
  * Auto-detects the resource type and routes to the correct Cloudinary endpoint.
+ * Returns the secure URL, public_id (for future deletion), and media type.
  */
 export async function uploadStoryMedia(
   file: File,
-): Promise<{ url: string; mediaType: MediaType }> {
+): Promise<{ url: string; publicId: string; mediaType: MediaType }> {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string;
   const preset    = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string;
 
@@ -105,8 +106,8 @@ export async function uploadStoryMedia(
     throw new Error(err.error?.message ?? `Upload failed (${res.status})`);
   }
 
-  const data = (await res.json()) as { secure_url: string };
-  return { url: data.secure_url, mediaType: isVideo ? 'video' : 'image' };
+  const data = (await res.json()) as { secure_url: string; public_id: string };
+  return { url: data.secure_url, publicId: data.public_id, mediaType: isVideo ? 'video' : 'image' };
 }
 
 /** Pick a file from disk and immediately upload it. Returns the secure URL. */

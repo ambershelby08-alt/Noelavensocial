@@ -1395,7 +1395,7 @@ export default function Home() {
   const { posts, addPost, toggleLike, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   const { unreadCount } = useNotifications();
   const { prompt: sparkPrompt } = useDailySpark();
-  const { groups: storyGroups, publishStory, markViewed } = useStories();
+  const { groups: storyGroups, publishStory, markViewed, deleteStory } = useStories();
 
   // ── Story composer state ──────────────────────────────────────────────────
   // composerItems: files selected from the OS picker, passed into StoryComposer.
@@ -1691,15 +1691,24 @@ export default function Home() {
             key="story-composer"
             initialItems={composerItems}
             onCancel={() => setComposerItems([])}
-            onPublishItem={async (item: ComposerItem) => {
-              let url: string       = item.previewUrl;
-              let mediaType         = item.mediaType;
+            onPublishItem={async (item, editData) => {
+              let url: string          = item.previewUrl;
+              let mediaType            = item.mediaType;
+              let publicId: string | undefined;
               if (isCloudinaryConfigured) {
                 const result = await uploadStoryMedia(item.file);
                 url       = result.url;
                 mediaType = result.mediaType;
+                publicId  = result.publicId;
               }
-              await publishStory(url, mediaType, '', [], null, null, 'normal');
+              await publishStory(
+                url, mediaType, '',
+                editData.layers,
+                editData.cropData,
+                editData.trimData,
+                editData.filterName,
+                publicId,
+              );
             }}
             onAllPublished={() => {
               setComposerItems([]);
@@ -1722,8 +1731,10 @@ export default function Home() {
             key="story-viewer"
             groups={storyGroups}
             initialGroupIdx={viewingGroupIdx}
+            currentUserId={currentUser?.id}
             onClose={() => setViewingGroupIdx(null)}
             onMarkViewed={markViewed}
+            onDeleteStory={deleteStory}
           />
         )}
       </AnimatePresence>

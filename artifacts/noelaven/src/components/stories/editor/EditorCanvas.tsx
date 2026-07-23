@@ -70,10 +70,11 @@ export function EditorCanvas({
   // CSS filter from the active preset
   const cssFilter = filterCSS(activeFilter);
 
-  // Clip for saved crop data (not while editing crop)
-  const cropClip: React.CSSProperties =
+  // Transform for saved crop data (not while editing crop)
+  // CropData is { x, y, scale } — a pan+zoom transform applied over the image.
+  const cropTransform: React.CSSProperties =
     crop && !cropMode
-      ? { clipPath: `inset(${crop.y}% ${100 - crop.x - crop.w}% ${100 - crop.y - crop.h}% ${crop.x}%)` }
+      ? { transform: `translate(${crop.x * 100}%, ${crop.y * 100}%) scale(${crop.scale})`, transformOrigin: 'center center' }
       : {};
 
   return (
@@ -88,7 +89,7 @@ export function EditorCanvas({
         <img
           src={previewUrl}
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          style={{ ...cropClip, filter: cssFilter }}
+          style={{ ...cropTransform, filter: cssFilter }}
           draggable={false}
           alt=""
         />
@@ -131,8 +132,8 @@ export function EditorCanvas({
       {/* ── Crop overlay ── */}
       {cropMode && (
         <CropOverlay
-          crop={crop ?? { x: 10, y: 10, w: 80, h: 80 }}
-          onChange={c => dispatch({ type: 'SET_CROP', crop: c })}
+          crop={{ x: 10, y: 10, w: 80, h: 80 }}
+          onChange={c => dispatch({ type: 'SET_CROP', crop: { x: c.x / 100, y: c.y / 100, scale: 1 } })}
           onApply={() => dispatch({ type: 'SET_CROP_MODE', active: false })}
           onCancel={() => dispatch({ type: 'SET_CROP_MODE', active: false })}
         />

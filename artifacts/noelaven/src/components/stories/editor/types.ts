@@ -14,6 +14,9 @@ export interface TextLayer {
   color: string;
   fontWeight: 'normal' | 'bold';
   layerStyle: 'plain' | 'bubble-dark' | 'bubble-light' | 'outlined';
+  fontFamily?: string;                        // CSS font-family string
+  fontSize?: number;                          // px at scale=1 (default 24)
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 export interface StickerLayer {
@@ -30,8 +33,13 @@ export type EditorLayer = TextLayer | StickerLayer;
 
 // ─── Crop / trim ──────────────────────────────────────────────────────────────
 
-/** All values 0–100 % of original image dimensions. */
-export interface CropData { x: number; y: number; w: number; h: number }
+/**
+ * Transform-based crop: fractional translate + scale applied to the media.
+ * x/y are fractions of the container dimension (e.g. 0.1 = 10% right/down).
+ * scale is a zoom multiplier ≥ 1.0.
+ * Constraints: max |x| = (scale-1)/(2*scale), max |y| = same.
+ */
+export interface CropData { x: number; y: number; scale: number }
 
 /** Values in seconds. */
 export interface TrimData { start: number; end: number }
@@ -88,4 +96,13 @@ export interface ToolbarTabDef {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Icon: React.ComponentType<any>;
   available: boolean;
+}
+
+// ─── ItemEditData (returned from per-item editor) ─────────────────────────────
+
+export interface ItemEditData {
+  layers:     EditorLayer[];
+  cropData:   CropData | null;
+  trimData:   TrimData | null;
+  filterName: FilterPreset;
 }

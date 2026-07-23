@@ -4,7 +4,7 @@
  */
 
 import {
-  collection, doc, addDoc, updateDoc, query,
+  collection, doc, addDoc, updateDoc, deleteDoc, query,
   where, orderBy, onSnapshot, arrayUnion,
   Timestamp, type DocumentData, type Unsubscribe,
 } from 'firebase/firestore';
@@ -28,6 +28,7 @@ export interface Story {
   authorHandle: string;
   authorAvatarUrl: string;
   mediaUrl: string;
+  publicId?: string;        // Cloudinary public_id (set on new uploads; absent on old stories)
   mediaType: StoryMediaType;
   caption: string;
   createdAt: Date;
@@ -59,49 +60,52 @@ function toDate(v: Timestamp | undefined): Date {
 function docToStory(id: string, d: DocumentData): Story {
   return {
     id,
-    authorId:       d.authorId ?? '',
-    authorName:     d.authorName ?? '',
-    authorHandle:   d.authorHandle ?? '',
+    authorId:        d.authorId       ?? '',
+    authorName:      d.authorName     ?? '',
+    authorHandle:    d.authorHandle   ?? '',
     authorAvatarUrl: d.authorAvatarUrl ?? '',
-    mediaUrl:       d.mediaUrl ?? '',
-    mediaType:      (d.mediaType as StoryMediaType) ?? 'image',
-    caption:        d.caption ?? '',
-    createdAt:      toDate(d.createdAt),
-    expiresAt:      toDate(d.expiresAt),
-    viewerIds:      Array.isArray(d.viewerIds) ? d.viewerIds : [],
-    layers:         Array.isArray(d.layers) ? d.layers : [],
-    cropData:       d.cropData ?? null,
-    trimData:       d.trimData ?? null,
-    filterName:     (d.filterName as FilterPreset) ?? 'normal',
+    mediaUrl:        d.mediaUrl       ?? '',
+    publicId:        d.publicId       ?? undefined,
+    mediaType:       (d.mediaType as StoryMediaType) ?? 'image',
+    caption:         d.caption        ?? '',
+    createdAt:       toDate(d.createdAt),
+    expiresAt:       toDate(d.expiresAt),
+    viewerIds:       Array.isArray(d.viewerIds) ? d.viewerIds : [],
+    layers:          Array.isArray(d.layers)    ? d.layers    : [],
+    cropData:        d.cropData  ?? null,
+    trimData:        d.trimData  ?? null,
+    filterName:      (d.filterName as FilterPreset) ?? 'normal',
   };
 }
 
 // ─── Firestore operations ─────────────────────────────────────────────────────
 
 export async function createStory(
-  author: User,
-  mediaUrl: string,
-  mediaType: StoryMediaType,
-  caption: string,
-  layers: EditorLayer[] = [],
-  cropData: CropData | null = null,
-  trimData: TrimData | null = null,
-  filterName: FilterPreset = 'normal',
+  author:     User,
+  mediaUrl:   string,
+  mediaType:  StoryMediaType,
+  caption:    string,
+  layers:     EditorLayer[]  = [],
+  cropData:   CropData | null  = null,
+  trimData:   TrimData | null  = null,
+  filterName: FilterPreset     = 'normal',
+  publicId?:  string,
 ): Promise<string> {
   if (!db) throw new Error('Firebase not configured');
   const now       = new Date();
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const ref = await addDoc(collection(db, 'stories'), {
-    authorId:      author.id,
-    authorName:    author.displayName,
-    authorHandle:  author.handle,
+    authorId:        author.id,
+    authorName:      author.displayName,
+    authorHandle:    author.handle,
     authorAvatarUrl: author.avatarUrl ?? '',
     mediaUrl,
+    ...(publicId ? { publicId } : {}),
     mediaType,
     caption,
     layers,
-    cropData:   cropData  ?? null,
-    trimData:   trimData  ?? null,
+    cropData:   cropData   ?? null,
+    trimData:   trimData   ?? null,
     filterName: filterName ?? 'normal',
     createdAt:  Timestamp.fromDate(now),
     expiresAt:  Timestamp.fromDate(expiresAt),
@@ -128,6 +132,18 @@ export async function markStoryViewed(storyId: string, userId: string): Promise<
   await updateDoc(doc(db, 'stories', storyId), { viewerIds: arrayUnion(userId) });
 }
 
+/**
+ * Delete a story from Firestore.
+ * The Cloudinary media file is NOT deleted here — that requires admin credentials
+ * (CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET) which are server-side secrets.
+ * Cloudinary stories expire naturally after 24 h.
+ * To add Cloudinary deletion, store the publicId here and call the API server.
+ */
+export async function deleteStory(storyId: string): Promise<void> {
+  if (!db) throw new Error('Firebase not configured');
+  await deleteDoc(doc(db, 'stories', storyId));
+}
+
 // ─── Client-side grouping ─────────────────────────────────────────────────────
 
 export function groupStories(stories: Story[], currentUserId?: string): StoryGroup[] {
@@ -136,9 +152,9 @@ export function groupStories(stories: Story[], currentUserId?: string): StoryGro
   for (const story of stories) {
     if (!map.has(story.authorId)) {
       map.set(story.authorId, {
-        authorId:       story.authorId,
-        authorName:     story.authorName,
-        authorHandle:   story.authorHandle,
+        authorId:        story.authorId,
+        authorName:      story.authorName,
+        authorHandle:    story.authorHandle,
         authorAvatarUrl: story.authorAvatarUrl,
         stories:   [],
         hasUnseen: false,

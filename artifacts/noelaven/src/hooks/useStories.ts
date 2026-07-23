@@ -5,7 +5,7 @@ import {
   type Story, type StoryGroup, type StoryMediaType,
   type EditorLayer, type CropData, type TrimData, type FilterPreset,
   subscribeStories, createStory as fsCreateStory,
-  markStoryViewed, groupStories,
+  markStoryViewed, deleteStory as fsDeleteStory, groupStories,
 } from '@/lib/stories';
 import { mockUsers } from '@/lib/mockData';
 import type { User } from '@/lib/mockData';
@@ -24,21 +24,22 @@ const DEMO_CAPTIONS = ['Good morning! ☀️', 'Living the dream 🌊', 'Golden 
 function buildDemoStories(): Story[] {
   const now = Date.now();
   return mockUsers.slice(0, 5).map((u, i) => ({
-    id:            `demo-story-${i}`,
-    authorId:      u.id,
-    authorName:    u.displayName,
-    authorHandle:  u.handle,
+    id:              `demo-story-${i}`,
+    authorId:        u.id,
+    authorName:      u.displayName,
+    authorHandle:    u.handle,
     authorAvatarUrl: u.avatarUrl,
-    mediaUrl:      DEMO_MEDIA[i],
-    mediaType:     'image' as StoryMediaType,
-    caption:       DEMO_CAPTIONS[i],
-    createdAt:     new Date(now - i * 3_600_000),
-    expiresAt:     new Date(now + (24 - i) * 3_600_000),
-    viewerIds:     [],
-    layers:        [],
-    cropData:      null,
-    trimData:      null,
-    filterName:    'normal' as FilterPreset,
+    mediaUrl:        DEMO_MEDIA[i],
+    publicId:        undefined,
+    mediaType:       'image' as StoryMediaType,
+    caption:         DEMO_CAPTIONS[i],
+    createdAt:       new Date(now - i * 3_600_000),
+    expiresAt:       new Date(now + (24 - i) * 3_600_000),
+    viewerIds:       [],
+    layers:          [],
+    cropData:        null,
+    trimData:        null,
+    filterName:      'normal' as FilterPreset,
   }));
 }
 
@@ -75,6 +76,7 @@ export function useStories() {
     cropData:   CropData | null = null,
     trimData:   TrimData | null = null,
     filterName: FilterPreset = 'normal',
+    publicId?:  string,
   ): Promise<void> {
     if (!currentUser) return;
     if (!isFirebaseConfigured) return;
@@ -82,6 +84,7 @@ export function useStories() {
       currentUser as unknown as User,
       mediaUrl, mediaType, caption,
       layers, cropData, trimData, filterName,
+      publicId,
     );
   }
 
@@ -90,6 +93,21 @@ export function useStories() {
     await markStoryViewed(storyId, currentUser.id);
   }
 
+  /**
+   * Delete a story from Firestore. Only the author should call this.
+   * In demo mode (Firebase not configured) this is a local state removal.
+   */
+  async function deleteStory(storyId: string): Promise<void> {
+    if (!currentUser) return;
+    if (!isFirebaseConfigured) {
+      // Demo mode: remove from local state immediately
+      setStories(prev => prev.filter(s => s.id !== storyId));
+      return;
+    }
+    await fsDeleteStory(storyId);
+    // The Firestore subscription will automatically remove the story from `stories` state
+  }
+
   const ownGroup = groups.find(g => g.isOwn) ?? null;
-  return { groups, ownGroup, loading, publishStory, markViewed };
+  return { groups, ownGroup, loading, publishStory, markViewed, deleteStory };
 }
