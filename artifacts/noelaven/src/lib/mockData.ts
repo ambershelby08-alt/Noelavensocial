@@ -61,10 +61,35 @@ export interface Message {
   id: string;
   senderId: string;
   content: string;
-  imageUrl?: string;
-  type: 'text' | 'image' | 'voice';
+  type: 'text' | 'image' | 'video' | 'voice' | 'post_share';
+  status?: 'sending' | 'sent' | 'delivered' | 'seen' | 'failed';
   reactions: Record<string, string[]>;
   readBy: string[];
+  deliveredTo?: string[];
+  /** Id of the message being replied to */
+  replyToId?: string;
+  /** Snapshot of the quoted message for inline display */
+  replyToPreview?: { senderId: string; senderName: string; content: string; type: string };
+  /** Set when a message has been edited */
+  editedAt?: Date;
+  editedContent?: string;
+  /** Per-user soft-delete: message hidden for these userIds */
+  deletedFor?: string[];
+  /** Hard-delete: replaced with "This message was deleted" for everyone */
+  deletedForEveryone?: boolean;
+  /** Cloudinary URL for image / video / voice */
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video' | 'voice';
+  voiceDuration?: number;
+  voiceWaveformData?: number[];
+  forwardedFrom?: { senderId: string; senderName: string };
+  sharedPost?: {
+    postId: string;
+    authorId: string;
+    authorName: string;
+    content: string;
+    imageUrl?: string;
+  };
   createdAt: Date;
 }
 
@@ -74,8 +99,13 @@ export interface Conversation {
   name?: string;
   participants: User[];
   lastMessage: string;
+  lastMessageType?: Message['type'];
+  lastSenderId?: string;
   lastMessageAt: Date;
   unreadCount: number;
+  pinnedBy?: string[];
+  archivedBy?: string[];
+  mutedBy?: string[];
 }
 
 export interface Notification {

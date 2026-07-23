@@ -29,7 +29,9 @@ import {
   toggleCommentLike as fsToggleCommentLike,
   addReply as fsAddReply,
   writeNotification as fsWriteNotification,
+  sendMessage as fsSendMessage,
 } from '@/lib/firestore';
+import { useConversations } from '@/hooks/useConversations';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
@@ -334,9 +336,10 @@ interface ShareSheetProps {
   post: Post;
   onClose: () => void;
   onShared: (postId: string) => void;
+  onSendToChats?: () => void;
 }
 
-function ShareSheet({ post, onClose, onShared }: ShareSheetProps) {
+function ShareSheet({ post, onClose, onShared, onSendToChats }: ShareSheetProps) {
   const [copied, setCopied] = useState(false);
 
   function copyLink() {
@@ -366,7 +369,7 @@ function ShareSheet({ post, onClose, onShared }: ShareSheetProps) {
       label: 'Send via Chats',
       color: '#FF6B9D',
       bg: '#FFF0F6',
-      action: () => { onShared(post.id); onClose(); },
+      action: () => { onSendToChats?.(); },
     },
     {
       icon: Sparkles,
@@ -1672,6 +1675,10 @@ export default function Home() {
   // by the time onAllPublished fires.
   const [openOwnStoriesAfterPublish, setOpenOwnStoriesAfterPublish] = useState(false);
 
+  const { conversations: allConvs, openDirectConversation: _odc } = useConversations();
+  const [convPickerPost, setConvPickerPost] = useState<Post | null>(null);
+  const [convPickerSent, setConvPickerSent] = useState<Set<string>>(new Set());
+
   const [viewingGroupIdx, setViewingGroupIdx] = useState<number | null>(null);
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
@@ -1922,13 +1929,108 @@ export default function Home() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {sharePost && (
+        {sharePost && !convPickerPost && (
           <ShareSheet
             key="share"
             post={sharePost}
             onClose={() => setSharePost(null)}
             onShared={handleShared}
+            onSendToChats={() => {
+              setConvPickerSent(new Set());
+              setConvPickerPost(sharePost);
+            }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Conversation picker for "Send via Chats" ────────────────── */}
+      <AnimatePresence>
+        {convPickerPost && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70]"
+              onClick={() => { setConvPickerPost(null); setSharePost(null); }} />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 z-[75] bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col"
+              style={{ maxHeight: '70vh' }}
+              key="conv-picker"
+            >
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                <div className="w-10 h-1 rounded-full bg-gray-300" />
+              </div>
+              <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
+                <button onClick={() => { setConvPickerPost(null); }}
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
+                  <X size={18} className="text-gray-500" />
+                </button>
+                <span className="font-black text-[16px] text-gray-900">Send to Chats</span>
+                <button
+                  disabled={convPickerSent.size === 0}
+                  onClick={async () => {
+                    if (!currentUser || !convPickerPost) return;
+                    const sentCopy = new Set(convPickerSent);
+                    for (const convId of sentCopy) {
+                      if (isFirebaseConfigured) {
+                        await fsSendMessage(convId, currentUser.id, '📌 Shared a post', 'post_share', {
+                          sharedPost: {
+                            postId: convPickerPost.id,
+                            authorId: convPickerPost.authorId,
+                            authorName: convPickerPost.author?.displayName ?? '',
+                            content: convPickerPost.content,
+                            imageUrl: convPickerPost.imageUrl ?? undefined,
+                          }
+                        });
+                      }
+                    }
+                    setConvPickerPost(null);
+                    setSharePost(null);
+                    showToast(`Sent to ${sentCopy.size} chat${sentCopy.size > 1 ? 's' : ''}! 📌`);
+                  }}
+                  className={cn('text-[14px] font-black transition-colors', convPickerSent.size > 0 ? 'text-purple-600' : 'text-gray-300')}
+                >
+                  Send{convPickerSent.size > 0 ? ` (${convPickerSent.size})` : ''}
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+                {allConvs.length === 0 ? (
+                  <p className="text-center text-gray-400 text-[14px] py-10">No conversations yet</p>
+                ) : allConvs.map(conv => {
+                  const other = conv.participants.find(p => p.id !== currentUser?.id) ?? conv.participants[0];
+                  const name = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
+                  const selected = convPickerSent.has(conv.id);
+                  return (
+                    <motion.button
+                      key={conv.id}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setConvPickerSent(prev => {
+                        const next = new Set(prev);
+                        if (next.has(conv.id)) next.delete(conv.id); else next.add(conv.id);
+                        return next;
+                      })}
+                      className={cn(
+                        'w-full flex items-center gap-3.5 px-4 py-3 rounded-[18px] border transition-all text-left',
+                        selected ? 'bg-purple-50 border-purple-200' : 'bg-white border-black/[0.05]'
+                      )}
+                    >
+                      <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={(other as any).avatarUrl || undefined} size={44} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-[14.5px] text-gray-900 truncate">{name}</p>
+                        <p className="text-[12px] text-gray-400 truncate">{conv.lastMessage || 'No messages yet'}</p>
+                      </div>
+                      <div className={cn(
+                        'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
+                        selected ? 'border-purple-500 bg-purple-500' : 'border-gray-300'
+                      )}>
+                        {selected && <Check size={11} className="text-white" />}
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

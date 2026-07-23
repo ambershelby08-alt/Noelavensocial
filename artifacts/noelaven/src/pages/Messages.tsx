@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, PenSquare, X, Check, ChevronRight, MessageCircle,
+  Search, PenSquare, X, ChevronRight, MessageCircle,
+  Pin, Archive, BellOff, Bell, Trash2, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { mockUsers } from '@/lib/mockData';
 import type { Conversation, User } from '@/lib/mockData';
 import { useConversations } from '@/hooks/useConversations';
-import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,16 @@ function fmtTime(d: Date): string {
   const days = Math.floor((Date.now() - d.getTime()) / 86400000);
   if (days < 7) return format(d, 'EEE');
   return format(d, 'MMM d');
+}
+
+function lastMsgLabel(conv: Conversation): string {
+  switch (conv.lastMessageType) {
+    case 'image':      return '📷 Photo';
+    case 'video':      return '🎥 Video';
+    case 'voice':      return '🎤 Voice message';
+    case 'post_share': return '📌 Shared a post';
+    default:           return conv.lastMessage;
+  }
 }
 
 // Simulated online status
@@ -105,19 +115,115 @@ function GroupAvatar({ participants }: { participants: User[] }) {
   );
 }
 
+// ─── Conv action sheet ────────────────────────────────────────────────────────
+
+interface ConvAction {
+  id: 'pin' | 'archive' | 'mute' | 'delete';
+  label: string;
+  icon: React.ReactNode;
+  danger?: boolean;
+}
+
+function ConvActionSheet({
+  conv,
+  currentUserId,
+  onPin,
+  onArchive,
+  onMute,
+  onClose,
+}: {
+  conv: Conversation;
+  currentUserId: string;
+  onPin: () => void;
+  onArchive: () => void;
+  onMute: () => void;
+  onClose: () => void;
+}) {
+  const isPinned   = conv.pinnedBy?.includes(currentUserId);
+  const isArchived = conv.archivedBy?.includes(currentUserId);
+  const isMuted    = conv.mutedBy?.includes(currentUserId);
+
+  const actions: ConvAction[] = [
+    { id: 'pin',     label: isPinned   ? 'Unpin'   : 'Pin to top',       icon: <Pin size={18} /> },
+    { id: 'archive', label: isArchived ? 'Unarchive' : 'Archive',        icon: <Archive size={18} /> },
+    { id: 'mute',    label: isMuted    ? 'Unmute'  : 'Mute notifications', icon: isMuted ? <Bell size={18} /> : <BellOff size={18} /> },
+    { id: 'delete',  label: 'Delete conversation', icon: <Trash2 size={18} />, danger: true },
+  ];
+
+  function handle(id: ConvAction['id']) {
+    if (id === 'pin')     onPin();
+    if (id === 'archive') onArchive();
+    if (id === 'mute')    onMute();
+    onClose();
+  }
+
+  return (
+    <>
+      <Backdrop onClose={onClose} />
+      <motion.div
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[28px] shadow-2xl pb-8"
+      >
+        <div className="flex justify-center pt-3 pb-4">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+        <div className="px-5 space-y-1">
+          {actions.map(a => (
+            <button
+              key={a.id}
+              onClick={() => handle(a.id)}
+              className={cn(
+                'w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-colors',
+                a.danger ? 'hover:bg-red-50 text-red-500' : 'hover:bg-black/[0.04] text-gray-800'
+              )}
+            >
+              <span className={a.danger ? 'text-red-400' : 'text-gray-500'}>{a.icon}</span>
+              <span className={cn('font-semibold text-[15px]', a.danger && 'text-red-500')}>{a.label}</span>
+            </button>
+          ))}
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
 // ─── Conversation item ────────────────────────────────────────────────────────
 
-function ConvItem({ conv }: { conv: Conversation }) {
+function ConvItem({
+  conv,
+  onLongPress,
+}: {
+  conv: Conversation;
+  onLongPress: () => void;
+}) {
   const { currentUser } = useAuth();
-  const other = conv.participants.find(p => p.id !== currentUser?.id) ?? conv.participants[0];
-  const name  = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
+  const other    = conv.participants.find(p => p.id !== currentUser?.id) ?? conv.participants[0];
+  const name     = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
   const isOnline = conv.type === 'direct' && onlineStatus(other.id) === 'online';
-  const unread = conv.unreadCount > 0;
+  const unread   = conv.unreadCount > 0;
+  const uid      = currentUser?.id ?? '';
+  const isPinned   = conv.pinnedBy?.includes(uid);
+  const isMuted    = conv.mutedBy?.includes(uid);
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function startPress() {
+    longPressTimer.current = setTimeout(() => { onLongPress(); }, 500);
+  }
+  function endPress() {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }
 
   return (
     <Link href={`/messages/${conv.id}`}>
       <motion.div
         whileTap={{ scale: 0.98 }}
+        onTouchStart={startPress}
+        onTouchEnd={endPress}
+        onMouseDown={startPress}
+        onMouseUp={endPress}
+        onMouseLeave={endPress}
         className="flex items-center gap-3.5 px-4 py-3.5 bg-white rounded-[22px] border border-black/[0.04] shadow-sm hover:shadow-md transition-all cursor-pointer"
       >
         {/* Avatar */}
@@ -132,7 +238,6 @@ function ConvItem({ conv }: { conv: Conversation }) {
               )}
             </>
           )}
-          {/* Unread badge */}
           {unread && (
             <div
               className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black text-white px-1"
@@ -146,20 +251,24 @@ function ConvItem({ conv }: { conv: Conversation }) {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between gap-2 mb-0.5">
-            <span className={cn('text-[15px] truncate', unread ? 'font-black text-gray-900' : 'font-semibold text-gray-800')}>
-              {name}
-            </span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              {isPinned && <Pin size={11} className="text-purple-400 flex-shrink-0" />}
+              <span className={cn('text-[15px] truncate', unread ? 'font-black text-gray-900' : 'font-semibold text-gray-800')}>
+                {name}
+              </span>
+              {isMuted && <BellOff size={11} className="text-gray-300 flex-shrink-0" />}
+            </div>
             <span className={cn('text-[11.5px] flex-shrink-0', unread ? 'text-purple-500 font-bold' : 'text-gray-400')}>
               {fmtTime(conv.lastMessageAt)}
             </span>
           </div>
           <p className={cn('text-[13.5px] truncate', unread ? 'font-semibold text-gray-700' : 'text-gray-400')}>
-            {conv.lastMessage}
+            {lastMsgLabel(conv)}
           </p>
         </div>
 
         {/* Unread dot */}
-        {unread && (
+        {unread && !isMuted && (
           <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }} />
         )}
       </motion.div>
@@ -176,10 +285,12 @@ function ComposeDrawer({ onClose, openDirect, composeUsers }: {
 }) {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState('');
-  const users = composeUsers;
   const filtered = search
-    ? users.filter(u => u.displayName.toLowerCase().includes(search.toLowerCase()) || u.handle.toLowerCase().includes(search.toLowerCase()))
-    : users;
+    ? composeUsers.filter(u =>
+        u.displayName.toLowerCase().includes(search.toLowerCase()) ||
+        u.handle.toLowerCase().includes(search.toLowerCase())
+      )
+    : composeUsers;
 
   async function handleSelect(user: User) {
     const convId = await openDirect(user.id);
@@ -248,20 +359,40 @@ function ComposeDrawer({ onClose, openDirect, composeUsers }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Messages() {
-  const [search, setSearch]         = useState('');
-  const [composeOpen, setCompose]   = useState(false);
-  const { conversations, openDirectConversation, getComposeUsers } = useConversations();
+  const [search, setSearch]       = useState('');
+  const [composeOpen, setCompose] = useState(false);
+  const [actionConv, setActionConv] = useState<Conversation | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
-  const { currentUser: _cu } = useAuth();
-  const filtered = search
+  const {
+    conversations, openDirectConversation, getComposeUsers,
+    pinConversation, archiveConversation, muteConversation,
+  } = useConversations();
+
+  const { currentUser } = useAuth();
+  const uid = currentUser?.id ?? '';
+
+  // Separate pinned / active / archived
+  const allFiltered = search
     ? conversations.filter(c => {
-        const other = c.participants.find(p => p.id !== (_cu?.id ?? 'demo-user'));
-        const name = c.type === 'group' ? c.name ?? '' : other?.displayName ?? '';
-        return name.toLowerCase().includes(search.toLowerCase()) || c.lastMessage.toLowerCase().includes(search.toLowerCase());
+        const other = c.participants.find(p => p.id !== uid);
+        const name  = c.type === 'group' ? c.name ?? '' : other?.displayName ?? '';
+        return (
+          name.toLowerCase().includes(search.toLowerCase()) ||
+          c.lastMessage.toLowerCase().includes(search.toLowerCase())
+        );
       })
     : conversations;
 
-  const totalUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
+  const archived  = allFiltered.filter(c => c.archivedBy?.includes(uid));
+  const active    = allFiltered.filter(c => !c.archivedBy?.includes(uid));
+  const pinned    = active.filter(c => c.pinnedBy?.includes(uid));
+  const unpinned  = active.filter(c => !c.pinnedBy?.includes(uid));
+  const sorted    = [...pinned, ...unpinned];
+
+  const totalUnread = conversations
+    .filter(c => !c.archivedBy?.includes(uid))
+    .reduce((n, c) => n + c.unreadCount, 0);
 
   return (
     <div className="min-h-screen bg-[#FDF9F6] pb-36">
@@ -318,11 +449,11 @@ export default function Messages() {
         <div className="px-4 space-y-2">
           {search && (
             <p className="text-[13px] text-gray-400 font-medium mb-3">
-              {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "<span className="text-gray-700">{search}</span>"
+              {sorted.length} result{sorted.length !== 1 ? 's' : ''} for "<span className="text-gray-700">{search}</span>"
             </p>
           )}
 
-          {filtered.length === 0 ? (
+          {sorted.length === 0 && archived.length === 0 ? (
             <div className="flex flex-col items-center py-24 text-center">
               <div className="w-16 h-16 rounded-[22px] flex items-center justify-center mb-4"
                 style={{ background: 'linear-gradient(135deg, #6B73FF22, #FF6B9D22)' }}>
@@ -343,16 +474,46 @@ export default function Messages() {
               )}
             </div>
           ) : (
-            filtered.map((conv, i) => (
+            sorted.map((conv, i) => (
               <motion.div
                 key={conv.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: i * 0.04 }}
               >
-                <ConvItem conv={conv} />
+                <ConvItem conv={conv} onLongPress={() => setActionConv(conv)} />
               </motion.div>
             ))
+          )}
+
+          {/* Archived section */}
+          {archived.length > 0 && !search && (
+            <div className="mt-4">
+              <button
+                onClick={() => setShowArchived(v => !v)}
+                className="w-full flex items-center justify-between px-2 py-3 text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Archive size={16} />
+                  <span className="text-[13.5px] font-semibold">Archived ({archived.length})</span>
+                </div>
+                {showArchived ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              <AnimatePresence>
+                {showArchived && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="space-y-2 overflow-hidden"
+                  >
+                    {archived.map(conv => (
+                      <ConvItem key={conv.id} conv={conv} onLongPress={() => setActionConv(conv)} />
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
       </div>
@@ -365,6 +526,17 @@ export default function Messages() {
             onClose={() => setCompose(false)}
             openDirect={openDirectConversation}
             composeUsers={getComposeUsers()}
+          />
+        )}
+        {actionConv && (
+          <ConvActionSheet
+            key="conv-action"
+            conv={actionConv}
+            currentUserId={uid}
+            onPin={() => pinConversation(actionConv.id, !actionConv.pinnedBy?.includes(uid))}
+            onArchive={() => archiveConversation(actionConv.id, !actionConv.archivedBy?.includes(uid))}
+            onMute={() => muteConversation(actionConv.id, !actionConv.mutedBy?.includes(uid))}
+            onClose={() => setActionConv(null)}
           />
         )}
       </AnimatePresence>

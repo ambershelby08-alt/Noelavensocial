@@ -6,9 +6,9 @@
 
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc,
-  deleteDoc, query, where, orderBy, limit, onSnapshot,
-  serverTimestamp, increment, Timestamp,
-  type DocumentData, type Unsubscribe,
+  deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot,
+  serverTimestamp, increment, arrayUnion, arrayRemove, Timestamp,
+  type DocumentData, type Unsubscribe, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { User, Post, Community, Message, Conversation, Notification } from './mockData';
@@ -393,8 +393,38 @@ function docToConversation(id: string, d: DocumentData, currentUserId?: string):
     name: d.name ?? undefined,
     participants: (d.participants ?? []).map((p: DocumentData) => docToUser(p.id ?? '', p)),
     lastMessage: d.lastMessage ?? '',
+    lastMessageType: d.lastMessageType ?? 'text',
+    lastSenderId: d.lastSenderId ?? undefined,
     lastMessageAt: ts(d.lastMessageAt),
     unreadCount: (d.unreadCounts ?? {})[currentUserId ?? ''] ?? 0,
+    pinnedBy: d.pinnedBy ?? [],
+    archivedBy: d.archivedBy ?? [],
+    mutedBy: d.mutedBy ?? [],
+  };
+}
+
+function docToMessage(id: string, data: DocumentData): Message {
+  return {
+    id,
+    senderId: data.senderId ?? '',
+    content: data.content ?? '',
+    type: (data.type ?? 'text') as Message['type'],
+    reactions: data.reactions ?? {},
+    readBy: data.readBy ?? [],
+    deliveredTo: data.deliveredTo ?? [],
+    replyToId: data.replyToId ?? undefined,
+    replyToPreview: data.replyToPreview ?? undefined,
+    editedAt: data.editedAt ? ts(data.editedAt) : undefined,
+    editedContent: data.editedContent ?? undefined,
+    deletedFor: data.deletedFor ?? [],
+    deletedForEveryone: data.deletedForEveryone ?? false,
+    mediaUrl: data.mediaUrl ?? undefined,
+    mediaType: data.mediaType ?? undefined,
+    voiceDuration: data.voiceDuration ?? undefined,
+    voiceWaveformData: data.voiceWaveformData ?? undefined,
+    forwardedFrom: data.forwardedFrom ?? undefined,
+    sharedPost: data.sharedPost ?? undefined,
+    createdAt: ts(data.createdAt),
   };
 }
 
@@ -410,47 +440,107 @@ export function subscribeConversations(userId: string, onData: (convs: Conversat
   });
 }
 
-export function subscribeMessages(convId: string, onData: (msgs: Message[]) => void): Unsubscribe {
+/**
+ * Subscribe to the most recent `pageSize` messages in a conversation.
+ * Uses desc order + limit so that real-time arrivals (newest timestamps)
+ * always fall inside the query window. Results are reversed before delivery
+ * so the UI sees chronological (asc) order.
+ *
+ * `oldestDoc` is the Firestore snapshot of the oldest document in the current
+ * window — used as a cursor to page further back in time.
+ */
+export function subscribeMessages(
+  convId: string,
+  onData: (msgs: Message[], oldestDoc?: QueryDocumentSnapshot) => void,
+  pageSize = 50
+): Unsubscribe {
   if (!db) return () => {};
   const q = query(
     collection(db, 'conversations', convId, 'messages'),
-    orderBy('createdAt', 'asc'),
-    limit(100)
+    orderBy('createdAt', 'desc'),  // newest first → new messages never fall outside the window
+    limit(pageSize)
   );
   return onSnapshot(q, snap => {
-    onData(
-      snap.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          senderId: data.senderId,
-          content: data.content ?? '',
-          imageUrl: data.imageUrl ?? undefined,
-          type: (data.type ?? 'text') as 'text' | 'image' | 'voice',
-          reactions: data.reactions ?? {},
-          readBy: data.readBy ?? [],
-          createdAt: ts(data.createdAt),
-        } satisfies Message;
-      })
-    );
+    // Reverse so the UI sees oldest → newest (asc) order
+    const msgs = snap.docs.map(d => docToMessage(d.id, d.data())).reverse();
+    // The oldest document is the last in the desc-sorted snapshot
+    const oldestDoc = snap.docs.length >= pageSize ? snap.docs[snap.docs.length - 1] : undefined;
+    onData(msgs, oldestDoc);
   });
 }
 
+/**
+ * Fetch a page of messages older than `olderThanDoc`.
+ * Uses the same desc ordering so cursors are consistent with subscribeMessages.
+ * Results are reversed (asc) for prepending to the UI list.
+ */
+export async function fetchOlderMessages(
+  convId: string,
+  olderThanDoc: QueryDocumentSnapshot,
+  pageSize = 30
+): Promise<{ messages: Message[]; oldestDoc?: QueryDocumentSnapshot }> {
+  if (!db) return { messages: [] };
+  const q = query(
+    collection(db, 'conversations', convId, 'messages'),
+    orderBy('createdAt', 'desc'),
+    startAfter(olderThanDoc),      // messages with createdAt < olderThanDoc's createdAt
+    limit(pageSize)
+  );
+  const snap = await getDocs(q);
+  return {
+    messages: snap.docs.map(d => docToMessage(d.id, d.data())).reverse(), // asc for prepend
+    oldestDoc: snap.docs.length >= pageSize ? snap.docs[snap.docs.length - 1] : undefined,
+  };
+}
+
+/** Send a message with full extended fields. Returns the new message id. */
 export async function sendMessage(
   convId: string,
   senderId: string,
   content: string,
-  type: 'text' | 'image' | 'voice' = 'text'
-): Promise<void> {
-  if (!db) return;
-  await addDoc(collection(db, 'conversations', convId, 'messages'), {
+  type: Message['type'] = 'text',
+  opts: {
+    replyToId?: string;
+    replyToPreview?: Message['replyToPreview'];
+    mediaUrl?: string;
+    mediaType?: string;
+    voiceDuration?: number;
+    voiceWaveformData?: number[];
+    sharedPost?: Message['sharedPost'];
+    forwardedFrom?: Message['forwardedFrom'];
+  } = {}
+): Promise<string> {
+  if (!db) return '';
+  const ref = await addDoc(collection(db, 'conversations', convId, 'messages'), {
     senderId,
     content,
     type,
     reactions: {},
     readBy: [senderId],
+    deliveredTo: [],
+    deletedFor: [],
+    deletedForEveryone: false,
+    editedAt: null,
+    editedContent: null,
+    replyToId: opts.replyToId ?? null,
+    replyToPreview: opts.replyToPreview ?? null,
+    mediaUrl: opts.mediaUrl ?? null,
+    mediaType: opts.mediaType ?? null,
+    voiceDuration: opts.voiceDuration ?? null,
+    voiceWaveformData: opts.voiceWaveformData ?? null,
+    sharedPost: opts.sharedPost ?? null,
+    forwardedFrom: opts.forwardedFrom ?? null,
     createdAt: serverTimestamp(),
   });
+
+  // Preview text for conversation list
+  const preview =
+    type === 'image' ? '📷 Photo'
+    : type === 'video' ? '🎥 Video'
+    : type === 'voice' ? '🎤 Voice message'
+    : type === 'post_share' ? '📌 Shared a post'
+    : content;
+
   // Increment unread counts for all other participants
   const convSnap = await getDoc(doc(db, 'conversations', convId));
   const unreadUpdates: Record<string, ReturnType<typeof increment>> = {};
@@ -461,10 +551,14 @@ export async function sendMessage(
     }
   }
   await updateDoc(doc(db, 'conversations', convId), {
-    lastMessage: content,
+    lastMessage: preview,
+    lastMessageType: type,
+    lastSenderId: senderId,
     lastMessageAt: serverTimestamp(),
     ...unreadUpdates,
   });
+
+  return ref.id;
 }
 
 export async function markConversationRead(convId: string, userId: string): Promise<void> {
@@ -516,6 +610,169 @@ export async function getOrCreateDirectConversation(
     createdAt: serverTimestamp(),
   });
   return ref.id;
+}
+
+// ─── Message actions ──────────────────────────────────────────────────────────
+
+export async function editMessage(
+  convId: string, msgId: string, newContent: string
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'conversations', convId, 'messages', msgId), {
+    editedContent: newContent,
+    editedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteMessageForMe(
+  convId: string, msgId: string, userId: string
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'conversations', convId, 'messages', msgId), {
+    deletedFor: arrayUnion(userId),
+  });
+}
+
+export async function deleteMessageForEveryone(
+  convId: string, msgId: string
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'conversations', convId, 'messages', msgId), {
+    deletedForEveryone: true,
+    editedContent: null,
+    mediaUrl: null,
+  });
+}
+
+export async function toggleMessageReaction(
+  convId: string, msgId: string, userId: string, emoji: string
+): Promise<void> {
+  if (!db) return;
+  const msgRef = doc(db, 'conversations', convId, 'messages', msgId);
+  const snap = await getDoc(msgRef);
+  if (!snap.exists()) return;
+  const reactions: Record<string, string[]> = snap.data().reactions ?? {};
+  const users = reactions[emoji] ?? [];
+  if (users.includes(userId)) {
+    const next = users.filter(u => u !== userId);
+    if (next.length === 0) {
+      const { [emoji]: _removed, ...rest } = reactions;
+      await updateDoc(msgRef, { reactions: rest });
+    } else {
+      await updateDoc(msgRef, { [`reactions.${emoji}`]: next });
+    }
+  } else {
+    await updateDoc(msgRef, { [`reactions.${emoji}`]: arrayUnion(userId) });
+  }
+}
+
+export async function markMessageDelivered(
+  convId: string, msgId: string, userId: string
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'conversations', convId, 'messages', msgId), {
+    deliveredTo: arrayUnion(userId),
+  });
+}
+
+// ─── Conversation management ──────────────────────────────────────────────────
+
+export async function pinConversation(
+  convId: string, userId: string, pin: boolean
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'conversations', convId), {
+    pinnedBy: pin ? arrayUnion(userId) : arrayRemove(userId),
+  });
+}
+
+export async function archiveConversation(
+  convId: string, userId: string, archive: boolean
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'conversations', convId), {
+    archivedBy: archive ? arrayUnion(userId) : arrayRemove(userId),
+  });
+}
+
+export async function muteConversation(
+  convId: string, userId: string, mute: boolean
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'conversations', convId), {
+    mutedBy: mute ? arrayUnion(userId) : arrayRemove(userId),
+  });
+}
+
+export async function leaveGroupConversation(
+  convId: string, userId: string
+): Promise<void> {
+  if (!db) return;
+  const convRef = doc(db, 'conversations', convId);
+  const snap = await getDoc(convRef);
+  if (!snap.exists()) return;
+  const d = snap.data();
+  const participants = (d.participants ?? []).filter((p: DocumentData) => p.id !== userId);
+  const participantIds = (d.participantIds ?? []).filter((id: string) => id !== userId);
+  await updateDoc(convRef, { participants, participantIds });
+}
+
+export async function blockUser(
+  currentUserId: string, targetUserId: string
+): Promise<void> {
+  if (!db) return;
+  await setDoc(doc(db, 'users', currentUserId, 'blocked', targetUserId), {
+    blockedAt: serverTimestamp(),
+  });
+}
+
+export async function reportConversation(
+  convId: string, reporterId: string, reason: string
+): Promise<void> {
+  if (!db) return;
+  await addDoc(collection(db, 'reports'), {
+    type: 'conversation',
+    convId,
+    reporterId,
+    reason,
+    createdAt: serverTimestamp(),
+  });
+}
+
+// ─── Typing status ────────────────────────────────────────────────────────────
+
+export async function setTypingStatus(
+  convId: string, userId: string, isTyping: boolean
+): Promise<void> {
+  if (!db) return;
+  const ref = doc(db, 'conversations', convId, 'typing', userId);
+  if (isTyping) {
+    await setDoc(ref, { userId, typingAt: serverTimestamp() });
+  } else {
+    await deleteDoc(ref).catch(() => {});
+  }
+}
+
+export function subscribeTypingStatus(
+  convId: string,
+  currentUserId: string,
+  onData: (typingUserIds: string[]) => void
+): Unsubscribe {
+  if (!db) return () => {};
+  return onSnapshot(
+    collection(db, 'conversations', convId, 'typing'),
+    snap => {
+      const now = Date.now();
+      const ids = snap.docs
+        .filter(d => {
+          const t = d.data().typingAt as Timestamp | undefined;
+          const ms = t?.toDate ? t.toDate().getTime() : 0;
+          return d.id !== currentUserId && now - ms < 8000;
+        })
+        .map(d => d.id);
+      onData(ids);
+    }
+  );
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ export const isCloudinaryConfigured = Boolean(
   import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
 );
 
-export type UploadFolder = 'avatars' | 'posts' | 'covers' | 'stories';
+export type UploadFolder = 'avatars' | 'posts' | 'covers' | 'stories' | 'voice';
 export type MediaType = 'image' | 'video';
 
 /**
@@ -108,6 +108,49 @@ export async function uploadStoryMedia(
 
   const data = (await res.json()) as { secure_url: string; public_id: string };
   return { url: data.secure_url, publicId: data.public_id, mediaType: isVideo ? 'video' : 'image' };
+}
+
+/**
+ * Upload any media (image, video, or audio/voice) to Cloudinary.
+ * Audio blobs are sent to the `video` endpoint (Cloudinary handles audio there).
+ * Returns the secure URL.
+ */
+export async function uploadMedia(
+  fileOrBlob: File | Blob,
+  folder: UploadFolder = 'posts',
+  resourceType: 'image' | 'video' | 'auto' = 'auto'
+): Promise<string> {
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const preset    = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !preset) {
+    throw new Error('Cloudinary is not configured.');
+  }
+
+  const form = new FormData();
+  form.append('file', fileOrBlob);
+  form.append('upload_preset', preset);
+  form.append('folder', `noelaven/${folder}`);
+
+  // Auto-detect: audio goes to video endpoint; images to image endpoint
+  let endpoint = resourceType;
+  if (endpoint === 'auto') {
+    const mime = fileOrBlob instanceof File ? fileOrBlob.type : '';
+    endpoint = mime.startsWith('audio') ? 'video' : mime.startsWith('video') ? 'video' : 'image';
+  }
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${endpoint}/upload`, {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? `Upload failed (${res.status})`);
+  }
+
+  const data = await res.json() as { secure_url: string };
+  return data.secure_url;
 }
 
 /** Pick a file from disk and immediately upload it. Returns the secure URL. */

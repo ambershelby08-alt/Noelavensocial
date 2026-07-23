@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   Home,
@@ -9,6 +9,7 @@ import {
   Bell,
   Settings,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -16,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
 import { useConversations } from '@/hooks/useConversations';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 // ─── Floating Bottom Nav ──────────────────────────────────────────────────────
 
@@ -207,10 +209,83 @@ function MobileHeader() {
 
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
+// ─── In-app new-message toast ─────────────────────────────────────────────────
+
+interface MsgToast {
+  convId: string;
+  senderName: string;
+  preview: string;
+  senderId: string;
+}
+
+function InAppMsgToast({ toast, onClose }: { toast: MsgToast; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -60, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -60, scale: 0.92 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[999] w-[calc(100vw-32px)] max-w-sm"
+    >
+      <Link href={`/messages/${toast.convId}`} onClick={onClose}>
+        <div className="flex items-center gap-3 bg-white rounded-[22px] shadow-2xl border border-black/[0.06] px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
+          <UserAvatar userId={toast.senderId} fallbackName={toast.senderName} size={42} />
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-[13.5px] text-gray-900 truncate">{toast.senderName}</p>
+            <p className="text-[12.5px] text-gray-500 truncate">{toast.preview}</p>
+          </div>
+          <button
+            onClick={e => { e.preventDefault(); onClose(); }}
+            className="p-1 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+          >
+            <X size={14} className="text-gray-400" />
+          </button>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLoading } = useAuth();
+  const { isLoading, currentUser } = useAuth();
   const { conversations } = useConversations();
+  const [location] = useLocation();
   const totalUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
+  const [msgToast, setMsgToast] = useState<MsgToast | null>(null);
+  const prevConvsRef = useRef<typeof conversations>([]);
+
+  // Detect new messages in background conversations (not the one currently open)
+  useEffect(() => {
+    if (!currentUser) return;
+    const prev = prevConvsRef.current;
+    for (const conv of conversations) {
+      const prevConv = prev.find(c => c.id === conv.id);
+      // New unread appeared AND user is not currently viewing this conversation
+      if (
+        conv.unreadCount > 0 &&
+        (!prevConv || conv.unreadCount > prevConv.unreadCount) &&
+        !location.includes(conv.id)
+      ) {
+        const other = conv.participants.find(p => p.id !== currentUser.id) ?? conv.participants[0];
+        const senderName = conv.lastSenderId
+          ? (conv.participants.find(p => p.id === conv.lastSenderId)?.displayName ?? other.displayName)
+          : other.displayName;
+        setMsgToast({
+          convId: conv.id,
+          senderName,
+          preview: conv.lastMessage || '…',
+          senderId: conv.lastSenderId ?? other.id,
+        });
+        break; // Show only one toast at a time
+      }
+    }
+    prevConvsRef.current = conversations;
+  }, [conversations, location, currentUser]);
 
   if (isLoading) {
     return (
@@ -253,6 +328,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <BottomNav totalUnread={totalUnread} />
+
+      {/* In-app new message toast */}
+      <AnimatePresence>
+        {msgToast && (
+          <InAppMsgToast
+            key={`toast-${msgToast.convId}`}
+            toast={msgToast}
+            onClose={() => setMsgToast(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

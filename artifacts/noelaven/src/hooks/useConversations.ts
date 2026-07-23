@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { subscribeConversations, getOrCreateDirectConversation, getUserDoc, searchUsers as fsSearchUsers } from '@/lib/firestore';
+import {
+  subscribeConversations,
+  getOrCreateDirectConversation,
+  getUserDoc,
+  searchUsers as fsSearchUsers,
+  pinConversation as fsPin,
+  archiveConversation as fsArchive,
+  muteConversation as fsMute,
+} from '@/lib/firestore';
 import { mockConversations, mockUsers } from '@/lib/mockData';
 import type { Conversation, User } from '@/lib/mockData';
 
@@ -16,7 +24,6 @@ export function useConversations() {
   // Pre-load all users for the ComposeDrawer in Firebase mode
   useEffect(() => {
     if (!isFirebaseConfigured || !currentUser) return;
-    // Fetch all users with an empty search (returns up to 20), then filter self out
     fsSearchUsers('').then(users => setAllUsers(users.filter(u => u.id !== currentUser.id))).catch(console.error);
   }, [currentUser?.id]);
 
@@ -55,7 +62,6 @@ export function useConversations() {
     if (!isFirebaseConfigured) {
       return mockUsers.filter(u => u.id !== currentUser?.id);
     }
-    // Firebase mode: use pre-loaded allUsers; fall back to conversation participants
     if (allUsers.length > 0) return allUsers;
     const seen = new Set<string>();
     return conversations
@@ -67,5 +73,52 @@ export function useConversations() {
       });
   }, [allUsers, conversations, currentUser?.id]);
 
-  return { conversations, isLoading, openDirectConversation, getComposeUsers };
+  const pinConversation = useCallback(async (convId: string, pin: boolean) => {
+    if (!currentUser) return;
+    if (!isFirebaseConfigured) {
+      setConversations(prev => prev.map(c =>
+        c.id === convId ? { ...c, pinnedBy: pin
+          ? [...(c.pinnedBy ?? []), currentUser.id]
+          : (c.pinnedBy ?? []).filter(id => id !== currentUser.id) } : c
+      ));
+      return;
+    }
+    await fsPin(convId, currentUser.id, pin);
+  }, [currentUser]);
+
+  const archiveConversation = useCallback(async (convId: string, archive: boolean) => {
+    if (!currentUser) return;
+    if (!isFirebaseConfigured) {
+      setConversations(prev => prev.map(c =>
+        c.id === convId ? { ...c, archivedBy: archive
+          ? [...(c.archivedBy ?? []), currentUser.id]
+          : (c.archivedBy ?? []).filter(id => id !== currentUser.id) } : c
+      ));
+      return;
+    }
+    await fsArchive(convId, currentUser.id, archive);
+  }, [currentUser]);
+
+  const muteConversation = useCallback(async (convId: string, mute: boolean) => {
+    if (!currentUser) return;
+    if (!isFirebaseConfigured) {
+      setConversations(prev => prev.map(c =>
+        c.id === convId ? { ...c, mutedBy: mute
+          ? [...(c.mutedBy ?? []), currentUser.id]
+          : (c.mutedBy ?? []).filter(id => id !== currentUser.id) } : c
+      ));
+      return;
+    }
+    await fsMute(convId, currentUser.id, mute);
+  }, [currentUser]);
+
+  return {
+    conversations,
+    isLoading,
+    openDirectConversation,
+    getComposeUsers,
+    pinConversation,
+    archiveConversation,
+    muteConversation,
+  };
 }
