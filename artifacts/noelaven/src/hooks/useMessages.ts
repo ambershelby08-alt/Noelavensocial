@@ -15,6 +15,7 @@ import {
 import { mockConversations, mockMessages } from '@/lib/mockData';
 import type { Message, Conversation } from '@/lib/mockData';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
+import { cacheMessages, readCachedMessages } from '@/lib/msgCache';
 // Note: subscribeMessages uses orderBy(createdAt, desc)+limit so new messages
 // always fall inside the query window. fetchOlderMessages uses startAfter cursor.
 
@@ -54,7 +55,14 @@ export function useMessages(convId: string | undefined) {
       return;
     }
 
-    setIsLoading(true);
+    // ── Cache seed: show stored messages instantly, skip spinner if we have them ──
+    const cachedMsgs = currentUser ? readCachedMessages(currentUser.id, convId) : [];
+    if (cachedMsgs.length > 0) {
+      setMessages(cachedMsgs);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
     let unsubConv: (() => void) | undefined;
     let unsubMsgs: (() => void) | undefined;
     let unsubTyping: (() => void) | undefined;
@@ -66,6 +74,8 @@ export function useMessages(convId: string | undefined) {
     unsubMsgs = subscribeMessages(convId, (msgs, oldestDoc) => {
       setMessages(msgs);
       setIsLoading(false);
+      // Persist to cache so next open is instant
+      if (currentUser) cacheMessages(currentUser.id, convId, msgs);
       // oldestDoc is defined only when the page was full (≥50 msgs), meaning there may be older ones
       if (oldestDoc) {
         oldestDocRef.current = oldestDoc;

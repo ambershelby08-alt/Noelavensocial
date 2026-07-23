@@ -332,6 +332,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isDemoMode]);
 
   const signOut = useCallback(async () => {
+    // Evict per-user caches before clearing the session
+    if (currentUser) {
+      const { evictConversations } = await import('@/lib/msgCache');
+      evictConversations(currentUser.id);
+    }
     if (!isDemoMode && auth) {
       await firebaseSignOut(auth);
     }
@@ -341,7 +346,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPendingUid(null);
     // In demo mode, reload to reset all state
     if (isDemoMode) window.location.reload();
-  }, [isDemoMode]);
+  }, [isDemoMode, currentUser]);
 
   const updateUser = useCallback((updates: Partial<User>) => {
     setCurrentUser(prev => (prev ? { ...prev, ...updates } : prev));

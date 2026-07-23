@@ -12,6 +12,7 @@ import {
 } from '@/lib/firestore';
 import { mockConversations, mockUsers } from '@/lib/mockData';
 import type { Conversation, User } from '@/lib/mockData';
+import { cacheConversations, readCachedConversations } from '@/lib/msgCache';
 
 export function useConversations() {
   const { currentUser } = useAuth();
@@ -29,10 +30,21 @@ export function useConversations() {
 
   useEffect(() => {
     if (!isFirebaseConfigured || !currentUser) { setIsLoading(false); return; }
-    setIsLoading(true);
+
+    // ── Cache seed: render conversations immediately, hide spinner if we have them ──
+    const cached = readCachedConversations(currentUser.id);
+    if (cached && cached.length > 0) {
+      setConversations(cached);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
+    // ── Live subscription: patches in fresh data and refreshes the cache ──
     const unsub = subscribeConversations(currentUser.id, convs => {
       setConversations(convs);
       setIsLoading(false);
+      cacheConversations(currentUser.id, convs);
     });
     return unsub;
   }, [currentUser?.id]);
