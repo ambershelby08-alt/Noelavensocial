@@ -57,7 +57,12 @@ export function CoverPhotoEditor({
   currentCoverUrl, currentPosition, onSave, onClose,
 }: CoverPhotoEditorProps) {
   const [localUrl,    setLocalUrl]    = useState(currentCoverUrl);
-  const [pos,         setPos]         = useState<CoverPosition>(currentPosition);
+  // Ensure pos is always fully initialised even if caller passes a partial object.
+  const [pos, setPos] = useState<CoverPosition>({
+    x:    currentPosition?.x    ?? 50,
+    y:    currentPosition?.y    ?? 50,
+    zoom: currentPosition?.zoom ?? 1,
+  });
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [saving,      setSaving]      = useState(false);
   const [uploading,   setUploading]   = useState(false);
@@ -106,30 +111,37 @@ export function CoverPhotoEditor({
     ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     const { w, h } = containerSize();
 
-    if (ptrs.current.size === 1 && dragAnchor.current) {
-      const dx = e.clientX - dragAnchor.current.px;
-      const dy = e.clientY - dragAnchor.current.py;
-      setPos(p => ({
-        ...p,
-        x: clamp(dragAnchor.current!.posX - (dx / w) * 100, 0, 100),
-        y: clamp(dragAnchor.current!.posY - (dy / h) * 100, 0, 100),
+    if (ptrs.current.size === 1) {
+      // Snapshot the ref NOW — the setPos updater runs later and the ref may be
+      // null by then (onPointerUp clears it between the guard check and the call).
+      const anchor = dragAnchor.current;
+      if (!anchor) return;
+      const dx = e.clientX - anchor.px;
+      const dy = e.clientY - anchor.py;
+      // Capture anchor values as plain numbers so the updater never touches the ref.
+      const { posX, posY } = anchor;
+      setPos(prev => ({
+        ...prev,
+        x: clamp(posX - (dx / w) * 100, 0, 100),
+        y: clamp(posY - (dy / h) * 100, 0, 100),
       }));
       if (!changed) setChanged(true);
     }
 
-    if (ptrs.current.size === 2 && pinchAnchor.current) {
-      const [a, b] = Array.from(ptrs.current.values()) as [Pt, Pt];
+    if (ptrs.current.size === 2) {
+      // pinchAnchor is also snapshotted immediately for the same reason.
       const anc = pinchAnchor.current;
+      if (!anc) return;
+      const [a, b] = Array.from(ptrs.current.values()) as [Pt, Pt];
       const newDist   = ptDist(a, b);
       const newCenter = ptMid(a, b);
       const newZoom   = clamp(anc.zoom * (newDist / anc.dist), 1, 5);
       const cdx = (newCenter.x - anc.center.x) / w * 100;
       const cdy = (newCenter.y - anc.center.y) / h * 100;
-      setPos(p => ({
-        x:    clamp(anc.posX - cdx, 0, 100),
-        y:    clamp(anc.posY - cdy, 0, 100),
-        zoom: newZoom,
-      }));
+      // All values plain numbers — no ref read inside the updater.
+      const nx = clamp(anc.posX - cdx, 0, 100);
+      const ny = clamp(anc.posY - cdy, 0, 100);
+      setPos(() => ({ x: nx, y: ny, zoom: newZoom }));
       if (!changed) setChanged(true);
     }
   }, [containerSize, changed]);
