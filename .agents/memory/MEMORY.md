@@ -6,3 +6,4 @@
 - [Noelaven Daily Spark Architecture](noelaven-daily-spark.md) — completion in localStorage, streak logic, community reveal, audience per-post; Firestore needs composite index (sparkPrompt+createdAt).
 - [Noelaven story editor](noelaven-story-editor.md) — full-screen editor; EditorLayer types canonical in editor/types.ts; toolbar extended via TOOLBAR_TABS array; z-[90].
 - [Noelaven cover photo](noelaven-cover-photo.md) — coverUrl + coverPosition ({x,y} %) in Firestore; CSS object-position at render; upload only on Save; z-[60] sheet.
+- [Noelaven UserCacheContext](noelaven-user-cache.md) — real-time deduped avatar cache; use UserAvatar (not GradientAvatar) whenever you have a non-currentUser userId.

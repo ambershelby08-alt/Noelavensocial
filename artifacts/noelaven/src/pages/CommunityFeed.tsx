@@ -11,6 +11,7 @@ import { mockCommunities, mockPosts, mockUsers } from '@/lib/mockData';
 import type { Community, Post, User } from '@/lib/mockData';
 import { PostCard } from '@/pages/Home';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -68,7 +69,7 @@ function QuickComposer({
   return (
     <div className="mx-4 mb-4 bg-white rounded-[22px] border border-black/[0.05] shadow-sm overflow-hidden">
       <div className="flex gap-3 p-4">
-        <GradientAvatar name={user.displayName} size={40} className="flex-shrink-0" />
+        <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={40} className="flex-shrink-0" />
         <div className="flex-1">
           <textarea
             value={text}
@@ -131,7 +132,7 @@ function ModCard({ userId, from, to }: { userId: string; from: string; to: strin
   return (
     <Link href={user ? `/profile/${user.id}` : '#'}>
       <div className="flex items-center gap-3 py-2.5 cursor-pointer group">
-        <GradientAvatar name={name} size={44} />
+        <UserAvatar userId={userId} fallbackName={name} fallbackSrc={user?.avatarUrl || undefined} size={44} />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-[14px] text-gray-900 group-hover:text-purple-600 transition-colors truncate">{name}</p>
           <p className="text-[12px] text-gray-400 truncate">@{user?.handle ?? userId}</p>
@@ -155,7 +156,7 @@ function MemberCard({ user, currentUserId }: { user: User; currentUserId?: strin
   return (
     <div className="flex items-center gap-3 py-3">
       <Link href={`/profile/${user.id}`}>
-        <GradientAvatar name={user.displayName} size={46} className="cursor-pointer hover:scale-105 transition-transform flex-shrink-0" />
+        <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={46} className="cursor-pointer hover:scale-105 transition-transform flex-shrink-0" />
       </Link>
       <div className="flex-1 min-w-0">
         <Link href={`/profile/${user.id}`}>

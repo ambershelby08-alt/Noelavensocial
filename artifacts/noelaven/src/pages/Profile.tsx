@@ -16,6 +16,7 @@ import { useCommunities } from '@/hooks/useCommunities';
 import { PostCard } from '@/pages/Home';
 import { PhotoViewer } from '@/components/ui/PhotoViewer';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
 import { isFirebaseConfigured } from '@/lib/firebase';
@@ -178,7 +179,7 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
                 className="flex items-center gap-3 py-2.5 px-1"
               >
                 <Link href={`/profile/${u.id}`} onClick={onClose}>
-                  <GradientAvatar name={u.displayName} size={46} className="cursor-pointer hover:scale-105 transition-transform flex-shrink-0" />
+                  <UserAvatar userId={u.id} fallbackName={u.displayName} fallbackSrc={u.avatarUrl || undefined} size={46} className="cursor-pointer hover:scale-105 transition-transform flex-shrink-0" />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link href={`/profile/${u.id}`} onClick={onClose}>
@@ -541,7 +542,7 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
       {/* Response */}
       <div className="px-4 py-3.5">
         <div className="flex items-start gap-3">
-          <GradientAvatar name={user.displayName} src={user.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
+          <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
           <p className="text-[14.5px] text-gray-800 leading-relaxed flex-1">{spark.response}</p>
         </div>
         {spark.imageUrl && (

@@ -3,6 +3,7 @@ import { Search, TrendingUp, Users, Zap, X, UserPlus, UserCheck } from 'lucide-r
 import { mockUsers, mockCommunities } from '@/lib/mockData';
 import { Link } from 'wouter';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +25,7 @@ function UserCard({ user, index }: { user: typeof mockUsers[number]; index: numb
     >
       <Link href={`/profile/${user.id}`}>
         <div className="mb-3 cursor-pointer hover:opacity-90 transition-opacity">
-          <GradientAvatar name={user.displayName} size={64} />
+          <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={64} />
         </div>
       </Link>
       <Link href={`/profile/${user.id}`}>
@@ -151,7 +152,7 @@ function SearchResults({ query }: { query: string }) {
                 className="flex items-center gap-3 p-3 rounded-[18px] bg-white border border-black/[0.05] shadow-sm"
               >
                 <Link href={`/profile/${user.id}`} className="flex-shrink-0">
-                  <GradientAvatar name={user.displayName} size={48} />
+                  <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={48} />
                 </Link>
                 <Link href={`/profile/${user.id}`} className="flex-1 min-w-0">
                   <p className="font-bold text-[14.5px] text-gray-900 truncate">{user.displayName}</p>

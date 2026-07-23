@@ -15,6 +15,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MoreVertical, Trash2, Download, AlertTriangle } from 'lucide-react';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { filterCSS } from '@/components/stories/editor/filters';
 import type { StoryGroup, Story } from '@/lib/stories';
 import type { EditorLayer, TextLayer, CropData } from '@/components/stories/editor/types';
@@ -353,7 +354,7 @@ export function StoryViewer({
 
         {/* Author row */}
         <div className="flex items-center gap-2.5 pointer-events-auto">
-          <GradientAvatar name={group.authorName} src={group.authorAvatarUrl || undefined} size={36} />
+          <UserAvatar userId={group.authorId} fallbackName={group.authorName} fallbackSrc={group.authorAvatarUrl || undefined} size={36} />
           <div className="flex-1 min-w-0">
             <p className="text-white font-semibold text-sm leading-tight truncate">{group.authorName}</p>
             <p className="text-white/60 text-xs">{relativeTime(story.createdAt)}</p>

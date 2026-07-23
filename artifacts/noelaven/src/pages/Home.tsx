@@ -35,6 +35,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import { Link } from 'wouter';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PhotoViewer } from '@/components/ui/PhotoViewer';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -238,7 +239,7 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                 transition={{ delay: Math.min(i * 0.04, 0.3) }}
                 className="flex gap-3"
               >
-                <GradientAvatar name={c.author.displayName} src={c.author.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
+                <UserAvatar userId={c.authorId} fallbackName={c.author.displayName} fallbackSrc={c.author.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <div className="bg-gray-50 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                     <p className="font-semibold text-[13px] text-gray-900 mb-0.5">{c.author.displayName}</p>
@@ -1222,7 +1223,7 @@ function PostMenu({
         {step === 'main' && (
           <>
             <div className="flex items-center gap-3 px-5 pb-3">
-              <GradientAvatar name={post.author.displayName} src={post.author.avatarUrl || undefined} size={38} />
+              <UserAvatar userId={post.authorId} fallbackName={post.author.displayName} fallbackSrc={post.author.avatarUrl || undefined} size={38} />
               <div className="min-w-0">
                 <p className="font-bold text-[14px] text-gray-900 truncate">{post.author.displayName}</p>
                 <p className="text-[12px] text-gray-400 line-clamp-1">{post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}</p>
@@ -1547,7 +1548,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onLike, onS
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
           <Link href={`/profile/${post.authorId}`}>
-            <GradientAvatar name={post.author.displayName} src={post.author.avatarUrl || undefined} size={42} className="cursor-pointer hover:scale-105 transition-transform" />
+            <UserAvatar userId={post.authorId} fallbackName={post.author.displayName} fallbackSrc={post.author.avatarUrl || undefined} size={42} className="cursor-pointer hover:scale-105 transition-transform" />
           </Link>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">

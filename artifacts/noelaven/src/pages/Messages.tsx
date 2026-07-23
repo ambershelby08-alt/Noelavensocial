@@ -8,6 +8,7 @@ import { mockUsers } from '@/lib/mockData';
 import type { Conversation, User } from '@/lib/mockData';
 import { useConversations } from '@/hooks/useConversations';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -65,7 +66,7 @@ function ActiveUsersRow() {
                 className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0"
               >
                 <div className="relative">
-                  <GradientAvatar name={user.displayName} size={52} />
+                  <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={52} />
                   <div
                     className={cn(
                       'absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white',
@@ -97,7 +98,7 @@ function GroupAvatar({ participants }: { participants: User[] }) {
           className="absolute border-[2.5px] border-white rounded-full"
           style={i === 0 ? { bottom: 0, left: 0 } : { top: 0, right: 0 }}
         >
-          <GradientAvatar name={u.displayName} size={34} />
+          <UserAvatar userId={u.id} fallbackName={u.displayName} fallbackSrc={u.avatarUrl || undefined} size={34} />
         </div>
       ))}
     </div>
@@ -125,7 +126,7 @@ function ConvItem({ conv }: { conv: Conversation }) {
             <GroupAvatar participants={conv.participants} />
           ) : (
             <>
-              <GradientAvatar name={other.displayName} size={52} />
+              <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={(other as any).avatarUrl || undefined} size={52} />
               {isOnline && (
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
               )}
@@ -226,7 +227,7 @@ function ComposeDrawer({ onClose, openDirect, composeUsers }: {
               className="w-full flex items-center gap-3 py-3 hover:bg-white rounded-xl px-2 transition-colors"
             >
               <div className="relative">
-                <GradientAvatar name={user.displayName} size={46} />
+                <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={46} />
                 {onlineStatus(user.id) === 'online' && (
                   <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
                 )}

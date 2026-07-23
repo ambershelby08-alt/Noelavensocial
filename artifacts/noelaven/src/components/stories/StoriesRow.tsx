@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { StoryGroup } from '@/lib/stories';
 
 interface StoriesRowProps {
@@ -85,9 +86,10 @@ export function StoriesRow({ groups, onAddStory, onViewGroup }: StoriesRowProps)
                 }}
               >
                 <div className="p-[2px] bg-[#FDF9F6] rounded-full">
-                  <GradientAvatar
-                    name={group.authorName}
-                    src={group.authorAvatarUrl || undefined}
+                  <UserAvatar
+                    userId={group.authorId}
+                    fallbackName={group.authorName}
+                    fallbackSrc={group.authorAvatarUrl || undefined}
                     size={50}
                   />
                 </div>

@@ -11,6 +11,7 @@ import type { Message, User } from '@/lib/mockData';
 import { useMessages } from '@/hooks/useMessages';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
@@ -116,7 +117,7 @@ function TypingIndicator({ user }: { user: User }) {
       exit={{ opacity: 0, y: 4, scale: 0.95 }}
       className="flex items-end gap-2 px-4 mb-1"
     >
-      <GradientAvatar name={user.displayName} size={28} className="flex-shrink-0 mb-0.5" />
+      <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={(user as any).avatarUrl || undefined} size={28} className="flex-shrink-0 mb-0.5" />
       <div className="px-4 py-3 bg-white rounded-[20px] rounded-bl-sm border border-black/[0.05] shadow-sm">
         <div className="flex gap-1.5 items-center h-4">
           {[0, 1, 2].map(i => (
@@ -308,7 +309,7 @@ function MessageBubble({
             {readByOthers.slice(0, 3).map(rid => {
               const reader = participants.find(p => p.id === rid);
               if (!reader) return null;
-              return <GradientAvatar key={rid} name={reader.displayName} size={14} />;
+              return <UserAvatar key={rid} userId={reader.id} fallbackName={reader.displayName} fallbackSrc={(reader as any).avatarUrl || undefined} size={14} />;
             })}
           </div>
           <span className="text-[10px] text-purple-400 font-semibold">Read</span>
@@ -637,12 +638,12 @@ export default function Chat() {
                   className="absolute border-2 border-white rounded-full"
                   style={i === 0 ? { bottom: 0, left: 0 } : { top: 0, right: 0 }}
                 >
-                  <GradientAvatar name={p.displayName} size={28} />
+                  <UserAvatar userId={p.id} fallbackName={p.displayName} fallbackSrc={(p as any).avatarUrl || undefined} size={28} />
                 </div>
               ))}
             </div>
           ) : (
-            <GradientAvatar name={other.displayName} size={40} />
+            <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={(other as any).avatarUrl || undefined} size={40} />
           )}
           <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
         </div>
@@ -695,7 +696,7 @@ export default function Chat() {
                 {/* Avatar for others (shown once per group, at top) */}
                 {!isMe && (
                   <div className="flex-shrink-0 self-end mb-6">
-                    <GradientAvatar name={senderName} size={30} />
+                    <UserAvatar userId={group.senderId} fallbackName={senderName} fallbackSrc={sender ? (sender as any).avatarUrl || undefined : undefined} size={30} />
                   </div>
                 )}
 

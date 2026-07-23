@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Link } from 'wouter';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
-import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 export default function Notifications() {
   const [filter, setFilter] = useState('All');
@@ -76,7 +76,7 @@ export default function Notifications() {
                 </div>
               ) : (
                 <Link href={`/profile/${notif.actorId}`}>
-                  <GradientAvatar name={notif.actor.displayName} size={48} />
+                  <UserAvatar userId={notif.actorId} fallbackName={notif.actor.displayName} fallbackSrc={notif.actor.avatarUrl || undefined} size={48} />
                 </Link>
               )}
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-background rounded-full flex items-center justify-center border border-border shadow-sm">
