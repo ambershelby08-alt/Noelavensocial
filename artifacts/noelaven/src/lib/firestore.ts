@@ -509,6 +509,140 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
   await Promise.all(snap.docs.map(d => updateDoc(d.ref, { read: true })));
 }
 
+// ─── Comments ─────────────────────────────────────────────────────────────────
+
+/** Raw comment shape returned from Firestore (no `liked` field — tracked locally). */
+export type RawComment = {
+  id: string;
+  authorId: string;
+  author: User;
+  text: string;
+  likes: number;
+  replyCount: number;
+  createdAt: Date;
+};
+
+export function subscribeComments(
+  postId: string,
+  onData: (comments: RawComment[]) => void
+): Unsubscribe {
+  if (!db) return () => {};
+  const q = query(
+    collection(db, 'posts', postId, 'comments'),
+    orderBy('createdAt', 'asc'),
+    limit(50)
+  );
+  return onSnapshot(q, snap => {
+    onData(
+      snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          authorId: data.authorId,
+          author: {
+            id: data.authorId,
+            displayName: data.authorName ?? '',
+            handle: data.authorHandle ?? '',
+            bio: '', avatarUrl: data.authorAvatar ?? '', coverUrl: '',
+            interests: [], followers: 0, following: 0,
+            postCount: 0, badges: [], joinedAt: new Date(),
+          },
+          text: data.text ?? '',
+          likes: data.likes ?? 0,
+          replyCount: data.replyCount ?? 0,
+          createdAt: ts(data.createdAt),
+        } satisfies RawComment;
+      })
+    );
+  });
+}
+
+export async function addComment(
+  postId: string,
+  author: User,
+  text: string
+): Promise<string> {
+  if (!db) throw new Error('Firestore not available');
+  const ref = await addDoc(collection(db, 'posts', postId, 'comments'), {
+    authorId: author.id,
+    authorName: author.displayName,
+    authorHandle: author.handle,
+    authorAvatar: author.avatarUrl ?? '',
+    text,
+    likes: 0,
+    replyCount: 0,
+    createdAt: serverTimestamp(),
+  });
+  await updateDoc(doc(db, 'posts', postId), { comments: increment(1) });
+  return ref.id;
+}
+
+export async function toggleCommentLike(
+  postId: string,
+  commentId: string,
+  userId: string,
+  currentlyLiked: boolean
+): Promise<void> {
+  if (!db) return;
+  const commentRef = doc(db, 'posts', postId, 'comments', commentId);
+  const likeRef    = doc(db, 'users', userId, 'liked_comments', commentId);
+  if (currentlyLiked) {
+    await Promise.all([updateDoc(commentRef, { likes: increment(-1) }), deleteDoc(likeRef)]);
+  } else {
+    await Promise.all([updateDoc(commentRef, { likes: increment(1) }), setDoc(likeRef, { likedAt: serverTimestamp() })]);
+  }
+}
+
+export async function addReply(
+  postId: string,
+  commentId: string,
+  author: User,
+  text: string
+): Promise<string> {
+  if (!db) throw new Error('Firestore not available');
+  const ref = await addDoc(
+    collection(db, 'posts', postId, 'comments', commentId, 'replies'),
+    {
+      authorId: author.id,
+      authorName: author.displayName,
+      authorHandle: author.handle,
+      authorAvatar: author.avatarUrl ?? '',
+      text,
+      likes: 0,
+      createdAt: serverTimestamp(),
+    }
+  );
+  await updateDoc(doc(db, 'posts', postId, 'comments', commentId), { replyCount: increment(1) });
+  return ref.id;
+}
+
+// ─── Notifications (write) ────────────────────────────────────────────────────
+
+/**
+ * Write a notification to `userId` (the recipient).
+ * Silently no-ops when actor === recipient so users don't notify themselves.
+ */
+export async function writeNotification(
+  userId: string,
+  type: 'like' | 'comment' | 'reply' | 'like_comment' | 'follow',
+  actor: User,
+  opts: { postId?: string; commentId?: string; message: string }
+): Promise<void> {
+  if (!db || userId === actor.id) return;
+  await addDoc(collection(db, 'notifications'), {
+    userId,
+    type,
+    actorId: actor.id,
+    actorName: actor.displayName,
+    actorHandle: actor.handle,
+    postId: opts.postId ?? null,
+    commentId: opts.commentId ?? null,
+    message: opts.message,
+    read: false,
+    createdAt: serverTimestamp(),
+  });
+}
+
 // ─── Seed initial communities ─────────────────────────────────────────────────
 // Runs once when Firebase is first configured; no-ops if data already exists.
 

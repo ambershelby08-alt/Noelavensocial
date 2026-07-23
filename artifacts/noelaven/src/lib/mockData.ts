@@ -73,7 +73,7 @@ export interface Conversation {
 
 export interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'community_invite' | 'daily_spark';
+  type: 'like' | 'comment' | 'reply' | 'like_comment' | 'follow' | 'community_invite' | 'daily_spark';
   actorId: string;
   actor: User;
   postId?: string;

@@ -13,8 +13,16 @@ import { dailySparks, mockUsers } from '@/lib/mockData';
 import type { Post, User } from '@/lib/mockData';
 import { useFeed } from '@/hooks/useFeed';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
-import { reportPost as fsReportPost, unfollowUser as fsUnfollowUser } from '@/lib/firestore';
+import {
+  reportPost as fsReportPost, unfollowUser as fsUnfollowUser,
+  subscribeComments as subscribePostComments,
+  addComment as fsAddComment,
+  toggleCommentLike as fsToggleCommentLike,
+  addReply as fsAddReply,
+  writeNotification as fsWriteNotification,
+} from '@/lib/firestore';
 import { isFirebaseConfigured } from '@/lib/firebase';
+import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 import { Link } from 'wouter';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
@@ -32,17 +40,24 @@ function formatRelativeTime(date: Date) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-const MOCK_COMMENTS: Record<string, { author: User; text: string; ts: Date }[]> = {
-  default: [
-    { author: mockUsers[1], text: 'This is amazing! 🔥 Love the vibes.', ts: new Date(Date.now() - 1800000) },
-    { author: mockUsers[3], text: 'Totally agree, so well done!', ts: new Date(Date.now() - 3600000) },
-    { author: mockUsers[4], text: 'Wow, you always inspire me ✨', ts: new Date(Date.now() - 7200000) },
-  ],
+// ─── Comment types ────────────────────────────────────────────────────────────
+
+type CommentData = {
+  id: string;
+  authorId: string;
+  author: User;
+  text: string;
+  likes: number;
+  liked: boolean;
+  replyCount: number;
+  createdAt: Date;
 };
 
-function getComments(postId: string) {
-  return MOCK_COMMENTS[postId] ?? MOCK_COMMENTS.default;
-}
+const DEMO_COMMENTS: CommentData[] = [
+  { id: 'c1', authorId: mockUsers[1].id, author: mockUsers[1], text: 'This is amazing! 🔥 Love the vibes.', likes: 3, liked: false, replyCount: 1, createdAt: new Date(Date.now() - 1800000) },
+  { id: 'c2', authorId: mockUsers[3].id, author: mockUsers[3], text: 'Totally agree, so well done!', likes: 1, liked: false, replyCount: 0, createdAt: new Date(Date.now() - 3600000) },
+  { id: 'c3', authorId: mockUsers[4].id, author: mockUsers[4], text: 'Wow, you always inspire me ✨', likes: 5, liked: false, replyCount: 2, createdAt: new Date(Date.now() - 7200000) },
+];
 
 // ─── Overlay backdrop ─────────────────────────────────────────────────────────
 
@@ -69,19 +84,96 @@ interface CommentsDrawerProps {
 function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) {
   const { currentUser } = useAuth();
   const [text, setText] = useState('');
-  const [comments, setComments] = useState(getComments(post.id));
+  const [comments, setComments] = useState<CommentData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [replyingTo, setReplyingTo] = useState<CommentData | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Subscribe to real Firestore comments (or use demo data)
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setComments(DEMO_COMMENTS);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const unsub = subscribePostComments(post.id, raw => {
+      setComments(prev =>
+        raw.map(c => ({ ...c, liked: prev.find(p => p.id === c.id)?.liked ?? false }))
+      );
+      setLoading(false);
+    });
+    return unsub;
+  }, [post.id]);
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 350);
   }, []);
 
-  function submit() {
+  async function submit() {
     if (!text.trim() || !currentUser) return;
-    const newComment = { author: currentUser as unknown as User, text: text.trim(), ts: new Date() };
-    setComments(prev => [newComment, ...prev]);
-    onCommentAdded(post.id);
+    const body = text.trim();
+    const target = replyingTo;
     setText('');
+    setReplyingTo(null);
+
+    if (target) {
+      // ── Reply ──────────────────────────────────────────────────────────
+      setComments(prev => prev.map(c => c.id === target.id ? { ...c, replyCount: c.replyCount + 1 } : c));
+      if (isFirebaseConfigured) {
+        fsAddReply(post.id, target.id, currentUser as unknown as User, body).catch(console.error);
+        if (target.authorId !== currentUser.id) {
+          fsWriteNotification(target.authorId, 'reply', currentUser as unknown as User, {
+            postId: post.id,
+            message: `${currentUser.displayName} replied to your comment`,
+          }).catch(console.error);
+        }
+      } else {
+        setComments(prev => [...prev, {
+          id: `r-${Date.now()}`, authorId: currentUser.id,
+          author: currentUser as unknown as User,
+          text: `@${target.author.handle} ${body}`,
+          likes: 0, liked: false, replyCount: 0, createdAt: new Date(),
+        }]);
+      }
+    } else {
+      // ── Top-level comment ──────────────────────────────────────────────
+      onCommentAdded(post.id);
+      if (isFirebaseConfigured) {
+        fsAddComment(post.id, currentUser as unknown as User, body).catch(console.error);
+        if (post.authorId !== currentUser.id) {
+          fsWriteNotification(post.authorId, 'comment', currentUser as unknown as User, {
+            postId: post.id,
+            message: `${currentUser.displayName} commented: "${body.slice(0, 50)}${body.length > 50 ? '…' : ''}"`,
+          }).catch(console.error);
+        }
+      } else {
+        setComments(prev => [...prev, {
+          id: `c-${Date.now()}`, authorId: currentUser.id,
+          author: currentUser as unknown as User,
+          text: body, likes: 0, liked: false, replyCount: 0, createdAt: new Date(),
+        }]);
+      }
+    }
+  }
+
+  function handleLikeComment(commentId: string) {
+    if (!currentUser) return;
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+    const wasLiked = comment.liked;
+    setComments(prev => prev.map(c =>
+      c.id === commentId ? { ...c, liked: !wasLiked, likes: wasLiked ? c.likes - 1 : c.likes + 1 } : c
+    ));
+    if (isFirebaseConfigured) {
+      fsToggleCommentLike(post.id, commentId, currentUser.id, wasLiked).catch(console.error);
+      if (!wasLiked && comment.authorId !== currentUser.id) {
+        fsWriteNotification(comment.authorId, 'like_comment', currentUser as unknown as User, {
+          postId: post.id,
+          message: `${currentUser.displayName} liked your comment`,
+        }).catch(console.error);
+      }
+    }
   }
 
   return (
@@ -102,53 +194,92 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
         {/* Header */}
         <div className="flex items-center justify-between px-5 pb-3 pt-1 border-b border-gray-100 flex-shrink-0">
           <span className="font-bold text-gray-900 text-[15px]">
-            Comments <span className="text-gray-400 font-normal">({comments.length + post.comments})</span>
+            Comments{!loading && <span className="text-gray-400 font-normal ml-1">({comments.length})</span>}
           </span>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
             <X size={18} className="text-gray-500" />
           </button>
         </div>
 
-        {/* Comments list */}
+        {/* Body */}
         {post.commentsDisabled ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-10">
             <MessageCircleOff size={36} className="text-gray-200" />
             <p className="text-[14px] font-semibold text-gray-400">Comments are turned off</p>
             <p className="text-[12px] text-gray-300 text-center leading-relaxed">The author has disabled comments on this post.</p>
           </div>
+        ) : loading ? (
+          <div className="flex-1 flex items-center justify-center py-10">
+            <div className="w-6 h-6 border-2 border-gray-200 border-t-purple-400 rounded-full animate-spin" />
+          </div>
         ) : (
           <div className="overflow-y-auto flex-1 px-5 py-3 space-y-4">
-            {comments.map((c, i) => (
+            {comments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-2">
+                <MessageCircle size={32} className="text-gray-200" />
+                <p className="text-[14px] text-gray-400 font-medium">No comments yet</p>
+                <p className="text-[12px] text-gray-300">Be the first to share your thoughts!</p>
+              </div>
+            ) : comments.map((c, i) => (
               <motion.div
-                key={i}
+                key={c.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
+                transition={{ delay: Math.min(i * 0.04, 0.3) }}
                 className="flex gap-3"
               >
-                <GradientAvatar name={c.author.displayName} size={34} className="flex-shrink-0 mt-0.5" />
+                <GradientAvatar name={c.author.displayName} src={c.author.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <div className="bg-gray-50 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                     <p className="font-semibold text-[13px] text-gray-900 mb-0.5">{c.author.displayName}</p>
                     <p className="text-[13.5px] text-gray-700 leading-relaxed">{c.text}</p>
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 px-1">
-                    <span className="text-[11px] text-gray-400">{formatRelativeTime(c.ts)}</span>
-                    <button className="text-[11px] text-gray-400 font-semibold hover:text-pink-500 transition-colors">Like</button>
-                    <button className="text-[11px] text-gray-400 font-semibold hover:text-purple-500 transition-colors">Reply</button>
+                    <span className="text-[11px] text-gray-400">{formatRelativeTime(c.createdAt)}</span>
+                    <motion.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={() => handleLikeComment(c.id)}
+                      className={cn(
+                        'flex items-center gap-1 text-[11px] font-semibold transition-colors',
+                        c.liked ? 'text-pink-500' : 'text-gray-400 hover:text-pink-400'
+                      )}
+                    >
+                      <Heart size={11} className={cn(c.liked && 'fill-pink-500')} />
+                      {c.likes > 0 && <span>{c.likes}</span>}
+                      <span>Like</span>
+                    </motion.button>
+                    <button
+                      onClick={() => { setReplyingTo(c); setTimeout(() => inputRef.current?.focus(), 100); }}
+                      className="text-[11px] text-gray-400 font-semibold hover:text-purple-500 transition-colors"
+                    >
+                      Reply
+                    </button>
+                    {c.replyCount > 0 && (
+                      <span className="text-[11px] text-purple-400 font-medium">
+                        {c.replyCount} {c.replyCount === 1 ? 'reply' : 'replies'}
+                      </span>
+                    )}
                   </div>
                 </div>
               </motion.div>
             ))}
-            <button className="w-full text-center text-[13px] text-purple-500 font-semibold py-2 hover:text-purple-700 transition-colors">
-              View {post.comments} more comments
-            </button>
           </div>
         )}
 
         {/* Input — hidden when comments are disabled */}
         {!post.commentsDisabled && (
           <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0 pb-safe">
+            {replyingTo && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <MessageCircle size={12} className="text-purple-400 flex-shrink-0" />
+                <span className="flex-1 text-[12px] text-purple-500 font-semibold truncate">
+                  Replying to @{replyingTo.author.handle}
+                </span>
+                <button onClick={() => setReplyingTo(null)} className="p-0.5 rounded-full hover:bg-gray-100">
+                  <X size={13} className="text-gray-400" />
+                </button>
+              </div>
+            )}
             <div className="flex items-end gap-2.5">
               {currentUser && <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={36} className="flex-shrink-0 mb-0.5" />}
               <div className="flex-1 bg-gray-50 rounded-2xl px-3.5 py-2.5 flex items-end gap-2">
@@ -157,7 +288,7 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                   value={text}
                   onChange={e => setText(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
-                  placeholder="Add a kind comment… 💛"
+                  placeholder={replyingTo ? `Reply to ${replyingTo.author.displayName}…` : 'Add a kind comment… 💛'}
                   rows={1}
                   className="flex-1 bg-transparent resize-none outline-none text-[14px] text-gray-800 placeholder:text-gray-400 max-h-24"
                   style={{ lineHeight: '1.5' }}
@@ -1292,6 +1423,7 @@ export default function Home() {
   const firstName = currentUser?.displayName.split(' ')[0] ?? 'there';
 
   const { posts, addPost, toggleLike, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
+  const { unreadCount } = useNotifications();
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
   const [sparkOpen, setSparkOpen] = useState(false);
@@ -1400,7 +1532,11 @@ export default function Home() {
             <Link href="/notifications">
               <button className="relative w-10 h-10 rounded-full bg-white shadow-sm border border-black/[0.06] flex items-center justify-center">
                 <Bell size={18} className="text-gray-600" />
-                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-pink-500 ring-2 ring-white" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-pink-500 ring-2 ring-white flex items-center justify-center text-[9px] font-bold text-white px-1">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
             </Link>
             {currentUser && (
@@ -1428,7 +1564,15 @@ export default function Home() {
             index={index}
             onOpenComments={p => setCommentsPost(p)}
             onOpenShare={p => setSharePost(p)}
-            onLike={(id, liked) => toggleLike(id, !liked).catch(console.error)}
+            onLike={(id, liked) => {
+              toggleLike(id, !liked).catch(console.error);
+              if (!liked && post.authorId !== currentUser?.id && isFirebaseConfigured && currentUser) {
+                fsWriteNotification(post.authorId, 'like', currentUser as unknown as User, {
+                  postId: id,
+                  message: `${currentUser.displayName} liked your post`,
+                }).catch(console.error);
+              }
+            }}
             onSave={(id, saved) => toggleSave(id, !saved).catch(console.error)}
             onOpenMenu={p => setMenuPost(p)}
             onOpenPhoto={src => setPhotoViewer({ src })}
