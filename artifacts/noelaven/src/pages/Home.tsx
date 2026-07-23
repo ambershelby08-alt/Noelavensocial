@@ -375,7 +375,7 @@ function ShareSheet({ post, onClose, onShared }: ShareSheetProps) {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] shadow-2xl"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl"
       >
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
@@ -405,7 +405,7 @@ function ShareSheet({ post, onClose, onShared }: ShareSheetProps) {
           ))}
         </div>
 
-        <div className="px-5 pb-6 pb-safe">
+        <div className="px-5" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
           <button
             onClick={onClose}
             className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px] hover:bg-gray-200 transition-colors"
@@ -473,7 +473,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: '90vh' }}
       >
         {/* Hidden image input */}
@@ -548,7 +548,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
         </div>
 
         {/* ── Sticky footer: photo button + submit ───────────────────────── */}
-        <div className="flex-shrink-0 px-5 pt-3 pb-5 pb-safe border-t border-gray-100">
+        <div className="flex-shrink-0 px-5 pt-3 border-t border-gray-100" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}>
           {/* Photo row — full-width tap target */}
           <motion.button
             whileTap={{ scale: 0.98 }}
@@ -984,7 +984,7 @@ function PostMenu({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] shadow-2xl"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl"
       >
         <div className="flex justify-center pt-3 pb-2">
           <div className="w-10 h-1 rounded-full bg-gray-200" />
@@ -1167,7 +1167,7 @@ function EditPostSheet({ post, onSave, onClose }: EditPostSheetProps) {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: '90vh' }}
       >
         <input
@@ -1245,7 +1245,7 @@ function EditPostSheet({ post, onSave, onClose }: EditPostSheetProps) {
         </div>
 
         {/* Photo row footer */}
-        <div className="flex-shrink-0 px-5 pt-2 pb-5 pb-safe border-t border-gray-100">
+        <div className="flex-shrink-0 px-5 pt-2 border-t border-gray-100" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}>
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => isCloudinaryConfigured && imageInputRef.current?.click()}
