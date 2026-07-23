@@ -8,7 +8,8 @@ export const isCloudinaryConfigured = Boolean(
   import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
 );
 
-export type UploadFolder = 'avatars' | 'posts' | 'covers';
+export type UploadFolder = 'avatars' | 'posts' | 'covers' | 'stories';
+export type MediaType = 'image' | 'video';
 
 /**
  * Upload a single File to Cloudinary and return its secure_url.

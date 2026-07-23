@@ -13,6 +13,10 @@ import { dailySparks, mockUsers } from '@/lib/mockData';
 import type { Post, User } from '@/lib/mockData';
 import { useFeed } from '@/hooks/useFeed';
 import { useDailySpark } from '@/hooks/useDailySpark';
+import { useStories } from '@/hooks/useStories';
+import { StoriesRow } from '@/components/stories/StoriesRow';
+import { StoryCreator } from '@/components/stories/StoryCreator';
+import { StoryViewer } from '@/components/stories/StoryViewer';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import {
   reportPost as fsReportPost, unfollowUser as fsUnfollowUser,
@@ -650,48 +654,6 @@ function Toast({
   );
 }
 
-// ─── Stories ─────────────────────────────────────────────────────────────────
-
-function StoriesRow() {
-  const { currentUser } = useAuth();
-  const storyUsers = mockUsers.filter(u => u.id !== currentUser?.id).slice(0, 6);
-
-  return (
-    <div className="px-4 mb-5">
-      <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-none">
-        {currentUser && (
-          <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-            <div className="relative">
-              <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={56} />
-              <div
-                className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white"
-                style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB)' }}
-              >
-                <span className="text-white text-[9px] font-black leading-none">+</span>
-              </div>
-            </div>
-            <span className="text-[10px] text-gray-400 font-medium">Your story</span>
-          </div>
-        )}
-        {storyUsers.map((user) => {
-          const [from, to] = getGradientPair(user.displayName);
-          return (
-            <button key={user.id} className="flex flex-col items-center gap-1.5 flex-shrink-0 group">
-              <div className="p-[2.5px] rounded-full" style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}>
-                <div className="p-[2px] bg-[#FDF9F6] rounded-full">
-                  <GradientAvatar name={user.displayName} src={user.avatarUrl || undefined} size={50} />
-                </div>
-              </div>
-              <span className="text-[10px] text-gray-400 font-medium max-w-[56px] truncate text-center">
-                {user.displayName.split(' ')[0]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 // ─── Daily Spark ──────────────────────────────────────────────────────────────
 
@@ -1431,6 +1393,9 @@ export default function Home() {
   const { posts, addPost, toggleLike, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   const { unreadCount } = useNotifications();
   const { prompt: sparkPrompt } = useDailySpark();
+  const { groups: storyGroups, publishStory, markViewed } = useStories();
+  const [storyCreatorOpen, setStoryCreatorOpen] = useState(false);
+  const [viewingGroupIdx, setViewingGroupIdx] = useState<number | null>(null);
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
   const [sparkOpen, setSparkOpen] = useState(false);
@@ -1555,7 +1520,11 @@ export default function Home() {
         </div>
       </div>
 
-      <StoriesRow />
+      <StoriesRow
+        groups={storyGroups}
+        onAddStory={() => setStoryCreatorOpen(true)}
+        onViewGroup={(idx) => setViewingGroupIdx(idx)}
+      />
 
       <AnimatePresence>
         <DailySpark key="spark" onRespond={() => setSparkOpen(true)} spark={sparkPrompt} />
@@ -1656,6 +1625,28 @@ export default function Home() {
             key="photo-viewer"
             src={photoViewer.src}
             onClose={() => setPhotoViewer(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {storyCreatorOpen && (
+          <StoryCreator
+            key="story-creator"
+            onClose={() => setStoryCreatorOpen(false)}
+            onPublish={publishStory}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {viewingGroupIdx !== null && storyGroups.length > 0 && (
+          <StoryViewer
+            key="story-viewer"
+            groups={storyGroups}
+            initialGroupIdx={viewingGroupIdx}
+            onClose={() => setViewingGroupIdx(null)}
+            onMarkViewed={markViewed}
           />
         )}
       </AnimatePresence>
