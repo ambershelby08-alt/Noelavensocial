@@ -15,10 +15,11 @@ import { useFeed } from '@/hooks/useFeed';
 import { useDailySpark } from '@/hooks/useDailySpark';
 import { useStories } from '@/hooks/useStories';
 import { StoriesRow } from '@/components/stories/StoriesRow';
-import { StoryCreator, type StoryPickItem } from '@/components/stories/StoryCreator';
 import { StoryViewer } from '@/components/stories/StoryViewer';
-import { StoryEditor, type StoryEditorPublishPayload, type AddMoreItem } from '@/components/stories/editor';
-import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
+import {
+  StoryComposer, makeComposerId, type ComposerItem,
+} from '@/components/stories/StoryComposer';
+import { uploadImage, uploadStoryMedia, isCloudinaryConfigured } from '@/lib/cloudinary';
 import {
   reportPost as fsReportPost, unfollowUser as fsUnfollowUser,
   subscribeComments as subscribePostComments,
@@ -1395,9 +1396,19 @@ export default function Home() {
   const { unreadCount } = useNotifications();
   const { prompt: sparkPrompt } = useDailySpark();
   const { groups: storyGroups, publishStory, markViewed } = useStories();
-  const [storyCreatorOpen,  setStoryCreatorOpen]  = useState(false);
-  const [storyQueue,        setStoryQueue]        = useState<StoryPickItem[]>([]);
-  const [storyQueueTotal,   setStoryQueueTotal]   = useState(0);
+
+  // ── Story composer state ──────────────────────────────────────────────────
+  // composerItems: files selected from the OS picker, passed into StoryComposer.
+  // The picker fires from storyPickerRef.current.click() BEFORE StoryComposer
+  // mounts, so no backdrop exists during selection → phantom clicks are impossible.
+  const storyPickerRef = useRef<HTMLInputElement>(null);
+  const [composerItems, setComposerItems] = useState<ComposerItem[]>([]);
+
+  // After all stories publish, open StoryViewer for the user's own group.
+  // We watch storyGroups reactively because Firestore may not have updated yet
+  // by the time onAllPublished fires.
+  const [openOwnStoriesAfterPublish, setOpenOwnStoriesAfterPublish] = useState(false);
+
   const [viewingGroupIdx, setViewingGroupIdx] = useState<number | null>(null);
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
@@ -1416,6 +1427,18 @@ export default function Home() {
       window.history.replaceState({}, '', '/');
     }
   }, []);
+
+  // After publishing, open StoryViewer for the user's own group.
+  // We watch storyGroups reactively because the Firestore subscription may not
+  // have delivered the new story yet when onAllPublished fires.
+  useEffect(() => {
+    if (!openOwnStoriesAfterPublish) return;
+    const ownIdx = storyGroups.findIndex(g => g.isOwn);
+    if (ownIdx >= 0) {
+      setOpenOwnStoriesAfterPublish(false);
+      setViewingGroupIdx(ownIdx);
+    }
+  }, [storyGroups, openOwnStoriesAfterPublish]);
 
   function showToast(msg: string, variant: ToastVariant = 'success') {
     setToast(msg);
@@ -1523,9 +1546,39 @@ export default function Home() {
         </div>
       </div>
 
+      {/*
+        Hidden story picker — fires BEFORE StoryComposer mounts.
+        No backdrop exists while the OS dialog is open, so phantom clicks
+        from dialog dismissal cannot close StoryComposer.
+      */}
+      <input
+        ref={storyPickerRef}
+        type="file"
+        multiple
+        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          if (!files.length) return;
+          const items: ComposerItem[] = files.map(f => ({
+            id:         makeComposerId(),
+            file:       f,
+            previewUrl: URL.createObjectURL(f),
+            mediaType:  f.type.startsWith('video/') ? 'video' : 'image',
+          }));
+          setComposerItems(items);
+          e.target.value = '';
+        }}
+      />
+
       <StoriesRow
         groups={storyGroups}
-        onAddStory={() => setStoryCreatorOpen(true)}
+        onAddStory={() => {
+          if (storyPickerRef.current) {
+            storyPickerRef.current.value = '';
+            storyPickerRef.current.click();
+          }
+        }}
         onViewGroup={(idx) => setViewingGroupIdx(idx)}
       />
 
@@ -1633,57 +1686,35 @@ export default function Home() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {storyCreatorOpen && (
-          <StoryCreator
-            key="story-creator"
-            onClose={() => setStoryCreatorOpen(false)}
-            onMediaReady={(items) => {
-              setStoryCreatorOpen(false);
-              setStoryQueue(items);
-              setStoryQueueTotal(items.length);
+        {composerItems.length > 0 && (
+          <StoryComposer
+            key="story-composer"
+            initialItems={composerItems}
+            onCancel={() => setComposerItems([])}
+            onPublishItem={async (item: ComposerItem) => {
+              let url: string       = item.previewUrl;
+              let mediaType         = item.mediaType;
+              if (isCloudinaryConfigured) {
+                const result = await uploadStoryMedia(item.file);
+                url       = result.url;
+                mediaType = result.mediaType;
+              }
+              await publishStory(url, mediaType, '', [], null, null, 'normal');
+            }}
+            onAllPublished={() => {
+              setComposerItems([]);
+              // Open StoryViewer; if the Firestore update hasn't arrived yet,
+              // openOwnStoriesAfterPublish will trigger as soon as it does.
+              const ownIdx = storyGroups.findIndex(g => g.isOwn);
+              if (ownIdx >= 0) {
+                setViewingGroupIdx(ownIdx);
+              } else {
+                setOpenOwnStoriesAfterPublish(true);
+              }
             }}
           />
         )}
       </AnimatePresence>
-
-      {storyQueue.length > 0 && (
-        <StoryEditor
-          key={`story-editor-${storyQueueTotal - storyQueue.length}`}
-          file={storyQueue[0].file}
-          previewUrl={storyQueue[0].previewUrl}
-          mediaType={storyQueue[0].mediaType}
-          currentIndex={storyQueueTotal - storyQueue.length}
-          total={storyQueueTotal}
-          onClose={() => { setStoryQueue([]); setStoryQueueTotal(0); }}
-          onPublish={async (payload: StoryEditorPublishPayload) => {
-            await publishStory(
-              payload.mediaUrl,
-              payload.mediaType,
-              payload.caption,
-              payload.layers,
-              payload.cropData,
-              payload.trimData,
-              payload.filterName,
-            );
-            setStoryQueue(prev => {
-              const next = prev.slice(1);
-              if (next.length === 0) setStoryQueueTotal(0);
-              return next;
-            });
-          }}
-          onAddMore={(newItems: AddMoreItem[]) => {
-            // Convert AddMoreItem → StoryPickItem (identical shape) and append
-            const asPickItems: StoryPickItem[] = newItems.map(it => ({
-              id:         it.id,
-              file:       it.file,
-              previewUrl: it.previewUrl,
-              mediaType:  it.mediaType,
-            }));
-            setStoryQueue(prev => [...prev, ...asPickItems]);
-            setStoryQueueTotal(t => t + newItems.length);
-          }}
-        />
-      )}
 
       <AnimatePresence>
         {viewingGroupIdx !== null && storyGroups.length > 0 && (

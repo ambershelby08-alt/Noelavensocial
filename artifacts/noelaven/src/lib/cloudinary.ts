@@ -75,6 +75,40 @@ export async function uploadImageFull(file: File, folder: UploadFolder = 'posts'
   return { url: data.secure_url, publicId: data.public_id };
 }
 
+/**
+ * Upload an image or video file for stories.
+ * Auto-detects the resource type and routes to the correct Cloudinary endpoint.
+ */
+export async function uploadStoryMedia(
+  file: File,
+): Promise<{ url: string; mediaType: MediaType }> {
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string;
+  const preset    = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string;
+
+  if (!cloudName || !preset) {
+    throw new Error('Cloudinary is not configured.');
+  }
+
+  const isVideo = file.type.startsWith('video/');
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', preset);
+  form.append('folder', 'noelaven/stories');
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/${isVideo ? 'video' : 'image'}/upload`,
+    { method: 'POST', body: form },
+  );
+
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+    throw new Error(err.error?.message ?? `Upload failed (${res.status})`);
+  }
+
+  const data = (await res.json()) as { secure_url: string };
+  return { url: data.secure_url, mediaType: isVideo ? 'video' : 'image' };
+}
+
 /** Pick a file from disk and immediately upload it. Returns the secure URL. */
 export function pickAndUpload(folder: UploadFolder = 'posts'): Promise<string> {
   return new Promise((resolve, reject) => {
