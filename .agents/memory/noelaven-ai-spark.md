@@ -5,12 +5,12 @@ description: Which OpenAI model and params work for the Daily Spark generation e
 
 ## Rule
 
-Use `gpt-4.1-mini` with `max_tokens` (not `max_completion_tokens`) for the `/api/spark/today` route.
+Use `gpt-5.4-mini` with `max_completion_tokens` (not `max_tokens`) for the `/api/spark/today` route.
 
 ## Why
 
-`gpt-5-nano` (and presumably other gpt-5-series models) returns a completion where `choices[0].message.content` is null/empty when called through the Replit AI Integrations proxy. No error is thrown — the call succeeds with 200 but the content field is absent. Switching to `gpt-4.1-mini` with `max_tokens: 80` produces real content.
+`gpt-5-nano` returns empty content through the Replit proxy (`choices[0].message.content` is null, call still 200s). `gpt-5.4-mini` with `max_completion_tokens` works correctly and produces real content. gpt-5-series models do not support `max_tokens` — always use `max_completion_tokens`.
 
 ## How to apply
 
-If adding other simple text-generation endpoints (not conversations, not streaming), start with `gpt-4.1-mini` + `max_tokens`. Only move to newer models if explicitly requested and after verifying they return non-empty content via the proxy.
+For any gpt-5.x endpoint use `max_completion_tokens`, never `max_tokens`. Avoid `gpt-5-nano` on this proxy — it silently returns empty content.

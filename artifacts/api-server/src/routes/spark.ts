@@ -23,8 +23,8 @@ function todayKey(): string {
 
 async function generateSparkPrompt(): Promise<string> {
   const completion = await openai.chat.completions.create({
-    model: "gpt-4.1-mini",
-    max_tokens: 80,
+    model: "gpt-5.4-mini",
+    max_completion_tokens: 80,
     messages: [
       {
         role: "system",
