@@ -1,45 +1,56 @@
 /**
- * StoryCreator — story composer with a visible queue.
+ * StoryCreator — story composer with a permanent media tray.
  *
- * Empty state  → large upload tile, tap to open picker.
- * Queue state  → thumbnail strip + always-visible "+ Add Another" button
- *                + counter + reorder arrows + Publish All CTA.
+ * LAYOUT
+ * ──────
+ * The sheet has two visible states:
  *
- * The "+ Add Another" button is OUTSIDE the scroll strip so it is always
- * visible regardless of how many items are queued.
+ * EMPTY STATE (no files yet)
+ *   [Handle]
+ *   [Header: "New Story"  X]
+ *   [Large upload tile — tap to open picker]
+ *   [Cancel]
  *
- * Each item is published as a separate story segment in order.
+ * LOADED STATE (≥1 file selected)
+ *   [Handle]
+ *   [Header: "New Story  N"  X]
+ *   ── PERMANENT BOTTOM TRAY (flexShrink:0, never scrolled away) ──
+ *   [Horizontal strip: [thumb][thumb][+ Add more]]   ← scrollable x
+ *   [N selected]
+ *   [Publish All (N) →]
+ *   [Cancel]
  *
- * ─── Bug-fix notes ────────────────────────────────────────────────────────
- * • We use a real <input ref> in JSX instead of document.createElement().
- *   Dynamic inputs created off-DOM cause iOS/Android file-picker dialogs to
- *   fire a phantom "click" on the page when they close, which hits the
- *   backdrop's onClick={handleClose} and unmounts the sheet.
+ * The "PERMANENT BOTTOM TRAY" is rendered OUTSIDE any overflowY:auto
+ * container so it can never be clipped or scrolled off-screen.
  *
- * • The backdrop ignores click events for 1 200 ms after openPicker() is
- *   called (pickerGuardRef). The native file-picker dialog steals focus and
- *   returns it with a synthesised click; the guard swallows it.
+ * The "+ Add more" tile is always the last element of the scroll strip
+ * and therefore always visible after scrolling right (or immediately
+ * when there are only a few items).
  *
- * • onMediaReady is called ONLY from handlePublishAll (user explicit action).
- *   No auto-transition happens after file selection.
+ * PHANTOM-CLICK GUARD
+ * ───────────────────
+ * Native file-picker dialogs fire a synthetic click on the document when
+ * they close, which otherwise hits the backdrop's onClick={handleClose}
+ * and unmounts the sheet.  pickerGuardRef blocks the backdrop for 1 500 ms
+ * after openPicker() is called; the real onChange clears it immediately.
  */
 
 import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Video, ChevronLeft, ChevronRight, ImagePlus, Layers } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, Plus, Video, ImagePlus, Layers } from 'lucide-react';
 import type { StoryMediaType } from '@/lib/stories';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
 export interface StoryPickItem {
-  id: string;
-  file: File;
+  id:         string;
+  file:       File;
   previewUrl: string;
-  mediaType: StoryMediaType;
+  mediaType:  StoryMediaType;
 }
 
 interface StoryCreatorProps {
-  onClose: () => void;
+  onClose:      () => void;
   /** Called with the ordered queue only when the user taps "Publish All". */
   onMediaReady: (items: StoryPickItem[]) => void;
 }
@@ -50,36 +61,29 @@ let _seq = 0;
 const nextId = () => `sc-${++_seq}`;
 
 const GRAD = 'linear-gradient(135deg, #FF6B9D, #C44FDB, #6B73FF)';
+const ACCEPT = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'video/mp4', 'video/quicktime', 'video/webm',
+].join(',');
 
-// ─── Thumbnail tile ───────────────────────────────────────────────────────────
+// ─── Thumbnail chip ───────────────────────────────────────────────────────────
+// Compact 72 × 90 portrait chip used inside the horizontal scroll tray.
 
-interface TileProps {
+interface ChipProps {
   item:     StoryPickItem;
   idx:      number;
-  total:    number;
   onRemove: (id: string) => void;
-  onMove:   (id: string, dir: -1 | 1) => void;
 }
 
-function Tile({ item, idx, total, onRemove, onMove }: TileProps) {
-  const isFirst = idx === 0;
-  const isLast  = idx === total - 1;
-
+function ThumbChip({ item, idx, onRemove }: ChipProps) {
   return (
-    <motion.div
-      layout
-      key={item.id}
-      initial={{ scale: 0.75, opacity: 0 }}
-      animate={{ scale: 1,    opacity: 1 }}
-      exit={{    scale: 0.75, opacity: 0 }}
-      transition={{ duration: 0.18 }}
-      style={{ position: 'relative', flexShrink: 0, width: 96, height: 128 }}
-    >
+    <div style={{ position: 'relative', flexShrink: 0, width: 72, height: 90 }}>
       {/* Thumbnail */}
       <div style={{
         width: '100%', height: '100%',
-        borderRadius: 14, overflow: 'hidden',
+        borderRadius: 12, overflow: 'hidden',
         background: '#E5E7EB', position: 'relative',
+        border: '2px solid rgba(107,115,255,0.25)',
       }}>
         {item.mediaType === 'image' ? (
           <img
@@ -98,78 +102,77 @@ function Tile({ item, idx, total, onRemove, onMove }: TileProps) {
 
         {/* Number badge */}
         <div style={{
-          position: 'absolute', top: 6, left: 6,
-          width: 22, height: 22, borderRadius: 99,
-          background: 'rgba(0,0,0,0.65)',
+          position: 'absolute', top: 4, left: 4,
+          minWidth: 18, height: 18, borderRadius: 99,
+          background: 'rgba(0,0,0,0.7)', padding: '0 4px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <span style={{ color: 'white', fontSize: 11, fontWeight: 800, lineHeight: 1 }}>
+          <span style={{ color: 'white', fontSize: 10, fontWeight: 800, lineHeight: 1 }}>
             {idx + 1}
           </span>
         </div>
 
-        {/* Video badge */}
+        {/* Video indicator */}
         {item.mediaType === 'video' && (
           <div style={{
-            position: 'absolute', bottom: 28, left: 6,
-            background: 'rgba(0,0,0,0.6)', borderRadius: 99, padding: '3px 5px',
-            display: 'flex', alignItems: 'center', gap: 3,
+            position: 'absolute', bottom: 4, left: 4,
+            background: 'rgba(0,0,0,0.65)', borderRadius: 99, padding: '2px 5px',
+            display: 'flex', alignItems: 'center', gap: 2,
           }}>
-            <Video size={9} color="white" />
-            <span style={{ color: 'white', fontSize: 9, fontWeight: 700 }}>VID</span>
+            <Video size={8} color="white" />
+            <span style={{ color: 'white', fontSize: 8, fontWeight: 700 }}>VID</span>
           </div>
         )}
-
-        {/* Reorder arrows — bottom strip */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 26,
-          background: 'rgba(0,0,0,0.55)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 4px',
-        }}>
-          <button
-            onClick={() => onMove(item.id, -1)}
-            disabled={isFirst}
-            style={{
-              width: 22, height: 22, borderRadius: 99,
-              background: isFirst ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)',
-              border: 'none', cursor: isFirst ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: isFirst ? 0.3 : 1,
-            }}
-          >
-            <ChevronLeft size={13} color="white" />
-          </button>
-          <button
-            onClick={() => onMove(item.id, 1)}
-            disabled={isLast}
-            style={{
-              width: 22, height: 22, borderRadius: 99,
-              background: isLast ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.25)',
-              border: 'none', cursor: isLast ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: isLast ? 0.3 : 1,
-            }}
-          >
-            <ChevronRight size={13} color="white" />
-          </button>
-        </div>
       </div>
 
-      {/* Remove ✕ — top-right, outside the tile */}
+      {/* Remove ✕ */}
       <button
         onClick={() => onRemove(item.id)}
         style={{
-          position: 'absolute', top: -7, right: -7, zIndex: 10,
-          width: 24, height: 24, borderRadius: 99,
-          background: '#111827', border: '2px solid white',
+          position: 'absolute', top: -5, right: -5, zIndex: 10,
+          width: 20, height: 20, borderRadius: 99,
+          background: '#111827', border: '1.5px solid white',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+          padding: 0,
         }}
       >
-        <X size={11} color="white" />
+        <X size={9} color="white" />
       </button>
-    </motion.div>
+    </div>
+  );
+}
+
+// ─── "+ Add more" tile ────────────────────────────────────────────────────────
+// Same dimensions as ThumbChip — lives at the END of the scroll strip.
+
+function AddMoreTile({ onTap }: { onTap: () => void }) {
+  return (
+    <button
+      onClick={onTap}
+      style={{
+        flexShrink: 0, width: 72, height: 90,
+        borderRadius: 12, cursor: 'pointer',
+        border: '2px dashed #D1D5DB',
+        background: 'linear-gradient(135deg, rgba(107,115,255,0.05), rgba(255,107,157,0.05))',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 5,
+        padding: 0,
+        // No transition or animation — we want it to feel always-present
+      }}
+    >
+      <div style={{
+        width: 28, height: 28, borderRadius: 99,
+        background: GRAD,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Plus size={14} color="white" />
+      </div>
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#6B73FF', lineHeight: 1.2, textAlign: 'center' }}>
+        Add{'\n'}more
+      </span>
+    </button>
   );
 }
 
@@ -177,30 +180,23 @@ function Tile({ item, idx, total, onRemove, onMove }: TileProps) {
 
 export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
   const [queue, setQueue] = useState<StoryPickItem[]>([]);
-  const blobUrls      = useRef(new Set<string>());
-  // Hidden <input> in JSX — more reliable than document.createElement on mobile
-  const fileInputRef  = useRef<HTMLInputElement>(null);
-  // Guards the backdrop from phantom clicks fired when the native file-picker
-  // dialog closes. Set to Date.now() + guard-ms when the picker opens.
+  const blobUrls       = useRef(new Set<string>());
+  const fileInputRef   = useRef<HTMLInputElement>(null);
+  // Guards backdrop from phantom click when native file dialog closes.
   const pickerGuardRef = useRef(0);
 
-  // ── Picker ────────────────────────────────────────────────────────────────
+  // ── Open picker ──────────────────────────────────────────────────────────
 
   function openPicker() {
-    // Block backdrop click for 1 200 ms — native pickers fire a phantom click
-    // on the document when they are dismissed, which otherwise hits handleClose.
-    pickerGuardRef.current = Date.now() + 1200;
-
+    pickerGuardRef.current = Date.now() + 1500;
     const el = fileInputRef.current;
     if (!el) return;
-    el.value = '';   // reset so the same file can be re-selected
+    el.value = '';
     el.click();
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // Clear the guard immediately — the real change event has fired.
-    pickerGuardRef.current = 0;
-
+    pickerGuardRef.current = 0;   // real change fired — clear guard immediately
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
 
@@ -208,17 +204,14 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
       const url = URL.createObjectURL(f);
       blobUrls.current.add(url);
       return {
-        id:        nextId(),
-        file:      f,
+        id:         nextId(),
+        file:       f,
         previewUrl: url,
-        mediaType: f.type.startsWith('video/') ? 'video' : 'image',
+        mediaType:  f.type.startsWith('video/') ? 'video' : 'image',
       };
     });
 
-    // APPEND — never replace existing items.
-    setQueue(prev => [...prev, ...items]);
-
-    // Reset input so the same file can be picked again later.
+    setQueue(prev => [...prev, ...items]);   // APPEND — never replace
     e.target.value = '';
   }
 
@@ -233,24 +226,10 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
     }));
   }
 
-  function moveItem(id: string, dir: -1 | 1) {
-    setQueue(prev => {
-      const idx = prev.findIndex(it => it.id === id);
-      if (idx === -1) return prev;
-      const next = idx + dir;
-      if (next < 0 || next >= prev.length) return prev;
-      const arr = [...prev];
-      [arr[idx], arr[next]] = [arr[next], arr[idx]];
-      return arr;
-    });
-  }
-
-  // ── Actions ───────────────────────────────────────────────────────────────
+  // ── Sheet actions ─────────────────────────────────────────────────────────
 
   function handleClose() {
-    // Don't allow close if the picker guard is still active.
-    // (phantom click from the native file-picker dialog closing)
-    if (Date.now() < pickerGuardRef.current) return;
+    if (Date.now() < pickerGuardRef.current) return;   // ignore phantom click
     blobUrls.current.forEach(u => URL.revokeObjectURL(u));
     blobUrls.current.clear();
     onClose();
@@ -258,32 +237,30 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
 
   function handlePublishAll() {
     if (!queue.length) return;
-    blobUrls.current.clear();   // ownership transfers to parent
-    onMediaReady([...queue]);   // pass a copy so parent owns the array
-    // NOTE: the parent (Home.tsx) closes this composer after receiving items.
-    //       Do NOT call onClose() here — parent handles it.
+    blobUrls.current.clear();   // ownership passes to parent
+    onMediaReady([...queue]);   // parent closes the composer
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
 
   const hasItems = queue.length > 0;
 
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <>
-      {/* Hidden file input — stays in the DOM, avoids phantom-click bugs */}
+      {/*
+        Hidden file input.  Lives in JSX (not created dynamically) so it is
+        reliably attached to the DOM before the picker is triggered.
+      */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
-        accept={[
-          'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-          'video/mp4', 'video/quicktime', 'video/webm',
-        ].join(',')}
+        accept={ACCEPT}
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
 
-      {/* Backdrop — guarded against phantom clicks from the file-picker */}
+      {/* ── Backdrop ── */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={handleClose}
@@ -293,56 +270,46 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
         }}
       />
 
-      {/* Sheet */}
+      {/* ── Bottom sheet ── */}
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 320 }}
         onClick={e => e.stopPropagation()}
         style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 60,
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          zIndex: 60,
           background: 'white', borderRadius: '24px 24px 0 0',
           display: 'flex', flexDirection: 'column',
-          maxHeight: hasItems ? '88vh' : '70vh',
           paddingBottom: 'max(env(safe-area-inset-bottom), 20px)',
+          // Sheet height: tall enough to show the tray; short enough to feel like a sheet.
+          maxHeight: hasItems ? '80vh' : '65vh',
           overflow: 'hidden',
         }}
       >
         {/* Drag handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4, flexShrink: 0 }}>
           <div style={{ width: 40, height: 4, borderRadius: 99, background: '#E5E7EB' }} />
         </div>
 
         {/* ── Header ── */}
         <div style={{
+          flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 20px 14px',
+          padding: '8px 20px 12px',
         }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#111827', margin: 0 }}>
-                New Story
-              </h2>
-              {/* Queue count badge */}
-              <AnimatePresence>
-                {hasItems && (
-                  <motion.div
-                    initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                    style={{
-                      background: GRAD, color: 'white',
-                      fontSize: 12, fontWeight: 800,
-                      borderRadius: 99, padding: '2px 9px',
-                    }}
-                  >
-                    {queue.length}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <p style={{ fontSize: 12, color: '#9CA3AF', margin: '2px 0 0' }}>
-              {hasItems
-                ? `${queue.length} ${queue.length === 1 ? 'story' : 'stories'} · each publishes separately`
-                : 'Photos and videos — each becomes a segment'}
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#111827', margin: 0 }}>
+              New Story
+            </h2>
+            {hasItems && (
+              <div style={{
+                background: GRAD, color: 'white',
+                fontSize: 12, fontWeight: 800,
+                borderRadius: 99, padding: '2px 9px',
+              }}>
+                {queue.length}
+              </div>
+            )}
           </div>
           <button
             onClick={handleClose}
@@ -357,133 +324,105 @@ export function StoryCreator({ onClose, onMediaReady }: StoryCreatorProps) {
           </button>
         </div>
 
-        {/* ── BODY (scrollable) ── */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-
-          {/* ── Empty state ── */}
-          {!hasItems && (
-            <div style={{ padding: '0 20px 20px' }}>
-              <button
-                onClick={openPicker}
-                style={{
-                  width: '100%', height: 180, borderRadius: 20,
-                  border: '2px dashed rgba(107,115,255,0.4)',
-                  background: 'linear-gradient(135deg, rgba(107,115,255,0.06), rgba(255,107,157,0.06))',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{
-                  width: 60, height: 60, borderRadius: 18,
-                  background: GRAD,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <ImagePlus size={28} color="white" />
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>
-                    Add Photos or Videos
-                  </div>
-                  <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>
-                    Select multiple — each becomes its own story
-                  </div>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {/* ── Queue state ── */}
-          {hasItems && (
-            <>
-              {/* Counter row */}
+        {/* ── EMPTY STATE ─────────────────────────────────────────────────── */}
+        {!hasItems && (
+          <div style={{ flex: 1, padding: '0 20px 8px', display: 'flex', flexDirection: 'column' }}>
+            <button
+              onClick={openPicker}
+              style={{
+                flex: 1, borderRadius: 20,
+                border: '2px dashed rgba(107,115,255,0.4)',
+                background: 'linear-gradient(135deg, rgba(107,115,255,0.06), rgba(255,107,157,0.06))',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 14,
+                cursor: 'pointer', minHeight: 140,
+              }}
+            >
               <div style={{
-                padding: '0 20px 10px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: 60, height: 60, borderRadius: 18,
+                background: GRAD,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Layers size={14} color="#6B73FF" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
-                    {queue.length === 1
-                      ? '1 story queued'
-                      : `${queue.length} stories queued`}
-                  </span>
-                </div>
-                <span style={{ fontSize: 12, color: '#9CA3AF' }}>
-                  Tap ◀ ▶ to reorder
-                </span>
+                <ImagePlus size={28} color="white" />
               </div>
-
-              {/* Horizontal thumbnail strip */}
-              <div
-                style={{
-                  padding: '0 20px 4px',
-                  overflowX: 'auto', overflowY: 'visible',
-                  WebkitOverflowScrolling: 'touch',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex', gap: 12, paddingBottom: 12,
-                    paddingRight: 4,
-                  }}
-                >
-                  <AnimatePresence initial={false}>
-                    {queue.map((item, idx) => (
-                      <Tile
-                        key={item.id}
-                        item={item}
-                        idx={idx}
-                        total={queue.length}
-                        onRemove={removeItem}
-                        onMove={moveItem}
-                      />
-                    ))}
-                  </AnimatePresence>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#111827' }}>
+                  Add Photos or Videos
+                </div>
+                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>
+                  Select multiple — each becomes its own story
                 </div>
               </div>
+            </button>
+          </div>
+        )}
 
-              {/* ── + Add Another Photo or Video ──────────────────────────────
-                  Rendered OUTSIDE the scroll strip — always visible.
-                  NEVER conditional on any upload or preview state.
-              ────────────────────────────────────────────────────────────── */}
-              <div style={{ padding: '8px 20px 4px', flexShrink: 0 }}>
-                <button
-                  onClick={openPicker}
-                  style={{
-                    width: '100%', padding: '14px 0',
-                    borderRadius: 16, cursor: 'pointer',
-                    border: '2px dashed #D1D5DB',
-                    background: 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  }}
-                >
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 99,
-                    background: GRAD,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <Plus size={16} color="white" />
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
-                      + Add Another Photo or Video
-                    </div>
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
-                      Added to your queue — won't replace existing items
-                    </div>
-                  </div>
-                </button>
+        {/* ── LOADED STATE ────────────────────────────────────────────────── */}
+        {/*
+          This entire section is flexShrink:0 — it is NOT inside any
+          overflowY:auto container.  It cannot be scrolled off screen.
+        */}
+        {hasItems && (
+          <div style={{ flexShrink: 0, padding: '0 0 0 0' }}>
+
+            {/* Horizontal media tray */}
+            <div style={{
+              overflowX: 'auto',
+              overflowY: 'visible',
+              WebkitOverflowScrolling: 'touch',
+              // Hide scrollbar but keep scroll functionality
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}>
+              <div style={{
+                display: 'flex',
+                gap: 10,
+                padding: '4px 20px 16px',
+                // Ensure the row never wraps — all chips stay on one line
+                flexWrap: 'nowrap',
+              }}>
+                {/* Thumbnails */}
+                {queue.map((item, idx) => (
+                  <ThumbChip
+                    key={item.id}
+                    item={item}
+                    idx={idx}
+                    onRemove={removeItem}
+                  />
+                ))}
+
+                {/*
+                  + ADD MORE — last element in the strip.
+                  Always rendered. Never conditional.
+                  Scrolls into view if the strip is long.
+                */}
+                <AddMoreTile onTap={openPicker} />
               </div>
-            </>
-          )}
-        </div>
+            </div>
 
-        {/* ── Footer: Publish All + Cancel ── */}
-        <div style={{ padding: '12px 20px 0', flexShrink: 0 }}>
+            {/* Count */}
+            <div style={{
+              padding: '0 20px 12px',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <Layers size={13} color="#6B73FF" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
+                {queue.length} {queue.length === 1 ? 'photo/video' : 'photos/videos'} selected
+              </span>
+              <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 4 }}>
+                · each publishes as its own story
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Footer: primary actions ── */}
+        <div style={{ padding: '0 20px', flexShrink: 0 }}>
           {hasItems ? (
             <>
+              {/* Divider */}
+              <div style={{ height: 1, background: '#F3F4F6', marginBottom: 14 }} />
+
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={handlePublishAll}
