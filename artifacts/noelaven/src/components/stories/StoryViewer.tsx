@@ -1,18 +1,25 @@
 /**
- * StoryViewer — full-screen story viewer with progress bars, tap navigation,
- * hold-to-pause, swipe-to-close, and editor layer rendering.
+ * StoryViewer — full-screen story viewer.
+ *
+ * Progress bars:  images → 5 s fixed.  Videos → actual video duration.
+ * Filter CSS:     applied from story.filterName via filterCSS().
+ * Hold-to-pause:  single-finger hold pauses the progress bar.
+ * Swipe-to-close: drag down ≥ 120 px dismisses.
+ * Tap areas:      left 1/3 = prev, right 2/3 = next.
+ * Layers:         text + sticker layers rendered as read-only overlays.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import { filterCSS } from '@/components/stories/editor/filters';
 import type { StoryGroup, Story } from '@/lib/stories';
 import type { EditorLayer, TextLayer } from '@/components/stories/editor/types';
 
-const STORY_DURATION_MS = 5000;
+const PHOTO_DURATION_MS = 5000;
 
-// ─── Layer rendering (mirrors EditorCanvas, read-only) ────────────────────────
+// ─── Layer rendering ──────────────────────────────────────────────────────────
 
 function textBgStyle(style: TextLayer['layerStyle'], color: string): React.CSSProperties {
   switch (style) {
@@ -24,33 +31,23 @@ function textBgStyle(style: TextLayer['layerStyle'], color: string): React.CSSPr
 }
 
 function StoryLayer({ layer }: { layer: EditorLayer }) {
-  const style: React.CSSProperties = {
+  const base: React.CSSProperties = {
     position: 'absolute',
-    left: `${layer.x}%`,
-    top:  `${layer.y}%`,
+    left: `${layer.x}%`, top: `${layer.y}%`,
     transform: `translate(-50%,-50%) rotate(${layer.rotation}deg) scale(${layer.scale})`,
     transformOrigin: 'center center',
-    userSelect: 'none',
-    pointerEvents: 'none',
-    zIndex: 5,
+    userSelect: 'none', pointerEvents: 'none', zIndex: 5,
   };
-
   if (layer.kind === 'sticker') {
-    return (
-      <div style={style}>
-        <span style={{ fontSize: 48, display: 'block', lineHeight: 1 }}>{layer.content}</span>
-      </div>
-    );
+    return <div style={base}><span style={{ fontSize: 48, display: 'block', lineHeight: 1 }}>{layer.content}</span></div>;
   }
-
   const tl = layer as TextLayer;
   return (
-    <div style={style}>
+    <div style={base}>
       <div style={{
         fontSize: 24, fontWeight: tl.fontWeight, color: tl.color,
         whiteSpace: 'pre-wrap', lineHeight: 1.25, padding: '4px 8px',
-        borderRadius: 6, textAlign: 'center', wordBreak: 'break-word',
-        maxWidth: 240,
+        borderRadius: 6, textAlign: 'center', wordBreak: 'break-word', maxWidth: 240,
         ...textBgStyle(tl.layerStyle, tl.color),
       }}>
         {tl.content}
@@ -71,11 +68,6 @@ function relativeTime(date: Date): string {
   return `${Math.floor(hrs / 24)}d`;
 }
 
-function mediaSrc(story: Story): string {
-  if (story.mediaType !== 'video' || !story.trimData) return story.mediaUrl;
-  return `${story.mediaUrl}#t=${story.trimData.start},${story.trimData.end}`;
-}
-
 // ─── StoryViewer ──────────────────────────────────────────────────────────────
 
 interface StoryViewerProps {
@@ -85,31 +77,39 @@ interface StoryViewerProps {
   onMarkViewed?: (storyId: string) => void;
 }
 
-export function StoryViewer({
-  groups, initialGroupIdx = 0, onClose, onMarkViewed,
-}: StoryViewerProps) {
+export function StoryViewer({ groups, initialGroupIdx = 0, onClose, onMarkViewed }: StoryViewerProps) {
   const [groupIdx, setGroupIdx] = useState(Math.min(initialGroupIdx, groups.length - 1));
   const [storyIdx, setStoryIdx] = useState(0);
-  const [paused, setPaused]     = useState(false);
+  const [paused,   setPaused]   = useState(false);
+  // Duration of the current segment in ms (set from video metadata for videos)
+  const [segDurMs, setSegDurMs] = useState(PHOTO_DURATION_MS);
 
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const wasHeld   = useRef(false);
+  const holdTimer  = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const wasHeld    = useRef(false);
+  const videoRef   = useRef<HTMLVideoElement>(null);
 
   const group = groups[groupIdx];
   const story = group?.stories[storyIdx];
 
+  // Mark viewed on story change
   useEffect(() => {
     if (story) onMarkViewed?.(story.id);
   }, [story?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset duration to photo default whenever story changes;
+  // videos update it once metadata loads.
+  useEffect(() => {
+    setSegDurMs(PHOTO_DURATION_MS);
+  }, [groupIdx, storyIdx]);
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
   const goNext = useCallback(() => {
     if (!group) return;
     if (storyIdx < group.stories.length - 1) {
-      setStoryIdx((i) => i + 1);
+      setStoryIdx(i => i + 1);
     } else if (groupIdx < groups.length - 1) {
-      setGroupIdx((g) => g + 1);
+      setGroupIdx(g => g + 1);
       setStoryIdx(0);
     } else {
       onClose();
@@ -118,10 +118,10 @@ export function StoryViewer({
 
   const goPrev = useCallback(() => {
     if (storyIdx > 0) {
-      setStoryIdx((i) => i - 1);
+      setStoryIdx(i => i - 1);
     } else if (groupIdx > 0) {
       const prev = groups[groupIdx - 1];
-      setGroupIdx((g) => g - 1);
+      setGroupIdx(g => g - 1);
       setStoryIdx(prev.stories.length - 1);
     }
   }, [storyIdx, groupIdx, groups]);
@@ -130,24 +130,40 @@ export function StoryViewer({
 
   function startHold() {
     wasHeld.current = false;
-    holdTimer.current = setTimeout(() => { wasHeld.current = true; setPaused(true); }, 150);
+    holdTimer.current = setTimeout(() => {
+      wasHeld.current = true;
+      setPaused(true);
+      if (videoRef.current) videoRef.current.pause();
+    }, 150);
   }
+
   function endHold(action?: () => void) {
     clearTimeout(holdTimer.current);
-    if (wasHeld.current) { wasHeld.current = false; setPaused(false); }
-    else action?.();
+    if (wasHeld.current) {
+      wasHeld.current = false;
+      setPaused(false);
+      videoRef.current?.play().catch(() => {});
+    } else {
+      action?.();
+    }
   }
+
   function cancelHold() {
     clearTimeout(holdTimer.current);
-    if (wasHeld.current) { wasHeld.current = false; setPaused(false); }
+    if (wasHeld.current) {
+      wasHeld.current = false;
+      setPaused(false);
+      videoRef.current?.play().catch(() => {});
+    }
   }
 
   if (!group || !story) return null;
 
-  // CSS clip for crop
-  const cropClip: React.CSSProperties = story.cropData
-    ? { clipPath: `inset(${story.cropData.y}% ${100 - story.cropData.x - story.cropData.w}% ${100 - story.cropData.y - story.cropData.h}% ${story.cropData.x}%)` }
-    : {};
+  const cssFilt = story.filterName ? filterCSS(story.filterName) : 'none';
+  const mediaSrc =
+    story.mediaType === 'video' && story.trimData
+      ? `${story.mediaUrl}#t=${story.trimData.start},${story.trimData.end}`
+      : story.mediaUrl;
 
   return (
     <motion.div
@@ -167,32 +183,43 @@ export function StoryViewer({
           key={story.id}
           src={story.mediaUrl}
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          style={cropClip}
+          style={{ filter: cssFilt }}
           draggable={false}
           alt=""
         />
       ) : (
         <video
           key={story.id}
-          src={mediaSrc(story)}
+          ref={videoRef}
+          src={mediaSrc}
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          style={{ filter: cssFilt }}
           autoPlay
           playsInline
+          muted
+          onLoadedMetadata={() => {
+            if (videoRef.current) {
+              const dur = videoRef.current.duration;
+              if (isFinite(dur) && dur > 0) setSegDurMs(dur * 1000);
+            }
+          }}
           onEnded={goNext}
         />
       )}
 
       {/* ── Editor layers ── */}
-      {story.layers.map((layer) => (
-        <StoryLayer key={layer.id} layer={layer} />
-      ))}
+      {story.layers.map(layer => <StoryLayer key={layer.id} layer={layer} />)}
 
-      {/* ── Top gradient ── */}
+      {/* ── Top gradient + progress + author ── */}
       <div
-        className="absolute top-0 left-0 right-0 z-10 pt-12 px-3 pb-6 pointer-events-none"
-        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)' }}
+        className="absolute top-0 left-0 right-0 z-10 pb-5 pointer-events-none"
+        style={{
+          paddingTop: 'max(env(safe-area-inset-top), 44px)',
+          paddingLeft: 12, paddingRight: 12,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)',
+        }}
       >
-        {/* Progress bars */}
+        {/* Progress bars — one per story in this group */}
         <div className="flex gap-[3px] mb-3">
           {group.stories.map((_, i) => (
             <div key={i} className="flex-1 h-[3px] rounded-full overflow-hidden bg-white/30">
@@ -200,10 +227,12 @@ export function StoryViewer({
                 <div className="h-full w-full bg-white" />
               ) : i === storyIdx ? (
                 <div
-                  key={`${groupIdx}-${storyIdx}`}
+                  key={`${groupIdx}-${storyIdx}-${segDurMs}`}
                   className="h-full bg-white rounded-full"
                   style={{
-                    animation: paused ? 'none' : `story-fill ${STORY_DURATION_MS}ms linear forwards`,
+                    animation: paused
+                      ? 'none'
+                      : `story-fill ${segDurMs}ms linear forwards`,
                     width: paused ? undefined : '0%',
                   }}
                   onAnimationEnd={goNext}
@@ -229,7 +258,7 @@ export function StoryViewer({
         </div>
       </div>
 
-      {/* ── Caption (fallback for stories without layers) ── */}
+      {/* ── Caption (fallback for old stories without layers) ── */}
       {story.caption && story.layers.length === 0 && (
         <div
           className="absolute bottom-10 left-0 right-0 px-5 pb-4 pointer-events-none z-10"
@@ -240,10 +269,14 @@ export function StoryViewer({
       )}
 
       {/* ── Tap areas ── */}
-      <div className="absolute left-0 top-[80px] bottom-0 w-1/3 z-20"
-           onPointerDown={startHold} onPointerUp={() => endHold(goPrev)} onPointerLeave={cancelHold} />
-      <div className="absolute right-0 top-[80px] bottom-0 w-2/3 z-20"
-           onPointerDown={startHold} onPointerUp={() => endHold(goNext)} onPointerLeave={cancelHold} />
+      <div className="absolute left-0 top-28 bottom-0 w-1/3 z-20"
+           onPointerDown={startHold}
+           onPointerUp={() => endHold(goPrev)}
+           onPointerLeave={cancelHold} />
+      <div className="absolute right-0 top-28 bottom-0 w-2/3 z-20"
+           onPointerDown={startHold}
+           onPointerUp={() => endHold(goNext)}
+           onPointerLeave={cancelHold} />
     </motion.div>
   );
 }

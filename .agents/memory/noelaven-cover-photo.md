@@ -1,30 +1,34 @@
 ---
-name: Noelaven cover photo editor
-description: Profile cover photo — upload, drag-to-reposition, remove, Firestore persistence.
+name: Noelaven cover photo
+description: Cover photo editor and display — storage format, CSS rendering, z-index.
 ---
 
-# Cover photo architecture
+## Storage
+`coverPosition: { x: number; y: number; zoom: number }` saved in Firestore via `updateUserDoc`.
+- `x`, `y`: CSS objectPosition percentages (0–100). Centre = 50.
+- `zoom`: CSS scale multiplier (≥ 1, default 1).
 
-## Data model
-`User.coverUrl: string` — Cloudinary URL or '' (empty = gradient fallback).
-`User.coverPosition?: { x: number; y: number }` — CSS object-position percentages (0–100). Defaults to { x: 50, y: 50 }. Stored in Firestore as `coverPosition` field.
+`coverUrl`: Cloudinary URL (or '' when removed).
 
-## Firestore
-`docToUser` in `firestore.ts` reads `coverPosition` with `?? { x: 50, y: 50 }` default.
-`updateUserDoc` (unchanged) already spreads `Partial<User>` so `coverPosition` is saved automatically.
-New users get `coverUrl: ''` in `createUserDoc`.
+## CSS rendering (Profile.tsx and CoverPhotoEditor.tsx)
+```css
+objectFit: cover;
+objectPosition: x% y%;
+transform: scale(zoom);
+transformOrigin: x% y%;
+```
+Container must have `overflow-hidden` to clip zoomed image.
 
-## Component
-`src/components/profile/CoverPhotoEditor.tsx` — bottom sheet (z-[60]).
-- Drag-to-reposition: Pointer Events on a 3:1 preview div; position stored as % mapped to CSS `object-position`.
-- Upload flow: pick file → local `URL.createObjectURL` preview → upload to Cloudinary only on Save.
-- Remove: calls `onSave({ coverUrl: '', coverPosition: { x:50, y:50 } })` directly (no Cloudinary delete).
-- Demo mode: repositioning mock covers works; upload button disabled when Cloudinary not configured.
+## CoverPhotoEditor.tsx (fullscreen, z-[70])
+- Full-screen overlay `fixed inset-0 z-[70] bg-black`.
+- Single-pointer drag pans focal point (objectPosition x/y).
+- Two-pointer pinch changes zoom (1–5).
+- 3:1 crop-frame overlay via flex-column (spacer | aspect-ratio:3/1 frame | spacer) with rule-of-thirds grid.
+- Upload only on Save — Cancel is non-destructive.
+- Props: `currentCoverUrl`, `currentPosition: { x, y, zoom }`, `onSave`, `onClose`. No gradient props.
 
-## Profile.tsx wiring
-- "Edit Cover" pill button at bottom-left of cover area (own profile only), z-10.
-- Cover image now has `objectPosition: x% y%` applied.
-- `handleCoverSave` calls `updateUser({ coverUrl, coverPosition })`.
-- Editor uses user's gradient colours as the fallback background in the preview.
+**Why:** Pure CSS transform avoids Cloudinary round-trips on reposition; objectFit:cover fills the container naturally.
 
-**Why store position instead of cropping server-side:** Avoids re-upload on every reposition; CSS object-position is instantaneous and resolution-independent.
+## Backward compatibility
+`docToUser` in firestore.ts reads zoom with `?? 1` fallback — old docs without zoom display correctly.
+`Profile.tsx` passes `currentPosition={user.coverPosition ?? { x: 50, y: 50, zoom: 1 }}` to the editor.

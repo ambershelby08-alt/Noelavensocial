@@ -1,8 +1,5 @@
-// ─── Shared editor types ──────────────────────────────────────────────────────
-// All position values are percentages (0–100) of the canvas size so the editor
-// is fully resolution-independent and the same spec renders in the viewer.
-
-export type StoryMediaType = 'image' | 'video';
+import type { FilterPreset } from './filters';
+export type { FilterPreset } from './filters';
 
 // ─── Layer types ──────────────────────────────────────────────────────────────
 
@@ -10,22 +7,19 @@ export interface TextLayer {
   id: string;
   kind: 'text';
   content: string;
-  /** % of canvas width (anchor = layer centre) */
-  x: number;
-  /** % of canvas height (anchor = layer centre) */
-  y: number;
-  scale: number;       // multiplier on base fontSize
-  rotation: number;    // degrees
-  color: string;       // CSS colour string
+  x: number;        // % of canvas width (anchor = layer centre)
+  y: number;        // % of canvas height (anchor = layer centre)
+  scale: number;
+  rotation: number; // degrees
+  color: string;
   fontWeight: 'normal' | 'bold';
-  /** Visual style applied behind/around the text */
   layerStyle: 'plain' | 'bubble-dark' | 'bubble-light' | 'outlined';
 }
 
 export interface StickerLayer {
   id: string;
   kind: 'sticker';
-  content: string;     // emoji character(s)
+  content: string;  // emoji character(s)
   x: number;
   y: number;
   scale: number;
@@ -36,24 +30,19 @@ export type EditorLayer = TextLayer | StickerLayer;
 
 // ─── Crop / trim ──────────────────────────────────────────────────────────────
 
-/** All values are 0–100 percentage of original image dimensions. */
-export interface CropData {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
+/** All values 0–100 % of original image dimensions. */
+export interface CropData { x: number; y: number; w: number; h: number }
 
 /** Values in seconds. */
-export interface TrimData {
-  start: number;
-  end: number;
-}
+export interface TrimData { start: number; end: number }
 
-// ─── Full editor state ────────────────────────────────────────────────────────
+// ─── Media type ───────────────────────────────────────────────────────────────
 
-/** String union — extend here to unlock future tool tabs. */
-export type ActivePanel = 'text' | 'emoji' | null;
+export type StoryMediaType = 'image' | 'video';
+
+// ─── Editor state ─────────────────────────────────────────────────────────────
+
+export type ActivePanel = 'text' | 'emoji' | 'filters' | 'music' | null;
 
 export interface EditorState {
   layers: EditorLayer[];
@@ -68,6 +57,7 @@ export interface EditorState {
   draftFontWeight: 'normal' | 'bold';
   draftLayerStyle: TextLayer['layerStyle'];
   videoDuration: number;
+  activeFilter: FilterPreset;
 }
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
@@ -87,16 +77,15 @@ export type EditorAction =
   | { type: 'SET_DRAFT_COLOR'; color: string }
   | { type: 'SET_DRAFT_FONT_WEIGHT'; weight: 'normal' | 'bold' }
   | { type: 'SET_DRAFT_LAYER_STYLE'; style: TextLayer['layerStyle'] }
+  | { type: 'SET_FILTER'; preset: FilterPreset }
   | { type: 'UNDO' };
 
 // ─── Toolbar tab descriptor ───────────────────────────────────────────────────
-// Add new tools by pushing to TOOLBAR_TABS in index.tsx — the shell auto-renders.
 
 export interface ToolbarTabDef {
   id: string;
   label: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Icon: React.ComponentType<any>;
-  /** false = tab shown as "coming soon" and non-interactive */
   available: boolean;
 }

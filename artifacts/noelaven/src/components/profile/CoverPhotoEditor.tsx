@@ -1,91 +1,169 @@
 /**
- * CoverPhotoEditor — bottom sheet for editing the profile cover photo.
+ * CoverPhotoEditor — full-screen cover photo editor.
  *
- * Features:
- *   • Drag-to-reposition   — pan the image within the 3:1 preview
- *   • Upload               — pick from device; previewed locally before save
- *   • Remove               — clear to gradient fallback
- *   • Save / Cancel        — upload to Cloudinary only on explicit Save
+ * UX
+ * ──
+ *   • Shows the image full-screen behind a fixed 3:1 crop-frame overlay.
+ *   • Single-finger drag pans the focal point (x/y as objectPosition %).
+ *   • Two-finger pinch zooms (scale multiplier).
+ *   • Bottom bar: Cancel | Replace/Upload | Remove | Save.
+ *   • Upload only happens on explicit Save — Cancel is fully non-destructive.
  *
- * Position is stored as { x, y } percentages (0–100) mapping directly to
- * CSS `object-position: x% y%`.  No Cloudinary transform is applied.
+ * Storage
+ * ───────
+ *   coverPosition: { x, y, zoom }
+ *     x/y  → CSS objectPosition percentages (0–100)
+ *     zoom → CSS scale multiplier (≥ 1)
+ *
+ * Profile display uses the same CSS:
+ *   objectFit: cover; objectPosition: x% y%;
+ *   transform: scale(zoom); transformOrigin: x% y%;
  */
 
 import React, { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { X, Camera, Trash2, Check, Loader2, ImagePlus, Move } from 'lucide-react';
+import {
+  X, Camera, Trash2, Check, Loader2, ImagePlus, Move, ZoomIn,
+} from 'lucide-react';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface CoverPosition { x: number; y: number }
+export interface CoverPosition { x: number; y: number; zoom: number }
 
 export interface CoverSavePayload {
-  coverUrl: string;
+  coverUrl:      string;
   coverPosition: CoverPosition;
 }
 
 interface CoverPhotoEditorProps {
-  /** Current saved cover URL (empty string = no cover / gradient) */
-  currentCoverUrl: string;
-  /** Current saved position — defaults to centre (50, 50) */
-  currentPosition: CoverPosition;
-  /** Gradient fallback colours shown when no image */
-  gradientFrom: string;
-  gradientTo: string;
-  onSave: (payload: CoverSavePayload) => Promise<void>;
+  currentCoverUrl:  string;
+  currentPosition:  CoverPosition;
+  onSave:  (payload: CoverSavePayload) => Promise<void>;
   onClose: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function clamp(v: number, lo = 0, hi = 100) {
-  return Math.min(hi, Math.max(lo, v));
-}
+function clamp(v: number, lo: number, hi: number) { return Math.min(hi, Math.max(lo, v)); }
+
+interface Pt { x: number; y: number }
+const ptDist  = (a: Pt, b: Pt) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+const ptMid   = (a: Pt, b: Pt): Pt => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function CoverPhotoEditor({
-  currentCoverUrl, currentPosition, gradientFrom, gradientTo, onSave, onClose,
+  currentCoverUrl, currentPosition, onSave, onClose,
 }: CoverPhotoEditorProps) {
-  // Local working copies — not committed until Save
-  const [localUrl,  setLocalUrl]  = useState(currentCoverUrl);
-  const [position,  setPosition]  = useState<CoverPosition>(currentPosition);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);  // file waiting to upload
-  const [uploading, setUploading] = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-  const [saving,    setSaving]    = useState(false);
-  const [didChange, setDidChange] = useState(false);
+  const [localUrl,    setLocalUrl]    = useState(currentCoverUrl);
+  const [pos,         setPos]         = useState<CoverPosition>(currentPosition);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [saving,      setSaving]      = useState(false);
+  const [uploading,   setUploading]   = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
+  const [changed,     setChanged]     = useState(false);
 
-  // Drag-to-reposition state
-  const previewRef   = useRef<HTMLDivElement>(null);
-  const dragStart    = useRef<{ ptrX: number; ptrY: number; posX: number; posY: number } | null>(null);
-  const isDragging   = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileRevokeRef = useRef<string | null>(null);   // track blob URL to revoke later
+
+  // Pointer tracking for drag + pinch
+  const ptrs       = useRef(new Map<number, Pt>());
+  const dragAnchor = useRef<{ px: number; py: number; posX: number; posY: number } | null>(null);
+  const pinchAnchor = useRef<{ dist: number; zoom: number; center: Pt; posX: number; posY: number } | null>(null);
+
+  // ── Pointer helpers ──────────────────────────────────────────────────────────
+
+  const containerSize = useCallback((): { w: number; h: number } => {
+    const el = containerRef.current;
+    if (!el) return { w: 1, h: 1 };
+    return { w: el.clientWidth, h: el.clientHeight };
+  }, []);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (ptrs.current.size === 1) {
+      dragAnchor.current = { px: e.clientX, py: e.clientY, posX: pos.x, posY: pos.y };
+      pinchAnchor.current = null;
+    }
+
+    if (ptrs.current.size === 2) {
+      dragAnchor.current = null;
+      const [a, b] = Array.from(ptrs.current.values()) as [Pt, Pt];
+      pinchAnchor.current = {
+        dist: ptDist(a, b), zoom: pos.zoom,
+        center: ptMid(a, b), posX: pos.x, posY: pos.y,
+      };
+    }
+  }, [pos]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!ptrs.current.has(e.pointerId)) return;
+    ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const { w, h } = containerSize();
+
+    if (ptrs.current.size === 1 && dragAnchor.current) {
+      const dx = e.clientX - dragAnchor.current.px;
+      const dy = e.clientY - dragAnchor.current.py;
+      setPos(p => ({
+        ...p,
+        x: clamp(dragAnchor.current!.posX - (dx / w) * 100, 0, 100),
+        y: clamp(dragAnchor.current!.posY - (dy / h) * 100, 0, 100),
+      }));
+      if (!changed) setChanged(true);
+    }
+
+    if (ptrs.current.size === 2 && pinchAnchor.current) {
+      const [a, b] = Array.from(ptrs.current.values()) as [Pt, Pt];
+      const anc = pinchAnchor.current;
+      const newDist   = ptDist(a, b);
+      const newCenter = ptMid(a, b);
+      const newZoom   = clamp(anc.zoom * (newDist / anc.dist), 1, 5);
+      const cdx = (newCenter.x - anc.center.x) / w * 100;
+      const cdy = (newCenter.y - anc.center.y) / h * 100;
+      setPos(p => ({
+        x:    clamp(anc.posX - cdx, 0, 100),
+        y:    clamp(anc.posY - cdy, 0, 100),
+        zoom: newZoom,
+      }));
+      if (!changed) setChanged(true);
+    }
+  }, [containerSize, changed]);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    ptrs.current.delete(e.pointerId);
+    if (ptrs.current.size < 2) pinchAnchor.current = null;
+    if (ptrs.current.size === 0) dragAnchor.current = null;
+  }, []);
 
   // ── File pick ──────────────────────────────────────────────────────────────
 
   function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const preview = URL.createObjectURL(file);
+    if (fileRevokeRef.current) URL.revokeObjectURL(fileRevokeRef.current);
+    const url = URL.createObjectURL(file);
+    fileRevokeRef.current = url;
     setPendingFile(file);
-    setLocalUrl(preview);
-    setPosition({ x: 50, y: 50 });   // reset position for new image
-    setDidChange(true);
+    setLocalUrl(url);
+    setPos({ x: 50, y: 50, zoom: 1 });
+    setChanged(true);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  // ── Remove cover ───────────────────────────────────────────────────────────
+  // ── Remove ─────────────────────────────────────────────────────────────────
 
   async function handleRemove() {
-    setSaving(true);
-    setError(null);
+    setSaving(true); setError(null);
     try {
-      await onSave({ coverUrl: '', coverPosition: { x: 50, y: 50 } });
+      await onSave({ coverUrl: '', coverPosition: { x: 50, y: 50, zoom: 1 } });
       onClose();
-    } catch (e: unknown) {
-      setError((e as Error).message ?? 'Remove failed');
+    } catch (err: unknown) {
+      setError((err as Error).message ?? 'Remove failed');
     } finally {
       setSaving(false);
     }
@@ -94,8 +172,7 @@ export function CoverPhotoEditor({
   // ── Save ───────────────────────────────────────────────────────────────────
 
   async function handleSave() {
-    setSaving(true);
-    setError(null);
+    setSaving(true); setError(null);
     try {
       let finalUrl = localUrl;
       if (pendingFile && isCloudinaryConfigured) {
@@ -103,228 +180,183 @@ export function CoverPhotoEditor({
         finalUrl = await uploadImage(pendingFile, 'covers');
         setUploading(false);
       }
-      await onSave({ coverUrl: finalUrl, coverPosition: position });
+      await onSave({ coverUrl: finalUrl, coverPosition: pos });
       onClose();
-    } catch (e: unknown) {
+    } catch (err: unknown) {
       setUploading(false);
-      setError((e as Error).message ?? 'Upload failed. Try again.');
+      setError((err as Error).message ?? 'Upload failed. Try again.');
     } finally {
       setSaving(false);
     }
   }
 
-  // ── Drag-to-reposition ─────────────────────────────────────────────────────
-
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if (!localUrl) return;              // no image → nothing to reposition
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    dragStart.current = { ptrX: e.clientX, ptrY: e.clientY, posX: position.x, posY: position.y };
-    isDragging.current = false;
-  }, [localUrl, position]);
-
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragStart.current || !previewRef.current) return;
-    const rect = previewRef.current.getBoundingClientRect();
-    const dx = e.clientX - dragStart.current.ptrX;
-    const dy = e.clientY - dragStart.current.ptrY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) isDragging.current = true;
-    // Pan: drag right → move image right (show left side) → x decreases
-    const newX = clamp(dragStart.current.posX - (dx / rect.width)  * 100);
-    const newY = clamp(dragStart.current.posY - (dy / rect.height) * 120);
-    setPosition({ x: newX, y: newY });
-    if (!didChange) setDidChange(true);
-  }, [didChange]);
-
-  const onPointerUp = useCallback(() => {
-    dragStart.current  = null;
-  }, []);
-
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   const hasImage = Boolean(localUrl);
 
   return (
-    <>
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 z-[55]"
-        onClick={() => !saving && onClose()}
-      />
+    <div className="fixed inset-0 z-[70] bg-black flex flex-col">
 
-      {/* Sheet */}
-      <motion.div
-        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 26, stiffness: 290 }}
-        className="fixed bottom-0 left-0 right-0 z-[60] bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col overflow-hidden"
-        style={{ maxHeight: '80vh', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
-        onClick={(e) => e.stopPropagation()}
+      {/* ── Full-screen image with pan/pinch ── */}
+      <div
+        ref={containerRef}
+        className="flex-1 relative overflow-hidden select-none"
+        style={{ touchAction: 'none', cursor: hasImage ? 'grab' : 'default' }}
+        onPointerDown={hasImage ? onPointerDown : undefined}
+        onPointerMove={hasImage ? onPointerMove : undefined}
+        onPointerUp={hasImage ? onPointerUp : undefined}
+        onPointerCancel={hasImage ? onPointerUp : undefined}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        {/* Image (or placeholder) */}
+        {hasImage ? (
+          <img
+            src={localUrl}
+            alt="Cover"
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              objectFit: 'cover',
+              objectPosition: `${pos.x}% ${pos.y}%`,
+              transform: `scale(${pos.zoom})`,
+              transformOrigin: `${pos.x}% ${pos.y}%`,
+              pointerEvents: 'none',
+            }}
+            draggable={false}
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-white/40">
+            <ImagePlus size={48} strokeWidth={1} />
+            <p className="text-sm font-medium">
+              {isCloudinaryConfigured ? 'Tap "Upload Photo" below' : 'Configure Cloudinary to upload'}
+            </p>
+          </div>
+        )}
+
+        {/* ── 3:1 crop-frame overlay ── */}
+        <div className="absolute inset-0 flex flex-col pointer-events-none">
+          {/* dim above */}
+          <div className="flex-1 bg-black/55" />
+          {/* crop frame */}
+          <div
+            className="w-full flex-shrink-0 relative"
+            style={{ aspectRatio: '3 / 1' }}
+          >
+            {/* white border */}
+            <div className="absolute inset-0 border-2 border-white" />
+            {/* rule-of-thirds grid */}
+            {[1/3, 2/3].map((p, i) => (
+              <React.Fragment key={i}>
+                <div style={{ position:'absolute', left:`${p*100}%`, top:0, bottom:0, width:1, background:'rgba(255,255,255,0.25)' }} />
+                <div style={{ position:'absolute', top:`${p*100}%`, left:0, right:0, height:1, background:'rgba(255,255,255,0.25)' }} />
+              </React.Fragment>
+            ))}
+            {/* Centre label */}
+            {hasImage && (
+              <div className="absolute inset-0 flex items-end justify-center pb-1.5">
+                <span className="flex items-center gap-1 bg-black/35 backdrop-blur-sm text-white/80 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                  <Move size={9} /> drag  &nbsp;·&nbsp;  <ZoomIn size={9} /> pinch to zoom
+                </span>
+              </div>
+            )}
+          </div>
+          {/* dim below */}
+          <div className="flex-1 bg-black/55" />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
+        {/* ── Top bar ── */}
+        <div
+          className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4"
+          style={{ paddingTop: 'max(env(safe-area-inset-top), 44px)', paddingBottom: 12 }}
+        >
           <button
             onClick={onClose}
             disabled={saving}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-40"
+            className="w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
           >
-            <X size={20} className="text-gray-600" />
+            <X size={18} className="text-white" />
           </button>
-          <span className="font-black text-[16px] text-gray-900">Edit Cover Photo</span>
+          <span className="text-white font-bold text-sm bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-full">
+            Edit Cover
+          </span>
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleSave}
-            disabled={saving || (!didChange && localUrl === currentCoverUrl)}
-            className="px-4 py-2 rounded-full text-[14px] font-bold text-white flex items-center gap-1.5 disabled:opacity-40"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.3)' }}
+            disabled={saving || (!changed && localUrl === currentCoverUrl)}
+            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
           >
-            {(saving || uploading) ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <><Check size={14} /> Save</>
-            )}
+            {(saving || uploading) ? <Loader2 size={16} className="text-white animate-spin" /> : <Check size={16} className="text-white" />}
           </motion.button>
         </div>
 
-        {/* Content */}
-        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5">
-
-          {/* ── Cover preview / drag area ── */}
-          <div>
-            <p className="text-[13px] font-semibold text-gray-500 mb-2 ml-0.5">
-              {hasImage ? 'Drag to reposition' : 'No cover photo yet'}
-            </p>
-
-            <div
-              ref={previewRef}
-              className="relative w-full rounded-2xl overflow-hidden select-none"
-              style={{
-                aspectRatio: '3 / 1',
-                background: `linear-gradient(135deg, ${gradientFrom}55 0%, ${gradientTo}44 50%, ${gradientFrom}33 100%)`,
-                cursor: hasImage ? 'grab' : 'default',
-                touchAction: 'none',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-              }}
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
-            >
-              {hasImage && (
-                <img
-                  src={localUrl}
-                  alt="Cover preview"
-                  className="absolute inset-0 w-full h-full pointer-events-none"
-                  style={{
-                    objectFit: 'cover',
-                    objectPosition: `${position.x}% ${position.y}%`,
-                    opacity: 0.9,
-                  }}
-                  draggable={false}
-                />
-              )}
-
-              {/* Drag hint overlay */}
-              {hasImage && !dragStart.current && (
-                <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
-                  <span className="flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
-                    <Move size={11} /> Drag to reposition
-                  </span>
-                </div>
-              )}
-
-              {/* Upload / Replace overlay when no image */}
-              {!hasImage && (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-purple-400 transition-colors"
-                >
-                  <ImagePlus size={28} strokeWidth={1.5} />
-                  <span className="text-[12px] font-semibold">
-                    {isCloudinaryConfigured ? 'Tap to upload a cover photo' : 'Cloudinary not configured'}
-                  </span>
-                </button>
-              )}
-            </div>
-
-            {/* Position readout (subtle) */}
-            {hasImage && (
-              <p className="text-[11px] text-gray-400 text-right mt-1 mr-0.5">
-                Position {Math.round(position.x)}% · {Math.round(position.y)}%
-              </p>
-            )}
-          </div>
-
-          {/* ── Action buttons ── */}
-          <div className="flex flex-col gap-3">
-            {/* Upload / Replace */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={saving || !isCloudinaryConfigured}
-              className="flex items-center gap-3 p-4 rounded-2xl border-2 border-dashed border-gray-200 hover:border-purple-300 hover:bg-purple-50 active:bg-purple-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-left"
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
-              >
-                <Camera size={18} className="text-white" />
-              </div>
-              <div>
-                <div className="font-semibold text-gray-800 text-sm">
-                  {hasImage ? 'Replace cover photo' : 'Upload cover photo'}
-                </div>
-                <div className="text-xs text-gray-400">
-                  {isCloudinaryConfigured ? 'JPEG · PNG · WebP' : 'Cloudinary is not configured'}
-                </div>
-              </div>
-            </button>
-
-            {/* Remove (only shown when there's a cover) */}
-            {hasImage && (
-              <button
-                onClick={handleRemove}
-                disabled={saving}
-                className="flex items-center gap-3 p-4 rounded-2xl border border-red-100 hover:bg-red-50 active:bg-red-50 transition-colors disabled:opacity-40 text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
-                  <Trash2 size={18} className="text-red-500" />
-                </div>
-                <div>
-                  <div className="font-semibold text-red-600 text-sm">Remove cover photo</div>
-                  <div className="text-xs text-gray-400">Returns to the default gradient</div>
-                </div>
-              </button>
-            )}
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-red-600 text-sm text-center">
+        {/* Error */}
+        {error && (
+          <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-none">
+            <div className="bg-red-500/90 text-white text-sm font-medium text-center px-4 py-2.5 rounded-xl">
               {error}
             </div>
-          )}
+          </div>
+        )}
+      </div>
 
-          {/* Demo-mode hint */}
+      {/* ── Bottom controls ── */}
+      <div
+        className="flex-shrink-0 flex items-center justify-around px-4 py-3 gap-2"
+        style={{
+          paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
+          background: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
+        {/* Upload / Replace */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={saving || !isCloudinaryConfigured}
+          className="flex-1 flex flex-col items-center gap-1 py-2 rounded-2xl active:bg-white/10 transition-colors disabled:opacity-40"
+        >
+          <div className="w-10 h-10 rounded-full flex items-center justify-center"
+               style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}>
+            <Camera size={18} className="text-white" />
+          </div>
+          <span className="text-white/80 text-[11px] font-semibold leading-none">
+            {hasImage ? 'Replace' : 'Upload'}
+          </span>
           {!isCloudinaryConfigured && (
-            <p className="text-[12px] text-center text-gray-400 px-4">
-              Cover repositioning works in demo mode. Add Cloudinary secrets to enable photo upload.
-            </p>
+            <span className="text-white/30 text-[9px]">unconfigured</span>
           )}
-        </div>
+        </button>
 
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={handleFilePick}
-        />
-      </motion.div>
-    </>
+        {/* Remove — only when there's a cover */}
+        {hasImage && (
+          <button
+            onClick={handleRemove}
+            disabled={saving}
+            className="flex-1 flex flex-col items-center gap-1 py-2 rounded-2xl active:bg-white/10 transition-colors disabled:opacity-40"
+          >
+            <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+              <Trash2 size={18} className="text-red-400" />
+            </div>
+            <span className="text-red-400 text-[11px] font-semibold leading-none">Remove</span>
+          </button>
+        )}
+
+        {/* Save (large) */}
+        <button
+          onClick={handleSave}
+          disabled={saving || (!changed && localUrl === currentCoverUrl)}
+          className="flex-[2] py-3 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40"
+          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+        >
+          {(saving || uploading) ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Check size={15} /> Save Cover</>}
+        </button>
+      </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleFilePick}
+      />
+    </div>
   );
 }

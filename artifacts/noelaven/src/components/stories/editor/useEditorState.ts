@@ -16,6 +16,7 @@ export const INITIAL_EDITOR_STATE: EditorState = {
   draftFontWeight: 'bold',
   draftLayerStyle: 'plain',
   videoDuration: 0,
+  activeFilter: 'normal',
 };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -32,16 +33,10 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
       return { ...state, trimMode: action.active, cropMode: false, activePanel: null, selectedLayerId: null };
 
     case 'ADD_LAYER':
-      return {
-        ...state,
-        layers: [...state.layers, action.layer],
-        selectedLayerId: action.layer.id,
-        activePanel: null,
-        draftText: '',
-      };
+      return { ...state, layers: [...state.layers, action.layer], selectedLayerId: action.layer.id, activePanel: null, draftText: '' };
 
     case 'UPDATE_LAYER': {
-      const layers = state.layers.map((l) =>
+      const layers = state.layers.map(l =>
         l.id === action.id ? { ...l, ...action.patch } as EditorLayer : l,
       );
       return { ...state, layers };
@@ -50,7 +45,7 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'DELETE_LAYER':
       return {
         ...state,
-        layers: state.layers.filter((l) => l.id !== action.id),
+        layers: state.layers.filter(l => l.id !== action.id),
         selectedLayerId: state.selectedLayerId === action.id ? null : state.selectedLayerId,
       };
 
@@ -75,10 +70,12 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     case 'SET_DRAFT_FONT_WEIGHT':  return { ...state, draftFontWeight: action.weight };
     case 'SET_DRAFT_LAYER_STYLE':  return { ...state, draftLayerStyle: action.style };
 
-    case 'UNDO': {
+    case 'SET_FILTER':
+      return { ...state, activeFilter: action.preset };
+
+    case 'UNDO':
       if (state.layers.length === 0) return state;
       return { ...state, layers: state.layers.slice(0, -1), selectedLayerId: null };
-    }
 
     default:
       return state;
@@ -110,7 +107,6 @@ export function useEditorState() {
 
   const addStickerLayer = useCallback(
     (emoji: string, x = 50, y = 50) => {
-      // Slightly randomise position so multiple stickers don't stack exactly
       const jitter = () => (Math.random() - 0.5) * 10;
       const layer: StickerLayer = {
         id: `sticker-${Date.now()}`,

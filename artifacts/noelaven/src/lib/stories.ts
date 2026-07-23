@@ -11,9 +11,11 @@ import {
 import { db } from './firebase';
 import type { User } from './mockData';
 import type { EditorLayer, CropData, TrimData } from '@/components/stories/editor/types';
+import type { FilterPreset } from '@/components/stories/editor/filters';
 
-// ─── Re-export editor types so callers can import from one place ──────────────
+// Re-export editor types so callers can import from one place
 export type { EditorLayer, CropData, TrimData } from '@/components/stories/editor/types';
+export type { FilterPreset } from '@/components/stories/editor/filters';
 
 // ─── Story types ──────────────────────────────────────────────────────────────
 
@@ -27,17 +29,15 @@ export interface Story {
   authorAvatarUrl: string;
   mediaUrl: string;
   mediaType: StoryMediaType;
-  /** The first text layer's content, or '' — kept for backward compat */
   caption: string;
   createdAt: Date;
   expiresAt: Date;
   viewerIds: string[];
-  /** Text / sticker layers created in the editor */
   layers: EditorLayer[];
-  /** CSS clip region, 0–100 % — null means no crop */
   cropData: CropData | null;
-  /** Trim start/end in seconds — null means no trim */
   trimData: TrimData | null;
+  /** CSS filter preset applied to this story in the viewer. */
+  filterName: FilterPreset;
 }
 
 export interface StoryGroup {
@@ -45,7 +45,6 @@ export interface StoryGroup {
   authorName: string;
   authorHandle: string;
   authorAvatarUrl: string;
-  /** Stories sorted oldest → newest (natural viewing order) */
   stories: Story[];
   hasUnseen: boolean;
   isOwn: boolean;
@@ -60,25 +59,25 @@ function toDate(v: Timestamp | undefined): Date {
 function docToStory(id: string, d: DocumentData): Story {
   return {
     id,
-    authorId:      d.authorId ?? '',
-    authorName:    d.authorName ?? '',
-    authorHandle:  d.authorHandle ?? '',
+    authorId:       d.authorId ?? '',
+    authorName:     d.authorName ?? '',
+    authorHandle:   d.authorHandle ?? '',
     authorAvatarUrl: d.authorAvatarUrl ?? '',
-    mediaUrl:      d.mediaUrl ?? '',
-    mediaType:     (d.mediaType as StoryMediaType) ?? 'image',
-    caption:       d.caption ?? '',
-    createdAt:     toDate(d.createdAt),
-    expiresAt:     toDate(d.expiresAt),
-    viewerIds:     Array.isArray(d.viewerIds) ? d.viewerIds : [],
-    layers:        Array.isArray(d.layers) ? d.layers : [],
-    cropData:      d.cropData ?? null,
-    trimData:      d.trimData ?? null,
+    mediaUrl:       d.mediaUrl ?? '',
+    mediaType:      (d.mediaType as StoryMediaType) ?? 'image',
+    caption:        d.caption ?? '',
+    createdAt:      toDate(d.createdAt),
+    expiresAt:      toDate(d.expiresAt),
+    viewerIds:      Array.isArray(d.viewerIds) ? d.viewerIds : [],
+    layers:         Array.isArray(d.layers) ? d.layers : [],
+    cropData:       d.cropData ?? null,
+    trimData:       d.trimData ?? null,
+    filterName:     (d.filterName as FilterPreset) ?? 'normal',
   };
 }
 
 // ─── Firestore operations ─────────────────────────────────────────────────────
 
-/** Create a new story that expires 24 h from now. */
 export async function createStory(
   author: User,
   mediaUrl: string,
@@ -87,6 +86,7 @@ export async function createStory(
   layers: EditorLayer[] = [],
   cropData: CropData | null = null,
   trimData: TrimData | null = null,
+  filterName: FilterPreset = 'normal',
 ): Promise<string> {
   if (!db) throw new Error('Firebase not configured');
   const now       = new Date();
@@ -102,6 +102,7 @@ export async function createStory(
     layers,
     cropData:   cropData  ?? null,
     trimData:   trimData  ?? null,
+    filterName: filterName ?? 'normal',
     createdAt:  Timestamp.fromDate(now),
     expiresAt:  Timestamp.fromDate(expiresAt),
     viewerIds:  [],
@@ -109,7 +110,6 @@ export async function createStory(
   return ref.id;
 }
 
-/** Subscribe to all non-expired stories ordered by expiry ascending. */
 export function subscribeStories(onData: (stories: Story[]) => void): Unsubscribe {
   if (!db) return () => {};
   const now = Timestamp.now();
@@ -118,12 +118,11 @@ export function subscribeStories(onData: (stories: Story[]) => void): Unsubscrib
     where('expiresAt', '>', now),
     orderBy('expiresAt', 'asc'),
   );
-  return onSnapshot(q, (snap) => {
-    onData(snap.docs.map((d) => docToStory(d.id, d.data())));
+  return onSnapshot(q, snap => {
+    onData(snap.docs.map(d => docToStory(d.id, d.data())));
   });
 }
 
-/** Record that `userId` has seen this story. */
 export async function markStoryViewed(storyId: string, userId: string): Promise<void> {
   if (!db) return;
   await updateDoc(doc(db, 'stories', storyId), { viewerIds: arrayUnion(userId) });
@@ -131,7 +130,6 @@ export async function markStoryViewed(storyId: string, userId: string): Promise<
 
 // ─── Client-side grouping ─────────────────────────────────────────────────────
 
-/** Group flat story list by author; own group first, then unseen. */
 export function groupStories(stories: Story[], currentUserId?: string): StoryGroup[] {
   const map = new Map<string, StoryGroup>();
 
@@ -142,16 +140,14 @@ export function groupStories(stories: Story[], currentUserId?: string): StoryGro
         authorName:     story.authorName,
         authorHandle:   story.authorHandle,
         authorAvatarUrl: story.authorAvatarUrl,
-        stories:    [],
-        hasUnseen:  false,
-        isOwn:      story.authorId === currentUserId,
+        stories:   [],
+        hasUnseen: false,
+        isOwn:     story.authorId === currentUserId,
       });
     }
     const g = map.get(story.authorId)!;
     g.stories.push(story);
-    if (currentUserId && !story.viewerIds.includes(currentUserId)) {
-      g.hasUnseen = true;
-    }
+    if (currentUserId && !story.viewerIds.includes(currentUserId)) g.hasUnseen = true;
   }
 
   for (const g of map.values()) {
@@ -161,8 +157,8 @@ export function groupStories(stories: Story[], currentUserId?: string): StoryGro
   return Array.from(map.values()).sort((a, b) => {
     if (a.isOwn !== b.isOwn) return a.isOwn ? -1 : 1;
     if (a.hasUnseen !== b.hasUnseen) return a.hasUnseen ? -1 : 1;
-    const aLatest = Math.max(...a.stories.map((s) => s.createdAt.getTime()));
-    const bLatest = Math.max(...b.stories.map((s) => s.createdAt.getTime()));
-    return bLatest - aLatest;
+    const aL = Math.max(...a.stories.map(s => s.createdAt.getTime()));
+    const bL = Math.max(...b.stories.map(s => s.createdAt.getTime()));
+    return bL - aL;
   });
 }

@@ -5,8 +5,10 @@ export interface User {
   bio: string;
   avatarUrl: string;
   coverUrl: string;
-  /** CSS object-position percentages (0–100). Defaults to { x: 50, y: 50 } (centre). */
-  coverPosition?: { x: number; y: number };
+  /** CSS focal-point + zoom for cover display.
+   *  x/y: objectPosition % (0–100, centre = 50).
+   *  zoom: CSS scale multiplier (1 = default, > 1 = zoomed in). */
+  coverPosition?: { x: number; y: number; zoom: number };
   interests: string[];
   followers: number;
   following: number;

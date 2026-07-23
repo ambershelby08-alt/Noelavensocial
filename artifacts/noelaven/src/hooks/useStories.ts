@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
   type Story, type StoryGroup, type StoryMediaType,
-  type EditorLayer, type CropData, type TrimData,
+  type EditorLayer, type CropData, type TrimData, type FilterPreset,
   subscribeStories, createStory as fsCreateStory,
   markStoryViewed, groupStories,
 } from '@/lib/stories';
@@ -19,27 +19,26 @@ const DEMO_MEDIA = [
   'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=600&q=80',
   'https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=600&q=80',
 ];
-const DEMO_CAPTIONS = [
-  'Good morning! ☀️', 'Living the dream 🌊', 'Golden hour 🌅', '', "Can't stop smiling 🌸",
-];
+const DEMO_CAPTIONS = ['Good morning! ☀️', 'Living the dream 🌊', 'Golden hour 🌅', '', "Can't stop smiling 🌸"];
 
 function buildDemoStories(): Story[] {
   const now = Date.now();
   return mockUsers.slice(0, 5).map((u, i) => ({
-    id: `demo-story-${i}`,
-    authorId: u.id,
-    authorName: u.displayName,
-    authorHandle: u.handle,
+    id:            `demo-story-${i}`,
+    authorId:      u.id,
+    authorName:    u.displayName,
+    authorHandle:  u.handle,
     authorAvatarUrl: u.avatarUrl,
-    mediaUrl: DEMO_MEDIA[i],
-    mediaType: 'image' as StoryMediaType,
-    caption: DEMO_CAPTIONS[i],
-    createdAt: new Date(now - i * 3_600_000),
-    expiresAt: new Date(now + (24 - i) * 3_600_000),
-    viewerIds: [],
-    layers: [],
-    cropData: null,
-    trimData: null,
+    mediaUrl:      DEMO_MEDIA[i],
+    mediaType:     'image' as StoryMediaType,
+    caption:       DEMO_CAPTIONS[i],
+    createdAt:     new Date(now - i * 3_600_000),
+    expiresAt:     new Date(now + (24 - i) * 3_600_000),
+    viewerIds:     [],
+    layers:        [],
+    cropData:      null,
+    trimData:      null,
+    filterName:    'normal' as FilterPreset,
   }));
 }
 
@@ -56,7 +55,7 @@ export function useStories() {
       setLoading(false);
       return;
     }
-    const unsub = subscribeStories((s) => {
+    const unsub = subscribeStories(s => {
       setStories(s);
       setLoading(false);
     });
@@ -68,25 +67,21 @@ export function useStories() {
     [stories, currentUser?.id],
   );
 
-  /** Upload to Cloudinary (handled by StoryEditor) then persist to Firestore. */
   async function publishStory(
-    mediaUrl: string,
-    mediaType: StoryMediaType,
-    caption: string,
-    layers: EditorLayer[] = [],
-    cropData: CropData | null = null,
-    trimData: TrimData | null = null,
+    mediaUrl:   string,
+    mediaType:  StoryMediaType,
+    caption:    string,
+    layers:     EditorLayer[] = [],
+    cropData:   CropData | null = null,
+    trimData:   TrimData | null = null,
+    filterName: FilterPreset = 'normal',
   ): Promise<void> {
     if (!currentUser) return;
     if (!isFirebaseConfigured) return;
     await fsCreateStory(
       currentUser as unknown as User,
-      mediaUrl,
-      mediaType,
-      caption,
-      layers,
-      cropData,
-      trimData,
+      mediaUrl, mediaType, caption,
+      layers, cropData, trimData, filterName,
     );
   }
 
@@ -95,7 +90,6 @@ export function useStories() {
     await markStoryViewed(storyId, currentUser.id);
   }
 
-  const ownGroup = groups.find((g) => g.isOwn) ?? null;
-
+  const ownGroup = groups.find(g => g.isOwn) ?? null;
   return { groups, ownGroup, loading, publishStory, markViewed };
 }

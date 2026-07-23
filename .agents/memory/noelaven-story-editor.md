@@ -1,31 +1,29 @@
 ---
 name: Noelaven story editor
-description: Full-screen story editor architecture — layers, crop, trim, toolbar extension pattern.
+description: Full story editor architecture — types, components, hooks, and integration points.
 ---
 
-# Story editor architecture
+## Architecture
 
-## Data flow
-`Home` → `StoryCreator` (media picker, `onMediaReady`) → `StoryEditor` (fullscreen, z-[90]) → uploads to Cloudinary → calls `useStories.publishStory()` with full payload → Firestore.
+- `StoryCreator` — media picker sheet only. Calls `onMediaReady(items: StoryPickItem[])` with an array for multi-select (images) or single (video).
+- `StoryEditor` — fullscreen editing surface (z-[90]). Props: `file`, `previewUrl`, `mediaType`, `currentIndex`, `total`, `onPublish`, `onClose`.
+- `StoryViewer` — fullscreen viewer (z-[80]). Progress bar uses photo=5000ms or video duration from `onLoadedMetadata`. Filter CSS applied via `filterCSS(story.filterName)`.
 
-## Type ownership
-`EditorLayer`, `CropData`, `TrimData` are defined in `src/components/stories/editor/types.ts`. `src/lib/stories.ts` imports them from there and re-exports. Use `@/lib/stories` as the single import point for callers outside the editor directory.
+## Editor components (under `src/components/stories/editor/`)
+- `types.ts` — canonical types: `TextLayer`, `StickerLayer`, `EditorLayer`, `CropData`, `TrimData`, `FilterPreset` (string union), `EditorState`, etc.
+- `filters.ts` — `FILTER_DEFS`, `FilterPreset` type, `filterCSS()` helper; 9 presets.
+- `useEditorState.ts` — `useReducer` hook; actions: ADD/UPDATE/DELETE/SELECT layer, SET_CROP, SET_TRIM, SET_FILTER, UNDO, SET_VIDEO_DURATION.
+- `GestureLayer.tsx`, `BottomToolbar.tsx`, `TextPanel.tsx`, `EmojiPanel.tsx`, `CropOverlay.tsx`, `VideoTrimmer.tsx`, `FilterPanel.tsx`, `MusicPanel.tsx`, `EditorCanvas.tsx`, `index.tsx`.
 
-## Toolbar extension pattern
-`TOOLBAR_TABS: ToolbarTabDef[]` in `editor/index.tsx` — push a new entry + implement a panel in `renderPanel()`. BottomToolbar renders "Soon" labels for `available: false` entries automatically. No shell changes needed.
+## `index.tsx` import rule
+**Why:** `filterCSS` must be a top-level import — `require('./filters')` fails in ESM/Vite.
+**How to apply:** Always import `filterCSS` at the file top, not inside component logic.
 
-## Z-index stack (full order)
-- BottomNav: z-50
-- Backdrop: z-[55]
-- All bottom-sheet drawers: z-[60]
-- StoryViewer: z-[80]
-- StoryEditor: z-[90]
-- Toast: z-[100]
+## Multi-story queue (Home.tsx)
+`storyQueue: StoryPickItem[]` + `storyQueueTotal: number` — advances after each `onPublish`. StoryEditor key includes queue position so it remounts fresh per segment.
 
-## Layer storage
-Stored as JSON array in Firestore `layers` field. Crop = `{ x, y, w, h }` in %. Trim = `{ start, end }` in seconds. Rendered as HTML/CSS at view time (no Cloudinary transform needed).
+## Data stored in Firestore story doc
+`layers[]`, `cropData`, `trimData`, `filterName` (string preset), `mediaType`, `mediaUrl`, `caption`.
 
-**Why:** Same approach as Instagram/Snapchat — keeps source data editable, avoids re-upload on every edit.
-
-## GestureLayer
-Uses Pointer Events API (not touch events) — works identically on mouse and touch. setPointerCapture ensures drag continues off-element. Positions in %, canvasRef required for px↔% conversion.
+## `publishStory` signature
+`publishStory(mediaUrl, mediaType, caption, layers, cropData, trimData, filterName)` — all params optional except first three.

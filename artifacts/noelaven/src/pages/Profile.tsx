@@ -647,7 +647,11 @@ export default function Profile() {
             src={user.coverUrl}
             alt="Cover"
             className="absolute inset-0 w-full h-full object-cover opacity-90"
-            style={{ objectPosition: `${user.coverPosition?.x ?? 50}% ${user.coverPosition?.y ?? 50}%` }}
+            style={{
+              objectPosition: `${user.coverPosition?.x ?? 50}% ${user.coverPosition?.y ?? 50}%`,
+              transform: `scale(${user.coverPosition?.zoom ?? 1})`,
+              transformOrigin: `${user.coverPosition?.x ?? 50}% ${user.coverPosition?.y ?? 50}%`,
+            }}
           />
         )}
         {/* Bottom fade to page bg */}
@@ -949,9 +953,7 @@ export default function Profile() {
           <CoverPhotoEditor
             key="cover-editor"
             currentCoverUrl={user.coverUrl ?? ''}
-            currentPosition={user.coverPosition ?? { x: 50, y: 50 }}
-            gradientFrom={from}
-            gradientTo={to}
+            currentPosition={user.coverPosition ?? { x: 50, y: 50, zoom: 1 }}
             onSave={handleCoverSave}
             onClose={() => setCoverEditorOpen(false)}
           />

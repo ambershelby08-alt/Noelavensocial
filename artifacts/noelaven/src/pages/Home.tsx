@@ -15,10 +15,9 @@ import { useFeed } from '@/hooks/useFeed';
 import { useDailySpark } from '@/hooks/useDailySpark';
 import { useStories } from '@/hooks/useStories';
 import { StoriesRow } from '@/components/stories/StoriesRow';
-import { StoryCreator } from '@/components/stories/StoryCreator';
+import { StoryCreator, type StoryPickItem } from '@/components/stories/StoryCreator';
 import { StoryViewer } from '@/components/stories/StoryViewer';
 import { StoryEditor, type StoryEditorPublishPayload } from '@/components/stories/editor';
-import type { StoryMediaType } from '@/lib/stories';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import {
   reportPost as fsReportPost, unfollowUser as fsUnfollowUser,
@@ -1396,10 +1395,9 @@ export default function Home() {
   const { unreadCount } = useNotifications();
   const { prompt: sparkPrompt } = useDailySpark();
   const { groups: storyGroups, publishStory, markViewed } = useStories();
-  const [storyCreatorOpen, setStoryCreatorOpen] = useState(false);
-  const [pendingEditorData, setPendingEditorData] = useState<{
-    file: File; previewUrl: string; mediaType: StoryMediaType;
-  } | null>(null);
+  const [storyCreatorOpen,  setStoryCreatorOpen]  = useState(false);
+  const [storyQueue,        setStoryQueue]        = useState<StoryPickItem[]>([]);
+  const [storyQueueTotal,   setStoryQueueTotal]   = useState(0);
   const [viewingGroupIdx, setViewingGroupIdx] = useState<number | null>(null);
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
@@ -1639,21 +1637,24 @@ export default function Home() {
           <StoryCreator
             key="story-creator"
             onClose={() => setStoryCreatorOpen(false)}
-            onMediaReady={(file, previewUrl, mediaType) => {
+            onMediaReady={(items) => {
               setStoryCreatorOpen(false);
-              setPendingEditorData({ file, previewUrl, mediaType });
+              setStoryQueue(items);
+              setStoryQueueTotal(items.length);
             }}
           />
         )}
       </AnimatePresence>
 
-      {pendingEditorData && (
+      {storyQueue.length > 0 && (
         <StoryEditor
-          key="story-editor"
-          file={pendingEditorData.file}
-          previewUrl={pendingEditorData.previewUrl}
-          mediaType={pendingEditorData.mediaType}
-          onClose={() => setPendingEditorData(null)}
+          key={`story-editor-${storyQueueTotal - storyQueue.length}`}
+          file={storyQueue[0].file}
+          previewUrl={storyQueue[0].previewUrl}
+          mediaType={storyQueue[0].mediaType}
+          currentIndex={storyQueueTotal - storyQueue.length}
+          total={storyQueueTotal}
+          onClose={() => { setStoryQueue([]); setStoryQueueTotal(0); }}
           onPublish={async (payload: StoryEditorPublishPayload) => {
             await publishStory(
               payload.mediaUrl,
@@ -1662,8 +1663,13 @@ export default function Home() {
               payload.layers,
               payload.cropData,
               payload.trimData,
+              payload.filterName,
             );
-            setPendingEditorData(null);
+            setStoryQueue(prev => {
+              const next = prev.slice(1);
+              if (next.length === 0) setStoryQueueTotal(0);
+              return next;
+            });
           }}
         />
       )}
