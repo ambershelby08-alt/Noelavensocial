@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useRoute, Link } from 'wouter';
+import { useRoute, Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Edit3, Camera, X, Check, Sparkles, Users, MessageCircle,
@@ -20,7 +20,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { updatePostSparkAudience } from '@/lib/firestore';
+import { updatePostSparkAudience, followUser as fsFollow, unfollowUser as fsUnfollow, getUserDoc, getOrCreateDirectConversation } from '@/lib/firestore';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -149,6 +149,21 @@ interface UserListSheetProps {
 
 function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetProps) {
   const [followed, setFollowed] = useState<Set<string>>(new Set());
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  async function handleFollowToggle(userId: string, isFollowing: boolean) {
+    if (!currentUserId || loadingId) return;
+    setLoadingId(userId);
+    try {
+      if (isFollowing) {
+        if (isFirebaseConfigured) await fsUnfollow(currentUserId, userId);
+        setFollowed(prev => { const s = new Set(prev); s.delete(userId); return s; });
+      } else {
+        if (isFirebaseConfigured) await fsFollow(currentUserId, userId);
+        setFollowed(prev => new Set([...prev, userId]));
+      }
+    } catch { /* ignore */ } finally { setLoadingId(null); }
+  }
 
   return (
     <>
@@ -190,20 +205,17 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
                 {!isMe && (
                   <motion.button
                     whileTap={{ scale: 0.92 }}
-                    onClick={() => setFollowed(prev => {
-                      const s = new Set(prev);
-                      s.has(u.id) ? s.delete(u.id) : s.add(u.id);
-                      return s;
-                    })}
+                    disabled={loadingId === u.id}
+                    onClick={() => handleFollowToggle(u.id, isFollowing)}
                     className={cn(
-                      'flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold transition-all flex-shrink-0',
-                      isFollowing
-                        ? 'bg-gray-100 text-gray-600'
-                        : 'text-white shadow-sm'
+                      'flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold transition-all flex-shrink-0 disabled:opacity-60',
+                      isFollowing ? 'bg-gray-100 text-gray-600' : 'text-white shadow-sm'
                     )}
                     style={!isFollowing ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 2px 10px rgba(107,115,255,0.30)' } : {}}
                   >
-                    {isFollowing ? <><UserCheck size={13} /> Following</> : <><UserPlus size={13} /> Follow</>}
+                    {loadingId === u.id
+                      ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
+                      : isFollowing ? <><UserCheck size={13} /> Following</> : <><UserPlus size={13} /> Follow</>}
                   </motion.button>
                 )}
               </motion.div>
@@ -766,15 +778,60 @@ export default function Profile() {
       isOwn:    isOwnProfile,
     }));
 
-  // Followers/following lists (mock for now)
-  const followersList = mockUsers.filter(u => u.id !== user.id);
-  const followingList = mockUsers.filter(u => u.id !== user.id).slice(0, 3);
+  // Real followers/following lists loaded from Firestore on demand
+  const [followersList, setFollowersList] = useState<User[]>([]);
+  const [followingList, setFollowingList] = useState<User[]>([]);
+  const [listsLoaded, setListsLoaded] = useState(false);
+
+  async function loadFollowLists() {
+    if (listsLoaded) return;
+    setListsLoaded(true);
+    if (!isFirebaseConfigured || !userId) {
+      // Demo fallback
+      setFollowersList(mockUsers.filter(u => u.id !== user.id));
+      setFollowingList(mockUsers.filter(u => u.id !== user.id).slice(0, 3));
+      return;
+    }
+    try {
+      const { getFirestore, collection, getDocs } = await import('firebase/firestore');
+      const db = getFirestore();
+      const [follSnap, folwSnap] = await Promise.all([
+        getDocs(collection(db, 'users', userId, 'followers')),
+        getDocs(collection(db, 'users', userId, 'following')),
+      ]);
+      const [followers, following] = await Promise.all([
+        Promise.all(follSnap.docs.map(d => getUserDoc(d.id).catch(() => null))),
+        Promise.all(folwSnap.docs.map(d => getUserDoc(d.id).catch(() => null))),
+      ]);
+      setFollowersList(followers.filter(Boolean) as User[]);
+      setFollowingList(following.filter(Boolean) as User[]);
+    } catch {
+      setFollowersList(mockUsers.filter(u => u.id !== user.id));
+      setFollowingList(mockUsers.filter(u => u.id !== user.id).slice(0, 3));
+    }
+  }
 
   const [from, to] = getGradientPair(user.displayName);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [, setLocation] = useLocation();
 
-  function handleFollow() {
-    setIsFollowing(v => !v);
-    setFollowerCount(n => isFollowing ? n - 1 : n + 1);
+  async function handleFollow() {
+    if (!currentUser || followLoading) return;
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        if (isFirebaseConfigured) await fsUnfollow(currentUser.id, user.id);
+        setIsFollowing(false);
+        setFollowerCount(n => Math.max(0, n - 1));
+      } else {
+        if (isFirebaseConfigured) await fsFollow(currentUser.id, user.id);
+        setIsFollowing(true);
+        setFollowerCount(n => n + 1);
+      }
+    } catch { /* ignore */ } finally {
+      setFollowLoading(false);
+    }
   }
 
   function handleSave(updates: Partial<User>) {
@@ -878,24 +935,41 @@ export default function Profile() {
               <motion.button
                 whileTap={{ scale: 0.93 }}
                 onClick={handleFollow}
+                disabled={followLoading}
                 className={cn(
-                  'px-5 py-2.5 rounded-full font-bold text-[13.5px] transition-all flex items-center gap-1.5',
+                  'px-5 py-2.5 rounded-full font-bold text-[13.5px] transition-all flex items-center gap-1.5 disabled:opacity-70',
                   isFollowing ? 'bg-white border border-black/[0.08] text-gray-700 shadow-sm' : 'text-white shadow-md'
                 )}
                 style={!isFollowing ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 14px rgba(107,115,255,0.35)' } : {}}
               >
-                {isFollowing ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
+                {followLoading
+                  ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  : isFollowing ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
               </motion.button>
-              <Link href={(() => {
-                const conv = mockConversations.find(c =>
-                  c.type === 'direct' && c.participants.some(p => p.id === user.id)
-                );
-                return conv ? `/messages/${conv.id}` : '/messages';
-              })()}>
-                <button className="w-10 h-10 rounded-full bg-white border border-black/[0.08] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
-                  <MessageCircle size={17} className="text-purple-500" />
-                </button>
-              </Link>
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                disabled={msgLoading}
+                onClick={async () => {
+                  if (!currentUser || msgLoading) return;
+                  setMsgLoading(true);
+                  try {
+                    if (isFirebaseConfigured) {
+                      const convId = await getOrCreateDirectConversation(currentUser.id, user.id, currentUser, user);
+                      setLocation(`/messages/${convId}`);
+                    } else {
+                      const conv = mockConversations.find(c =>
+                        c.type === 'direct' && c.participants.some(p => p.id === user.id)
+                      );
+                      setLocation(conv ? `/messages/${conv.id}` : '/messages');
+                    }
+                  } catch { setLocation('/messages'); } finally { setMsgLoading(false); }
+                }}
+                className="w-10 h-10 rounded-full bg-white border border-black/[0.08] flex items-center justify-center shadow-sm hover:shadow-md transition-all disabled:opacity-60"
+              >
+                {msgLoading
+                  ? <span className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  : <MessageCircle size={17} className="text-purple-500" />}
+              </motion.button>
             </>
           )}
         </div>
@@ -942,7 +1016,7 @@ export default function Profile() {
           </div>
           <div className="w-px h-5 bg-gray-200" />
           <button
-            onClick={() => setFollowersOpen(true)}
+            onClick={() => { setFollowersOpen(true); loadFollowLists(); }}
             className="flex items-baseline gap-1 hover:opacity-75 transition-opacity"
           >
             <span className="text-[18px] font-black text-gray-900">{fmtNum(followerCount)}</span>
@@ -950,7 +1024,7 @@ export default function Profile() {
           </button>
           <div className="w-px h-5 bg-gray-200" />
           <button
-            onClick={() => setFollowingOpen(true)}
+            onClick={() => { setFollowingOpen(true); loadFollowLists(); }}
             className="flex items-baseline gap-1 hover:opacity-75 transition-opacity"
           >
             <span className="text-[18px] font-black text-gray-900">{fmtNum(user.following)}</span>

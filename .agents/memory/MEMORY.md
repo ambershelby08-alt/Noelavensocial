@@ -8,3 +8,4 @@
 - [Noelaven cover photo](noelaven-cover-photo.md) — coverUrl + coverPosition ({x,y} %) in Firestore; CSS object-position at render; upload only on Save; z-[60] sheet.
 - [Noelaven UserCacheContext](noelaven-user-cache.md) — real-time deduped avatar cache; use UserAvatar (not GradientAvatar) whenever you have a non-currentUser userId.
 - [Noelaven messaging architecture](noelaven-messaging-arch.md) — production messaging layer: extended Message/Conversation types, Firestore helpers, hooks (useMessages/useConversations/useVoiceRecorder), Chat.tsx + Messages.tsx patterns.
+- [Noelaven page wiring sweep](noelaven-page-wiring.md) — Discover/Profile/Notifications/Communities/PostDetail all wired to Firestore; see file for per-page details.

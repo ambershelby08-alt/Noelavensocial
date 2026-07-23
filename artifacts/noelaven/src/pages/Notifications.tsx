@@ -1,107 +1,200 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Heart, MessageCircle, UserPlus, Users, Sparkles, Check, CheckCheck } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Users, Sparkles, CheckCheck, Reply } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { formatDistanceToNow } from 'date-fns';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
+const FILTERS = ['All', 'Likes', 'Comments', 'Follows'] as const;
+type Filter = typeof FILTERS[number];
+
+function getIcon(type: string) {
+  switch (type) {
+    case 'like':             return <Heart size={15} className="fill-red-500 text-red-500" />;
+    case 'comment':          return <MessageCircle size={15} className="text-purple-500 fill-purple-100" />;
+    case 'reply':            return <Reply size={15} className="text-purple-400" />;
+    case 'like_comment':     return <Heart size={15} className="fill-pink-400 text-pink-400" />;
+    case 'follow':           return <UserPlus size={15} className="text-blue-500" />;
+    case 'community_invite': return <Users size={15} className="text-indigo-500" />;
+    case 'daily_spark':      return <Sparkles size={15} className="text-yellow-500 fill-yellow-400" />;
+    default:                 return <Heart size={15} className="text-gray-400" />;
+  }
+}
+
+function matchesFilter(type: string, filter: Filter): boolean {
+  if (filter === 'All') return true;
+  if (filter === 'Likes') return type === 'like' || type === 'like_comment';
+  if (filter === 'Comments') return type === 'comment' || type === 'reply';
+  if (filter === 'Follows') return type === 'follow' || type === 'community_invite';
+  return false;
+}
+
+function linkForNotif(notif: { type: string; postId?: string; communityId?: string; actorId?: string; targetId?: string }): string | null {
+  const { type, postId, communityId, actorId, targetId } = notif;
+  if (type === 'like' || type === 'comment' || type === 'reply' || type === 'like_comment') {
+    const id = postId || targetId;
+    return id ? `/post/${id}` : null;
+  }
+  if (type === 'follow') return actorId ? `/profile/${actorId}` : null;
+  if (type === 'community_invite') { const id = communityId || targetId; return id ? `/communities/${id}` : null; }
+  if (type === 'daily_spark') return '/?spark=1';
+  return null;
+}
+
 export default function Notifications() {
-  const [filter, setFilter] = useState('All');
-  const filters = ['All', 'Likes', 'Comments', 'Mentions'];
+  const [filter, setFilter] = useState<Filter>('All');
+  const [, setLocation] = useLocation();
+  const { notifications, markAllRead, markOneRead } = useNotifications();
 
-  const getIcon = (type: string) => {
-    switch(type) {
-      case 'like': return <Heart size={16} className="fill-destructive text-destructive" />;
-      case 'comment': return <MessageCircle size={16} className="fill-primary text-primary" />;
-      case 'follow': return <UserPlus size={16} className="text-secondary" />;
-      case 'community_invite': return <Users size={16} className="text-accent" />;
-      case 'daily_spark': return <Sparkles size={16} className="text-yellow-500 fill-yellow-500" />;
-      default: return <Heart size={16} />;
-    }
-  };
+  // Auto-mark all read after a brief delay so the user sees the unread state first
+  useEffect(() => {
+    const t = setTimeout(() => { markAllRead(); }, 4000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const { notifications, markAllRead } = useNotifications();
+  const filtered = notifications.filter(n => matchesFilter(n.type, filter));
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  function handleNotifClick(notif: { id: string; type: string; postId?: string; communityId?: string; actorId?: string; targetId?: string }) {
+    markOneRead(notif.id);
+    const dest = linkForNotif(notif);
+    if (dest) setLocation(dest);
+  }
 
   return (
-    <div className="pb-24 pt-4 md:pt-8 min-h-screen px-4 md:px-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Notifications</h1>
-        <button 
+    <div className="pb-28 pt-4 md:pt-8 min-h-screen px-4 md:px-6">
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-[26px] font-black text-gray-900 tracking-tight">Notifications</h1>
+          {unreadCount > 0 && (
+            <p className="text-[12.5px] text-purple-500 font-semibold mt-0.5">{unreadCount} unread</p>
+          )}
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.92 }}
           onClick={markAllRead}
-          className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors tooltip"
+          className="p-2.5 hover:bg-purple-50 rounded-full transition-colors group"
           title="Mark all as read"
         >
-          <CheckCheck size={22} />
-        </button>
+          <CheckCheck size={20} className="text-gray-400 group-hover:text-purple-500 transition-colors" />
+        </motion.button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar">
-        {filters.map(f => (
-          <button
+      {/* Filter chips */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
+        {FILTERS.map(f => (
+          <motion.button
             key={f}
+            whileTap={{ scale: 0.93 }}
             onClick={() => setFilter(f)}
-            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-              filter === f 
-                ? 'bg-foreground text-background shadow-md' 
-                : 'bg-muted text-muted-foreground hover:bg-card border border-transparent hover:border-border'
-            }`}
+            className={cn(
+              'whitespace-nowrap px-4 py-1.5 rounded-full text-[13px] font-bold transition-all',
+              filter === f
+                ? 'text-white shadow-sm'
+                : 'bg-white border border-black/[0.07] text-gray-500 hover:border-purple-300 hover:text-purple-600'
+            )}
+            style={filter === f ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
           >
             {f}
-          </button>
+          </motion.button>
         ))}
       </div>
 
-      <div className="space-y-2 mt-4">
-        {notifications.map((notif, i) => (
-          <motion.div 
-            key={notif.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className={cn(
-              "flex gap-4 p-4 rounded-2xl transition-colors relative group",
-              !notif.read ? "bg-primary/5 border border-primary/20" : "bg-card border border-border hover:shadow-sm"
-            )}
-          >
-            {!notif.read && (
-              <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-primary" />
-            )}
-            
-            <div className="relative shrink-0">
-              {notif.type === 'daily_spark' ? (
-                <div className="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white shadow-md shadow-primary/20">
-                  <Sparkles size={24} />
-                </div>
-              ) : (
-                <Link href={`/profile/${notif.actorId}`}>
-                  <UserAvatar userId={notif.actorId} fallbackName={notif.actor.displayName} fallbackSrc={notif.actor.avatarUrl || undefined} size={48} />
-                </Link>
-              )}
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-background rounded-full flex items-center justify-center border border-border shadow-sm">
-                {getIcon(notif.type)}
+      {/* List */}
+      <div className="space-y-2">
+        <AnimatePresence initial={false}>
+          {filtered.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center py-24 text-center"
+            >
+              <div className="w-16 h-16 rounded-[22px] bg-gray-100 flex items-center justify-center mb-4">
+                <Sparkles size={28} className="text-gray-300" />
               </div>
-            </div>
-            
-            <div className="flex-1 min-w-0 pt-1">
-              <p className={cn("text-[15px] pr-4", !notif.read ? "font-medium text-foreground" : "text-foreground/90")}>
-                {notif.message}
+              <h3 className="font-black text-[17px] text-gray-700 mb-1.5">All quiet here</h3>
+              <p className="text-[14px] text-gray-400 max-w-[220px] leading-relaxed">
+                When people like, comment, or follow you — it'll show up here.
               </p>
-              <span className="text-xs text-muted-foreground mt-1 block">
-                {formatDistanceToNow(notif.createdAt, { addSuffix: true })}
-              </span>
-            </div>
-            
-            {notif.type === 'daily_spark' && !notif.read && (
-              <div className="shrink-0 self-center mr-4">
-                <button className="px-4 py-1.5 gradient-bg text-white rounded-full text-xs font-bold shadow-md shadow-primary/20 hover:scale-105 transition-transform">
-                  Respond
-                </button>
+            </motion.div>
+          ) : filtered.map((notif, i) => (
+            <motion.div
+              key={notif.id}
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ delay: i * 0.03 }}
+              onClick={() => handleNotifClick(notif)}
+              className={cn(
+                'flex gap-3.5 p-4 rounded-[20px] transition-all cursor-pointer relative group',
+                !notif.read
+                  ? 'bg-purple-50 border border-purple-100 hover:bg-purple-100/60'
+                  : 'bg-white border border-black/[0.05] shadow-sm hover:shadow-md'
+              )}
+            >
+              {/* Unread dot */}
+              {!notif.read && (
+                <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-purple-500" />
+              )}
+
+              {/* Avatar / spark icon */}
+              <div className="relative flex-shrink-0">
+                {notif.type === 'daily_spark' ? (
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md"
+                    style={{ background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)' }}>
+                    <Sparkles size={22} />
+                  </div>
+                ) : (
+                  <div onClick={e => { e.stopPropagation(); }}> 
+                    <Link href={`/profile/${notif.actorId}`}>
+                      <UserAvatar
+                        userId={notif.actorId}
+                        fallbackName={notif.actor.displayName}
+                        fallbackSrc={notif.actor.avatarUrl || undefined}
+                        size={48}
+                        className="cursor-pointer hover:opacity-90 transition-opacity"
+                      />
+                    </Link>
+                  </div>
+                )}
+                {/* Type badge */}
+                <div className="absolute -bottom-1 -right-1 w-[22px] h-[22px] bg-white rounded-full flex items-center justify-center border border-black/[0.06] shadow-sm">
+                  {getIcon(notif.type)}
+                </div>
               </div>
-            )}
-          </motion.div>
-        ))}
+
+              {/* Text */}
+              <div className="flex-1 min-w-0 pt-0.5">
+                <p className={cn('text-[14px] leading-snug pr-4', !notif.read ? 'font-semibold text-gray-900' : 'text-gray-700')}>
+                  {notif.message}
+                </p>
+                <span className="text-[11.5px] text-gray-400 mt-1 block">
+                  {formatDistanceToNow(notif.createdAt, { addSuffix: true })}
+                </span>
+              </div>
+
+              {/* Respond CTA for daily_spark */}
+              {notif.type === 'daily_spark' && (
+                <div className="flex-shrink-0 self-center">
+                  <motion.span
+                    whileTap={{ scale: 0.92 }}
+                    className="inline-flex items-center gap-1 px-3.5 py-1.5 text-white rounded-full text-[12px] font-black shadow-md"
+                    style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                  >
+                    <Sparkles size={11} />
+                    Respond
+                  </motion.span>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -115,6 +115,7 @@ export interface Notification {
   actor: User;
   postId?: string;
   communityId?: string;
+  targetId?: string;  // generic target (postId, communityId, actorId depending on type)
   message: string;
   read: boolean;
   createdAt: Date;

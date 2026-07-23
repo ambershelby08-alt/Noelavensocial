@@ -12,6 +12,7 @@ import Chat from '@/pages/Chat';
 import Discover from '@/pages/Discover';
 import Notifications from '@/pages/Notifications';
 import Settings from '@/pages/Settings';
+import PostDetail from '@/pages/PostDetail';
 
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -33,6 +34,7 @@ function AuthenticatedApp() {
         <Route path="/discover"           component={Discover} />
         <Route path="/notifications"      component={Notifications} />
         <Route path="/settings"           component={Settings} />
+        <Route path="/post/:postId"       component={PostDetail} />
         <Route>
           <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6">
             <p className="text-6xl mb-5">🌿</p>

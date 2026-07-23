@@ -9,6 +9,9 @@ import {
 } from 'lucide-react';
 import { mockCommunities, mockPosts, mockUsers } from '@/lib/mockData';
 import type { Community, Post, User } from '@/lib/mockData';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { followUser as fsFollow, unfollowUser as fsUnfollow } from '@/lib/firestore';
+import { useCommunities } from '@/hooks/useCommunities';
 import { PostCard } from '@/pages/Home';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -152,7 +155,23 @@ function ModCard({ userId, from, to }: { userId: string; from: string; to: strin
 
 function MemberCard({ user, currentUserId }: { user: User; currentUserId?: string }) {
   const [following, setFollowing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const isMe = user.id === currentUserId;
+
+  async function handleFollow() {
+    if (!currentUserId || loading) return;
+    setLoading(true);
+    try {
+      if (following) {
+        if (isFirebaseConfigured) await fsUnfollow(currentUserId, user.id);
+        setFollowing(false);
+      } else {
+        if (isFirebaseConfigured) await fsFollow(currentUserId, user.id);
+        setFollowing(true);
+      }
+    } catch { /* ignore */ } finally { setLoading(false); }
+  }
+
   return (
     <div className="flex items-center gap-3 py-3">
       <Link href={`/profile/${user.id}`}>
@@ -167,14 +186,17 @@ function MemberCard({ user, currentUserId }: { user: User; currentUserId?: strin
       {!isMe && (
         <motion.button
           whileTap={{ scale: 0.92 }}
-          onClick={() => setFollowing(v => !v)}
+          disabled={loading}
+          onClick={handleFollow}
           className={cn(
-            'flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[12.5px] font-bold flex-shrink-0 transition-all',
+            'flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[12.5px] font-bold flex-shrink-0 transition-all disabled:opacity-60',
             following ? 'bg-gray-100 text-gray-600' : 'text-white shadow-sm'
           )}
           style={!following ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 2px 10px rgba(107,115,255,0.25)' } : {}}
         >
-          {following ? <><UserCheck size={12} /> Following</> : <><UserPlus size={12} /> Follow</>}
+          {loading
+            ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            : following ? <><UserCheck size={12} /> Following</> : <><UserPlus size={12} /> Follow</>}
         </motion.button>
       )}
     </div>
@@ -209,6 +231,7 @@ type TabId = typeof TABS[number];
 export default function CommunityFeed() {
   const [, params] = useRoute('/communities/:id');
   const { currentUser } = useAuth();
+  const { toggleJoin } = useCommunities();
 
   const base = mockCommunities.find(c => c.id === params?.id) ?? mockCommunities[0];
   const [community, setCommunity] = useState<Community>(base);
@@ -231,13 +254,24 @@ export default function CommunityFeed() {
     setTimeout(() => setToastVisible(false), 2200);
   }
 
-  function handleJoin() {
+  async function handleJoin() {
+    const joining = !community.isJoined;
     setCommunity(prev => ({
       ...prev,
-      isJoined: !prev.isJoined,
-      memberCount: prev.isJoined ? prev.memberCount - 1 : prev.memberCount + 1,
+      isJoined: joining,
+      memberCount: joining ? prev.memberCount + 1 : Math.max(0, prev.memberCount - 1),
     }));
-    showToast(community.isJoined ? `Left ${community.name}` : `Joined ${community.name}! 🎉`);
+    showToast(joining ? `Joined ${community.name}! 🎉` : `Left ${community.name}`);
+    try {
+      await toggleJoin(community.id);
+    } catch {
+      // revert on error
+      setCommunity(prev => ({
+        ...prev,
+        isJoined: !joining,
+        memberCount: joining ? Math.max(0, prev.memberCount - 1) : prev.memberCount + 1,
+      }));
+    }
   }
 
   function handleNewPost(text: string) {

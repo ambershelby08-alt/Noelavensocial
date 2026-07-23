@@ -232,6 +232,16 @@ export async function toggleCommentsDisabled(postId: string, disabled: boolean):
   await updateDoc(doc(db, 'posts', postId), { commentsDisabled: disabled });
 }
 
+export async function followUser(currentUserId: string, targetUserId: string): Promise<void> {
+  if (!db) return;
+  await Promise.all([
+    setDoc(doc(db, 'users', currentUserId, 'following', targetUserId), { createdAt: serverTimestamp() }),
+    setDoc(doc(db, 'users', targetUserId, 'followers', currentUserId), { createdAt: serverTimestamp() }),
+    updateDoc(doc(db, 'users', currentUserId), { following: increment(1) }).catch(() => {}),
+    updateDoc(doc(db, 'users', targetUserId), { followers: increment(1) }).catch(() => {}),
+  ]);
+}
+
 export async function unfollowUser(currentUserId: string, targetUserId: string): Promise<void> {
   if (!db) return;
   await Promise.all([
@@ -818,6 +828,11 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
   );
   const snap = await getDocs(q);
   await Promise.all(snap.docs.map(d => updateDoc(d.ref, { read: true })));
+}
+
+export async function markNotificationRead(notifId: string): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'notifications', notifId), { read: true }).catch(() => {});
 }
 
 // ─── Comments ─────────────────────────────────────────────────────────────────

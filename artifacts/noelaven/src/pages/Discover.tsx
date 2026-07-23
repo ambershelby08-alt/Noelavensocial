@@ -1,21 +1,83 @@
-import React, { useState } from 'react';
-import { Search, TrendingUp, Users, Zap, X, UserPlus, UserCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, TrendingUp, Users, Zap, X, UserPlus, UserCheck, Loader2 } from 'lucide-react';
 import { mockUsers, mockCommunities } from '@/lib/mockData';
+import type { User } from '@/lib/mockData';
 import { Link } from 'wouter';
-import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
+import { getGradientPair } from '@/components/ui/GradientAvatar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { searchUsers as fsSearchUsers, followUser as fsFollow, unfollowUser as fsUnfollow } from '@/lib/firestore';
 
 const TRENDING_TAGS = [
   '#Design2025', '#TechNews', '#Photography',
   '#WorkoutRoutine', '#MusicProduction', '#AIArt', '#WebDev',
 ];
 
+// ─── Follow button (slim, for list rows) ─────────────────────────────────────
+
+function FollowButton({ userId, currentUserId }: { userId: string; currentUserId?: string }) {
+  const [following, setFollowing] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handle() {
+    if (!currentUserId || loading) return;
+    setLoading(true);
+    try {
+      if (following) {
+        if (isFirebaseConfigured) await fsUnfollow(currentUserId, userId);
+        setFollowing(false);
+      } else {
+        if (isFirebaseConfigured) await fsFollow(currentUserId, userId);
+        setFollowing(true);
+      }
+    } catch { /* ignore */ } finally { setLoading(false); }
+  }
+
+  return (
+    <motion.button
+      whileTap={{ scale: 0.93 }}
+      onClick={handle}
+      disabled={loading}
+      className={cn(
+        'flex-shrink-0 flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[12.5px] font-bold transition-all disabled:opacity-60',
+        following ? 'bg-gray-100 text-gray-500' : 'text-white'
+      )}
+      style={!following ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+    >
+      {loading
+        ? <Loader2 size={12} className="animate-spin" />
+        : following
+        ? <><UserCheck size={12} /> Following</>
+        : <><UserPlus size={12} /> Follow</>}
+    </motion.button>
+  );
+}
+
 // ─── User card ────────────────────────────────────────────────────────────────
 
-function UserCard({ user, index }: { user: typeof mockUsers[number]; index: number }) {
+function UserCard({ user, index, currentUserId }: { user: User; index: number; currentUserId?: string }) {
   const [following, setFollowing] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleFollow() {
+    if (!currentUserId || loading) return;
+    setLoading(true);
+    try {
+      if (following) {
+        if (isFirebaseConfigured) await fsUnfollow(currentUserId, user.id);
+        setFollowing(false);
+      } else {
+        if (isFirebaseConfigured) await fsFollow(currentUserId, user.id);
+        setFollowing(true);
+      }
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -39,16 +101,19 @@ function UserCard({ user, index }: { user: typeof mockUsers[number]; index: numb
       </p>
       <motion.button
         whileTap={{ scale: 0.92 }}
-        onClick={() => setFollowing(v => !v)}
+        onClick={handleFollow}
+        disabled={loading}
         className={cn(
-          'w-full py-2 rounded-full text-[12.5px] font-bold transition-all flex items-center justify-center gap-1.5',
-          following
-            ? 'bg-gray-100 text-gray-500'
-            : 'text-white'
+          'w-full py-2 rounded-full text-[12.5px] font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-60',
+          following ? 'bg-gray-100 text-gray-500' : 'text-white'
         )}
         style={!following ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 2px 10px rgba(107,115,255,0.30)' } : {}}
       >
-        {following ? <><UserCheck size={13} /> Following</> : <><UserPlus size={13} /> Follow</>}
+        {loading
+          ? <Loader2 size={13} className="animate-spin" />
+          : following
+          ? <><UserCheck size={13} /> Following</>
+          : <><UserPlus size={13} /> Follow</>}
       </motion.button>
     </motion.div>
   );
@@ -97,19 +162,44 @@ function CommunityRow({ community, index }: { community: typeof mockCommunities[
 
 // ─── Search results ───────────────────────────────────────────────────────────
 
-function SearchResults({ query }: { query: string }) {
+function SearchResults({ query, currentUserId }: { query: string; currentUserId?: string }) {
+  const [liveUsers, setLiveUsers] = useState<User[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) return;
+    const q = query.toLowerCase();
+    if (isFirebaseConfigured) {
+      setSearching(true);
+      fsSearchUsers(q)
+        .then(results => setLiveUsers(results.filter(u => u.id !== currentUserId)))
+        .catch(() => setLiveUsers([]))
+        .finally(() => setSearching(false));
+    } else {
+      setLiveUsers(mockUsers.filter(u =>
+        (u.displayName.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q) || u.bio?.toLowerCase().includes(q))
+        && u.id !== currentUserId
+      ));
+    }
+  }, [query, currentUserId]);
+
   const q = query.toLowerCase();
-  const users = mockUsers.filter(u =>
-    u.displayName.toLowerCase().includes(q) ||
-    u.handle.toLowerCase().includes(q) ||
-    u.bio?.toLowerCase().includes(q)
-  );
+  const users = isFirebaseConfigured ? liveUsers : liveUsers;
   const communities = mockCommunities.filter(c =>
     c.name.toLowerCase().includes(q) ||
     c.category.toLowerCase().includes(q) ||
     c.description?.toLowerCase().includes(q)
   );
   const tags = TRENDING_TAGS.filter(t => t.toLowerCase().includes(q));
+
+  if (searching) {
+    return (
+      <div className="flex flex-col items-center py-24 gap-3">
+        <Loader2 size={28} className="text-purple-400 animate-spin" />
+        <p className="text-[14px] text-gray-400">Searching…</p>
+      </div>
+    );
+  }
 
   const hasResults = users.length || communities.length || tags.length;
 
@@ -158,14 +248,7 @@ function SearchResults({ query }: { query: string }) {
                   <p className="font-bold text-[14.5px] text-gray-900 truncate">{user.displayName}</p>
                   <p className="text-[12.5px] text-gray-400">@{user.handle}</p>
                 </Link>
-                <Link href={`/profile/${user.id}`}>
-                  <button
-                    className="flex-shrink-0 px-4 py-1.5 rounded-full text-[12.5px] font-bold text-white"
-                    style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
-                  >
-                    View
-                  </button>
-                </Link>
+                <FollowButton userId={user.id} currentUserId={currentUserId} />
               </motion.div>
             ))}
           </div>
@@ -212,6 +295,7 @@ function SearchResults({ query }: { query: string }) {
 
 export default function Discover() {
   const [search, setSearch] = useState('');
+  const { currentUser } = useAuth();
 
   return (
     <div className="pb-32 min-h-screen bg-[#FDF9F6]">
@@ -239,7 +323,7 @@ export default function Discover() {
         <AnimatePresence mode="wait">
           {search ? (
             <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SearchResults query={search} />
+              <SearchResults query={search} currentUserId={currentUser?.id} />
             </motion.div>
           ) : (
             <motion.div key="browse" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-10">
@@ -273,8 +357,8 @@ export default function Discover() {
                   </h2>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 scrollbar-none">
-                  {mockUsers.filter(u => u.id !== 'demo-user').map((user, i) => (
-                    <UserCard key={user.id} user={user} index={i} />
+                  {mockUsers.filter(u => u.id !== currentUser?.id).map((user, i) => (
+                    <UserCard key={user.id} user={user} index={i} currentUserId={currentUser?.id} />
                   ))}
                 </div>
               </section>
