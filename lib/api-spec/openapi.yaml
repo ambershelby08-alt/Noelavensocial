@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: spark
+    description: Daily Spark prompt
 paths:
   /healthz:
     get:
@@ -24,8 +26,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /spark/today:
+    get:
+      operationId: getSparkToday
+      tags: [spark]
+      summary: Get today's AI-generated Daily Spark prompt
+      responses:
+        "200":
+          description: Today's spark prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SparkPrompt"
 components:
   schemas:
+    SparkPrompt:
+      type: object
+      properties:
+        prompt:
+          type: string
+        date:
+          type: string
+      required:
+        - prompt
+        - date
     HealthStatus:
       type: object
       properties:

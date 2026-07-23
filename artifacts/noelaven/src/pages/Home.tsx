@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { dailySparks, mockUsers } from '@/lib/mockData';
 import type { Post, User } from '@/lib/mockData';
 import { useFeed } from '@/hooks/useFeed';
+import { useDailySpark } from '@/hooks/useDailySpark';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import {
   reportPost as fsReportPost, unfollowUser as fsUnfollowUser,
@@ -696,9 +697,10 @@ function StoriesRow() {
 
 interface DailySparkProps {
   onRespond: () => void;
+  spark?: string;
 }
 
-export function DailySpark({ onRespond }: DailySparkProps) {
+export function DailySpark({ onRespond, spark }: DailySparkProps) {
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;
@@ -720,7 +722,7 @@ export function DailySpark({ onRespond }: DailySparkProps) {
             <span className="text-white/90 text-[10px] font-black uppercase tracking-[0.12em]">Daily Spark</span>
           </div>
         </div>
-        <p className="text-white text-xl font-bold leading-snug mb-5">{dailySparks[0]}</p>
+        <p className="text-white text-xl font-bold leading-snug mb-5">{spark ?? dailySparks[0]}</p>
         <div className="flex gap-3">
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -1428,6 +1430,7 @@ export default function Home() {
 
   const { posts, addPost, toggleLike, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   const { unreadCount } = useNotifications();
+  const { prompt: sparkPrompt } = useDailySpark();
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
   const [sparkOpen, setSparkOpen] = useState(false);
@@ -1555,7 +1558,7 @@ export default function Home() {
       <StoriesRow />
 
       <AnimatePresence>
-        <DailySpark key="spark" onRespond={() => setSparkOpen(true)} />
+        <DailySpark key="spark" onRespond={() => setSparkOpen(true)} spark={sparkPrompt} />
       </AnimatePresence>
 
       <PostComposer onPost={handleNewPost} />
@@ -1611,7 +1614,7 @@ export default function Home() {
         {sparkOpen && (
           <SparkModal
             key="spark-modal"
-            spark={dailySparks[0]}
+            spark={sparkPrompt}
             onClose={() => setSparkOpen(false)}
             onPosted={handleSparkPost}
           />

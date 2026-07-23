@@ -5,12 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+
 export interface SparkPrompt {
   prompt: string;
   date: string;
 }
-
-export interface HealthStatus {
-  status: string;
-}
-
