@@ -9,7 +9,7 @@ import {
   CornerUpLeft, Loader2,
 } from 'lucide-react';
 import { mockMessages } from '@/lib/mockData';
-import type { Message, User } from '@/lib/mockData';
+import type { Message, User, Conversation } from '@/lib/mockData';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversations } from '@/hooks/useConversations';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
@@ -18,6 +18,7 @@ import {
   blockUser as fsBlockUser,
   reportConversation as fsReport,
   leaveGroupConversation as fsLeave,
+  sendMessage as fsSendMessage,
 } from '@/lib/firestore';
 import { uploadMedia } from '@/lib/cloudinary';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -864,6 +865,123 @@ function ScrollDownBtn({ onClick, unread }: { onClick: () => void; unread?: numb
   );
 }
 
+// ─── Forward picker sheet ─────────────────────────────────────────────────────
+
+function ForwardPickerSheet({
+  msg,
+  conversations,
+  currentUserId,
+  onSend,
+  onClose,
+}: {
+  msg: LocalMsg;
+  conversations: Conversation[];
+  currentUserId: string;
+  onSend: (convIds: string[]) => void;
+  onClose: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  function toggle(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const preview =
+    msg.type === 'image'     ? '📷 Photo'
+    : msg.type === 'video'   ? '🎥 Video'
+    : msg.type === 'voice'   ? '🎤 Voice message'
+    : msg.type === 'post_share' ? '📌 Shared post'
+    : (msg.editedContent ?? msg.content).slice(0, 80);
+
+  return (
+    <>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70]" onClick={onClose} />
+      <motion.div
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="fixed inset-x-0 bottom-0 z-[75] bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col"
+        style={{ maxHeight: '72vh' }}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={18} className="text-gray-500" />
+          </button>
+          <span className="font-black text-[16px] text-gray-900">Forward message</span>
+          <button
+            disabled={selected.size === 0}
+            onClick={() => onSend(Array.from(selected))}
+            className={cn(
+              'text-[14px] font-black transition-colors',
+              selected.size > 0 ? 'text-purple-600' : 'text-gray-300'
+            )}
+          >
+            Send{selected.size > 0 ? ` (${selected.size})` : ''}
+          </button>
+        </div>
+
+        {/* Preview of the message being forwarded */}
+        <div className="mx-5 mt-3 mb-1 flex-shrink-0 px-4 py-2.5 bg-purple-50 rounded-2xl border border-purple-100">
+          <div className="flex items-center gap-2 mb-0.5">
+            <Forward size={13} className="text-purple-400" />
+            <span className="text-[11px] font-bold text-purple-500">Forwarding</span>
+          </div>
+          <p className="text-[12.5px] text-gray-600 truncate">{preview}</p>
+        </div>
+
+        {/* Conversation list */}
+        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
+          {conversations.length === 0 ? (
+            <p className="text-center text-gray-400 text-[14px] py-10">No conversations yet</p>
+          ) : conversations.map(conv => {
+            const other = conv.participants.find(p => p.id !== currentUserId) ?? conv.participants[0];
+            const name  = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
+            const sel   = selected.has(conv.id);
+            return (
+              <motion.button
+                key={conv.id}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => toggle(conv.id)}
+                className={cn(
+                  'w-full flex items-center gap-3.5 px-4 py-3 rounded-[18px] border transition-all text-left',
+                  sel ? 'bg-purple-50 border-purple-200' : 'bg-white border-black/[0.05]'
+                )}
+              >
+                <UserAvatar
+                  userId={other.id}
+                  fallbackName={other.displayName}
+                  fallbackSrc={(other as any).avatarUrl || undefined}
+                  size={44}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[14.5px] text-gray-900 truncate">{name}</p>
+                  <p className="text-[12px] text-gray-400 truncate">{conv.lastMessage || 'No messages yet'}</p>
+                </div>
+                <div className={cn(
+                  'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
+                  sel ? 'border-purple-500 bg-purple-500' : 'border-gray-300'
+                )}>
+                  {sel && <Check size={11} className="text-white" />}
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Chat() {
@@ -905,6 +1023,7 @@ export default function Chat() {
   const [editingMsg, setEditingMsg]       = useState<LocalMsg | null>(null);
   const [callingSheet, setCallingSheet]   = useState<'voice' | 'video' | null>(null);
   const [safetySheet, setSafetySheet]     = useState(false);
+  const [forwardMsg, setForwardMsg]       = useState<LocalMsg | null>(null);
   const [atBottom, setAtBottom]           = useState(true);
   const [uploadingMedia, setUploadingMedia] = useState(false);
 
@@ -1171,6 +1290,26 @@ export default function Chat() {
   async function handleLeave() {
     if (isFirebaseConfigured) await fsLeave(convId, cu.id);
     setLocation('/messages');
+  }
+
+  async function handleForwardSend(convIds: string[]) {
+    if (!forwardMsg) return;
+    const content =
+      forwardMsg.type === 'image'      ? '📷 Photo'
+      : forwardMsg.type === 'video'    ? '🎥 Video'
+      : forwardMsg.type === 'voice'    ? '🎤 Voice message'
+      : forwardMsg.type === 'post_share' ? '📌 Shared post'
+      : (forwardMsg.editedContent ?? forwardMsg.content);
+    if (isFirebaseConfigured) {
+      await Promise.all(convIds.map(cid =>
+        fsSendMessage(cid, cu.id, content, forwardMsg.type ?? 'text', {
+          forwardedFrom: { senderId: forwardMsg.senderId, senderName: forwardMsg.senderId },
+          ...(forwardMsg.mediaUrl ? { mediaUrl: forwardMsg.mediaUrl, mediaType: forwardMsg.mediaType } : {}),
+          ...(forwardMsg.sharedPost ? { sharedPost: forwardMsg.sharedPost } : {}),
+        })
+      ));
+    }
+    setForwardMsg(null);
   }
 
   // ── Group messages by sender + time ────────────────────────────────────────
@@ -1448,7 +1587,7 @@ export default function Chat() {
             onCopy={() => handleCopy(actionMsg)}
             onDeleteForMe={() => handleDeleteForMe(actionMsg)}
             onDeleteForEveryone={() => handleDeleteForEveryone(actionMsg)}
-            onForward={() => { /* TODO: conversation picker */ }}
+            onForward={() => { setForwardMsg(actionMsg); }}
           />
         )}
         {callingSheet && (
@@ -1465,6 +1604,16 @@ export default function Chat() {
             onReport={handleReport}
             onLeave={handleLeave}
             onClose={() => setSafetySheet(false)}
+          />
+        )}
+        {forwardMsg && (
+          <ForwardPickerSheet
+            key="forward"
+            msg={forwardMsg}
+            conversations={conversations.filter(c => c.id !== convId)}
+            currentUserId={cu.id}
+            onSend={handleForwardSend}
+            onClose={() => setForwardMsg(null)}
           />
         )}
       </AnimatePresence>
