@@ -1660,7 +1660,7 @@ export default function Home() {
 
   const { posts, addPost, toggleLike, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   const { unreadCount } = useNotifications();
-  const { prompt: sparkPrompt, hasAnsweredToday, streak, memoryLane, markAnswered } = useDailySpark();
+  const { prompt: sparkPrompt, hasAnsweredToday, streak, memoryLane, markAnswered } = useDailySpark(currentUser?.id);
   const { groups: storyGroups, publishStory, markViewed, deleteStory } = useStories();
 
   // ── Story composer state ──────────────────────────────────────────────────
@@ -1691,12 +1691,13 @@ export default function Home() {
   const [toastVariant, setToastVariant] = useState<ToastVariant>('success');
   const [toastVisible, setToastVisible] = useState(false);
 
-  // Auto-open SparkModal when navigated here with ?spark=1
+  // Auto-open SparkModal when navigated here with ?spark=1 (only if not yet answered)
   useEffect(() => {
     if (window.location.search.includes('spark=1')) {
-      setSparkOpen(true);
       window.history.replaceState({}, '', '/');
+      if (!hasAnsweredToday) setSparkOpen(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // After publishing, open StoryViewer for the user's own group.
@@ -1769,6 +1770,8 @@ export default function Home() {
 
   async function handleSparkPost(content: string, imageUrl?: string, audience?: SparkAudience) {
     if (!currentUser) return;
+    // Client guard — prevent double submission
+    if (hasAnsweredToday) return;
     try {
       const postId = await addPost(content, {
         imageUrl,
@@ -1779,10 +1782,11 @@ export default function Home() {
       setSparkJustCompleted(true);
       // Brief "completed" card → then community reveal takes over
       setTimeout(() => setSparkJustCompleted(false), 2200);
+      showToast('Spark shared with the world! ✨');
     } catch (err) {
       console.error('Spark post failed:', err);
+      showToast('Failed to post spark — please try again.', 'error');
     }
-    showToast('Spark shared with the world! ✨');
   }
 
   function handleCommentAdded(_postId: string) {
@@ -1868,7 +1872,7 @@ export default function Home() {
       <AnimatePresence mode="wait">
         <DailySpark
           key="spark"
-          onRespond={() => setSparkOpen(true)}
+          onRespond={() => { if (!hasAnsweredToday) setSparkOpen(true); }}
           spark={sparkPrompt}
           hasAnsweredToday={hasAnsweredToday}
           justCompleted={sparkJustCompleted}

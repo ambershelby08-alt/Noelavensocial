@@ -1354,16 +1354,21 @@ export default function Chat() {
         </div>
 
         <div className="flex items-center gap-0.5 flex-shrink-0">
-          <button
-            onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'voice')}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
-            <Phone size={18} />
-          </button>
-          <button
-            onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'video')}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
-            <Video size={20} />
-          </button>
+          {/* Voice + video only for 1-to-1 chats */}
+          {!isGroup && (
+            <>
+              <button
+                onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'voice')}
+                className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                <Phone size={18} />
+              </button>
+              <button
+                onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'video')}
+                className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                <Video size={20} />
+              </button>
+            </>
+          )}
           <button onClick={() => setSafetySheet(true)}
             className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
             <MoreHorizontal size={20} />
@@ -1475,7 +1480,10 @@ export default function Chat() {
 
       {/* ── Input bar ───────────────────────────────────────────────── */}
       {!voiceRecorder.isRecording && (
-        <div className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-xl border-t border-black/[0.05] flex-shrink-0">
+        <div
+          className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-xl border-t border-black/[0.05] flex-shrink-0"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
           {/* Reply banner */}
           <AnimatePresence>
             {replyingTo && <ReplyBanner key="reply" msg={replyingTo} participants={conversation?.participants ?? []} onCancel={() => setReplyingTo(null)} />}

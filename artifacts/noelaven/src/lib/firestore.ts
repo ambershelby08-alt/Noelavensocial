@@ -99,17 +99,26 @@ export async function upsertUserBaseDoc(
 
 // Search users by handle prefix (simple prefix search)
 export async function searchUsers(q: string): Promise<User[]> {
-  if (!db || !q) return [];
+  if (!db) return [];
   const snap = await getDocs(
-    query(collection(db, 'users'), orderBy('handle'), limit(20))
+    query(collection(db, 'users'), orderBy('handle'), limit(50))
   );
+  const all = snap.docs.map(d => docToUser(d.id, d.data()));
+  if (!q) return all;
   const lower = q.toLowerCase();
-  return snap.docs
-    .map(d => docToUser(d.id, d.data()))
-    .filter(u =>
-      u.handle.toLowerCase().includes(lower) ||
-      u.displayName.toLowerCase().includes(lower)
-    );
+  return all.filter(u =>
+    u.handle.toLowerCase().includes(lower) ||
+    u.displayName.toLowerCase().includes(lower)
+  );
+}
+
+/** Fetch all registered users (for ComposeDrawer / people picker). */
+export async function getAllUsers(pageSize = 50): Promise<User[]> {
+  if (!db) return [];
+  const snap = await getDocs(
+    query(collection(db, 'users'), orderBy('displayName'), limit(pageSize))
+  );
+  return snap.docs.map(d => docToUser(d.id, d.data()));
 }
 
 // ─── Posts ────────────────────────────────────────────────────────────────────
@@ -194,6 +203,31 @@ export function subscribeCommunitySparkPosts(
       .filter(p => !p.sparkAudience || p.sparkAudience === 'public' || p.sparkAudience === 'friends');
     onData(posts);
   });
+}
+
+/**
+ * Returns the postId of a spark post the user has already submitted today
+ * for the given prompt, or null if none found.
+ * Used to enforce the one-response-per-day rule server-side.
+ */
+export async function checkTodaySparkAnswer(userId: string, sparkPrompt: string): Promise<string | null> {
+  if (!db || !userId || !sparkPrompt) return null;
+  try {
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const q = query(
+      collection(db, 'posts'),
+      where('authorId', '==', userId),
+      where('sparkPrompt', '==', sparkPrompt),
+      where('createdAt', '>=', Timestamp.fromDate(dayStart)),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return snap.docs[0].id;
+  } catch {
+    return null;
+  }
 }
 
 export async function updatePostSparkAudience(postId: string, audience: string): Promise<void> {

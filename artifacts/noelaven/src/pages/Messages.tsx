@@ -305,7 +305,7 @@ function ComposeDrawer({ onClose, openDirect, composeUsers }: {
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
         className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col"
-        style={{ maxHeight: '75vh' }}
+        style={{ maxHeight: '80vh' }}
       >
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
@@ -329,7 +329,13 @@ function ComposeDrawer({ onClose, openDirect, composeUsers }: {
             />
           </div>
         </div>
-        <div className="overflow-y-auto flex-1 px-5 pb-6">
+        <div
+          className="overflow-y-auto flex-1 px-5"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}
+        >
+          {filtered.length === 0 && (
+            <p className="text-center text-[14px] text-gray-400 py-8">No people found</p>
+          )}
           {filtered.map((user, i) => (
             <motion.button
               key={user.id}
@@ -347,7 +353,12 @@ function ComposeDrawer({ onClose, openDirect, composeUsers }: {
                 <p className="font-bold text-[14.5px] text-gray-900">{user.displayName}</p>
                 <p className="text-[12.5px] text-gray-400">@{user.handle}</p>
               </div>
-              <ChevronRight size={16} className="text-gray-300" />
+              <span
+                className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              >
+                Start Chat
+              </span>
             </motion.button>
           ))}
         </div>

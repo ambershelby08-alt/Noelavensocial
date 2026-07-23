@@ -6,6 +6,7 @@ import {
   getOrCreateDirectConversation,
   getUserDoc,
   searchUsers as fsSearchUsers,
+  getAllUsers as fsGetAllUsers,
   pinConversation as fsPin,
   archiveConversation as fsArchive,
   muteConversation as fsMute,
@@ -25,7 +26,7 @@ export function useConversations() {
   // Pre-load all users for the ComposeDrawer in Firebase mode
   useEffect(() => {
     if (!isFirebaseConfigured || !currentUser) return;
-    fsSearchUsers('').then(users => setAllUsers(users.filter(u => u.id !== currentUser.id))).catch(console.error);
+    fsGetAllUsers().then(users => setAllUsers(users.filter(u => u.id !== currentUser.id))).catch(console.error);
   }, [currentUser?.id]);
 
   useEffect(() => {

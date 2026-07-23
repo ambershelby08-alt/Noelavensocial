@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { dailySparks } from '@/lib/mockData';
+import { checkTodaySparkAnswer } from '@/lib/firestore';
+import { isFirebaseConfigured } from '@/lib/firebase';
 
 const CACHE_PREFIX = 'noelaven_spark_';
 const DONE_PREFIX  = 'noelaven_spark_done_';
@@ -76,7 +78,7 @@ function computeMemoryLane(): MemoryLaneEntry | null {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useDailySpark() {
+export function useDailySpark(userId?: string) {
   const today    = todayKey();
   const cacheKey = CACHE_PREFIX + today;
   const doneKey  = DONE_PREFIX  + today;
@@ -104,6 +106,20 @@ export function useDailySpark() {
   const [streak, setStreak] = useState<number>(() => getStoredStreak().count);
 
   const [memoryLane] = useState<MemoryLaneEntry | null>(() => computeMemoryLane());
+
+  // ── Sync answered state with Firestore (server-side enforcement) ────────────
+  // Runs once after the prompt loads. If the user somehow cleared localStorage
+  // but already answered, Firestore is the source of truth.
+  useEffect(() => {
+    if (!userId || !isFirebaseConfigured || hasAnsweredToday) return;
+    if (!prompt) return; // wait for prompt
+    checkTodaySparkAnswer(userId, prompt)
+      .then(postId => {
+        if (postId) markAnswered(postId);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, prompt]);
 
   // ── Fetch today's prompt from API ─────────────────────────────────────────
   useEffect(() => {
