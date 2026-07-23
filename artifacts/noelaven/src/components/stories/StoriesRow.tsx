@@ -20,44 +20,51 @@ export function StoriesRow({ groups, onAddStory, onViewGroup }: StoriesRowProps)
       <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-none">
         {/* ── Add / own story ── */}
         {currentUser && (
-          <button
-            className="flex flex-col items-center gap-1.5 flex-shrink-0 active:opacity-80 transition-opacity"
-            onClick={ownGroup ? () => onViewGroup(ownIdx) : onAddStory}
-          >
+          <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+            {/* Avatar — tap to VIEW existing stories (only when user has some) */}
             <div className="relative">
-              {ownGroup ? (
-                /* Has own story → gradient ring */
-                <div
-                  className="p-[2.5px] rounded-full"
-                  style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB, #6B73FF)' }}
-                >
-                  <div className="p-[2px] bg-[#FDF9F6] rounded-full">
-                    <GradientAvatar
-                      name={currentUser.displayName}
-                      src={currentUser.avatarUrl || undefined}
-                      size={50}
-                    />
+              <button
+                className="active:opacity-80 transition-opacity"
+                onClick={ownGroup ? () => onViewGroup(ownIdx) : onAddStory}
+                aria-label={ownGroup ? 'View your story' : 'Add story'}
+              >
+                {ownGroup ? (
+                  /* Has own story → gradient ring */
+                  <div
+                    className="p-[2.5px] rounded-full"
+                    style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB, #6B73FF)' }}
+                  >
+                    <div className="p-[2px] bg-[#FDF9F6] rounded-full">
+                      <GradientAvatar
+                        name={currentUser.displayName}
+                        src={currentUser.avatarUrl || undefined}
+                        size={50}
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : (
-                /* No story yet → plain avatar + plus badge */
-                <GradientAvatar
-                  name={currentUser.displayName}
-                  src={currentUser.avatarUrl || undefined}
-                  size={56}
-                />
-              )}
-              {!ownGroup && (
-                <div
-                  className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white"
-                  style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB)' }}
-                >
-                  <span className="text-white text-[9px] font-black leading-none">+</span>
-                </div>
-              )}
+                ) : (
+                  /* No story yet → plain avatar */
+                  <GradientAvatar
+                    name={currentUser.displayName}
+                    src={currentUser.avatarUrl || undefined}
+                    size={56}
+                  />
+                )}
+              </button>
+
+              {/* + badge — ALWAYS visible, ALWAYS opens the picker → StoryComposer */}
+              <button
+                onClick={onAddStory}
+                aria-label="Add story"
+                className="absolute -bottom-0.5 -right-0.5 w-[20px] h-[20px] rounded-full flex items-center justify-center border-2 border-white active:scale-90 transition-transform"
+                style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB)' }}
+              >
+                <span className="text-white text-[10px] font-black leading-none">+</span>
+              </button>
             </div>
+
             <span className="text-[10px] text-gray-400 font-medium">Your story</span>
-          </button>
+          </div>
         )}
 
         {/* ── Other users' stories ── */}
