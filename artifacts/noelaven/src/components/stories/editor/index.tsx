@@ -19,8 +19,16 @@ import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Undo2, Crop, Scissors, Type, Smile,
-  Music, SlidersHorizontal, Eye, Loader2, ChevronRight,
+  Music, SlidersHorizontal, Eye, Loader2, ChevronRight, Plus,
 } from 'lucide-react';
+
+// ─── "Add more" item type (mirrors StoryPickItem in StoryCreator) ─────────────
+export interface AddMoreItem {
+  id:         string;
+  file:       File;
+  previewUrl: string;
+  mediaType:  StoryMediaType;
+}
 
 import { EditorCanvas }   from './EditorCanvas';
 import { BottomToolbar }  from './BottomToolbar';
@@ -87,20 +95,27 @@ interface StoryEditorProps {
   total?:        number;
   onClose:      () => void;
   onPublish:    (payload: StoryEditorPublishPayload) => Promise<void>;
+  /** Called with newly-picked files to append them to the queue. */
+  onAddMore?:   (items: AddMoreItem[]) => void;
 }
+
+// ─── Tiny ID helper ───────────────────────────────────────────────────────────
+let _addMoreSeq = 0;
+const addMoreId = () => `am-${Date.now()}-${++_addMoreSeq}`;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function StoryEditor({
   file, previewUrl, mediaType,
   currentIndex = 0, total = 1,
-  onClose, onPublish,
+  onClose, onPublish, onAddMore,
 }: StoryEditorProps) {
   const { state, dispatch, addTextLayer, addStickerLayer, updateLayer, deleteLayer, selectLayer } =
     useEditorState();
 
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const videoRef  = useRef<HTMLVideoElement>(null);
+  const canvasRef    = useRef<HTMLDivElement>(null);
+  const videoRef     = useRef<HTMLVideoElement>(null);
+  const addMoreInput = useRef<HTMLInputElement>(null);
 
   const [previewing, setPreviewing] = useState(false);
   const [uploading,  setUploading]  = useState(false);
@@ -109,6 +124,28 @@ export function StoryEditor({
   const isVideo   = mediaType === 'video';
   const isLast    = currentIndex >= total - 1;
   const hasMulti  = total > 1;
+
+  // ── "Add more" file picker ───────────────────────────────────────────────────
+  function openAddMorePicker() {
+    const el = addMoreInput.current;
+    if (!el || !onAddMore) return;
+    el.value = '';
+    el.click();
+  }
+
+  function handleAddMoreChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!onAddMore) return;
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const items: AddMoreItem[] = files.map(f => ({
+      id:         addMoreId(),
+      file:       f,
+      previewUrl: URL.createObjectURL(f),
+      mediaType:  f.type.startsWith('video/') ? 'video' : 'image',
+    }));
+    onAddMore(items);
+    e.target.value = '';
+  }
 
   // ── Panel toggle ────────────────────────────────────────────────────────────
   function togglePanel(id: string) {
@@ -200,11 +237,103 @@ export function StoryEditor({
     }
   }
 
+  // ── Shared elements (rendered in both preview and main editor) ──────────────
+
+  /**
+   * Hidden file input — lives in the DOM at all times so it is reliably
+   * accessible when the picker button is tapped.
+   */
+  const addMoreInputEl = onAddMore ? (
+    <input
+      ref={addMoreInput}
+      type="file"
+      multiple
+      accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+      style={{ display: 'none' }}
+      onChange={handleAddMoreChange}
+    />
+  ) : null;
+
+  /**
+   * DEBUG — bright red fixed button.
+   *
+   * Intentionally impossible to miss:
+   *   • position: fixed  (not inside any overflow container)
+   *   • z-index: 9999    (above every other layer including StoryEditor z-[90])
+   *   • bottom: 0        (anchored to the physical bottom of the viewport)
+   *   • full-width red bar with large white text
+   *
+   * Also renders a small debug chip in the top-left corner showing
+   * the component name and the current queue total so we can confirm
+   * the prop is arriving correctly.
+   */
+  const addMoreButton = onAddMore ? (
+    <>
+      {/* Debug label — top-left */}
+      <div style={{
+        position: 'fixed',
+        top: 'max(env(safe-area-inset-top), 54px)',
+        left: 8,
+        zIndex: 9999,
+        background: 'rgba(0,0,0,0.85)',
+        color: '#00ff88',
+        fontSize: 11,
+        fontWeight: 700,
+        fontFamily: 'monospace',
+        padding: '4px 10px',
+        borderRadius: 8,
+        pointerEvents: 'none',
+        border: '1px solid #00ff88',
+      }}>
+        StoryEditor | queue: {total}
+      </div>
+
+      {/* ═══ BRIGHT RED ADD MORE BUTTON ═══
+          position: fixed — never clipped by overflow
+          zIndex: 9999   — above everything
+          bottom: 0      — physically at the bottom of the viewport
+      */}
+      <button
+        onClick={openAddMorePicker}
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 9999,
+          paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
+          paddingTop: 16,
+          paddingLeft: 20,
+          paddingRight: 20,
+          background: '#FF0000',
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          // No border-radius — spans full width to be unmissable
+        }}
+      >
+        <Plus size={24} color="white" strokeWidth={3} />
+        <span style={{
+          color: 'white',
+          fontSize: 18,
+          fontWeight: 900,
+          letterSpacing: '-0.01em',
+        }}>
+          + Add more photos or videos
+        </span>
+      </button>
+    </>
+  ) : null;
+
   // ── Preview overlay ─────────────────────────────────────────────────────────
   if (previewing) {
     const cssFilt = filterCSS(state.activeFilter);
     return (
       <div className="fixed inset-0 z-[90] bg-black flex flex-col">
+        {addMoreInputEl}
         <div className="flex-1 relative overflow-hidden">
           {mediaType === 'image' ? (
             <img src={previewUrl} className="absolute inset-0 w-full h-full object-cover"
@@ -245,8 +374,15 @@ export function StoryEditor({
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-3 px-5 py-4"
-             style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)', background: 'rgba(0,0,0,0.85)' }}>
+        {/* Preview actions — pushed up by the fixed red button */}
+        <div className="flex items-center gap-3 px-5"
+             style={{
+               paddingTop: 12,
+               paddingBottom: onAddMore
+                 ? 'calc(max(env(safe-area-inset-bottom), 12px) + 64px)'
+                 : 'max(env(safe-area-inset-bottom), 16px)',
+               background: 'rgba(0,0,0,0.85)',
+             }}>
           <button onClick={() => setPreviewing(false)}
                   className="flex-1 py-3 rounded-2xl text-white font-semibold text-sm"
                   style={{ background: 'rgba(255,255,255,0.15)' }}>
@@ -261,6 +397,7 @@ export function StoryEditor({
               : isLast ? 'Share Story ✨' : <>Next <ChevronRight size={16} /></>}
           </button>
         </div>
+        {addMoreButton}
       </div>
     );
   }
@@ -269,6 +406,8 @@ export function StoryEditor({
   return (
     <div className="fixed inset-0 z-[90] bg-black flex flex-col overflow-hidden"
          style={{ touchAction: 'none' }}>
+
+      {addMoreInputEl}
 
       {/* ── Top bar ── */}
       <div className="flex items-center justify-between px-4 flex-shrink-0"
@@ -327,7 +466,11 @@ export function StoryEditor({
       </div>
 
       {/* ── Canvas (flex-1 fills remaining space) ── */}
-      <div className="flex-1 min-h-0">
+      {/*
+        Bottom padding reserves space so the canvas content is not hidden
+        behind the fixed red "Add more" button.
+      */}
+      <div className="flex-1 min-h-0" style={onAddMore ? { paddingBottom: 64 } : {}}>
         <EditorCanvas
           previewUrl={previewUrl}
           mediaType={mediaType}
@@ -345,7 +488,10 @@ export function StoryEditor({
       <div className="flex-shrink-0"
            style={{
              background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 100%)',
-             paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
+             // Push toolbar up so the fixed red button doesn't cover it
+             paddingBottom: onAddMore
+               ? 'calc(max(env(safe-area-inset-bottom), 8px) + 64px)'
+               : 'max(env(safe-area-inset-bottom), 8px)',
            }}>
         {/* Active panel slides up */}
         <AnimatePresence>
@@ -371,6 +517,9 @@ export function StoryEditor({
           />
         )}
       </div>
+
+      {/* ═══ FIXED RED DEBUG BUTTON + debug label ═══ */}
+      {addMoreButton}
     </div>
   );
 }

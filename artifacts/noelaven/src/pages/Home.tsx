@@ -17,7 +17,7 @@ import { useStories } from '@/hooks/useStories';
 import { StoriesRow } from '@/components/stories/StoriesRow';
 import { StoryCreator, type StoryPickItem } from '@/components/stories/StoryCreator';
 import { StoryViewer } from '@/components/stories/StoryViewer';
-import { StoryEditor, type StoryEditorPublishPayload } from '@/components/stories/editor';
+import { StoryEditor, type StoryEditorPublishPayload, type AddMoreItem } from '@/components/stories/editor';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import {
   reportPost as fsReportPost, unfollowUser as fsUnfollowUser,
@@ -1670,6 +1670,17 @@ export default function Home() {
               if (next.length === 0) setStoryQueueTotal(0);
               return next;
             });
+          }}
+          onAddMore={(newItems: AddMoreItem[]) => {
+            // Convert AddMoreItem → StoryPickItem (identical shape) and append
+            const asPickItems: StoryPickItem[] = newItems.map(it => ({
+              id:         it.id,
+              file:       it.file,
+              previewUrl: it.previewUrl,
+              mediaType:  it.mediaType,
+            }));
+            setStoryQueue(prev => [...prev, ...asPickItems]);
+            setStoryQueueTotal(t => t + newItems.length);
           }}
         />
       )}
