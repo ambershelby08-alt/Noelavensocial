@@ -38,6 +38,7 @@ function docToUser(id: string, d: DocumentData): User {
     bio: d.bio ?? '',
     avatarUrl: d.avatarUrl ?? '',
     coverUrl: d.coverUrl ?? '',
+    coverPosition: d.coverPosition ?? { x: 50, y: 50 },
     interests: d.interests ?? [],
     followers: d.followers ?? 0,
     following: d.following ?? 0,

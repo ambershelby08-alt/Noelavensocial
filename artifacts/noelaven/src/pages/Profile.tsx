@@ -8,6 +8,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
+import { CoverPhotoEditor, type CoverSavePayload } from '@/components/profile/CoverPhotoEditor';
 import { mockUsers, mockConversations } from '@/lib/mockData';
 import type { User, Post, Community } from '@/lib/mockData';
 import { useProfile } from '@/hooks/useProfile';
@@ -578,8 +579,9 @@ export default function Profile() {
   const { communities } = useCommunities();
 
   const [activeTab, setActiveTab]       = useState<TabLabel>('Posts');
-  const [editOpen, setEditOpen]         = useState(false);
-  const [followersOpen, setFollowersOpen] = useState(false);
+  const [editOpen, setEditOpen]             = useState(false);
+  const [coverEditorOpen, setCoverEditorOpen] = useState(false);
+  const [followersOpen, setFollowersOpen]   = useState(false);
   const [followingOpen, setFollowingOpen] = useState(false);
   const [isFollowing, setIsFollowing]   = useState(false);
   const [followerCount, setFollowerCount] = useState(user.followers);
@@ -626,6 +628,10 @@ export default function Profile() {
     if (isOwnProfile) updateUser(updates);
   }
 
+  async function handleCoverSave(payload: CoverSavePayload) {
+    if (isOwnProfile) updateUser({ coverUrl: payload.coverUrl, coverPosition: payload.coverPosition });
+  }
+
   return (
     <div className="min-h-screen bg-[#FDF9F6] pb-32">
 
@@ -637,7 +643,12 @@ export default function Profile() {
           style={{ background: `linear-gradient(135deg, ${from}55 0%, ${to}44 50%, ${from}33 100%)` }}
         />
         {user.coverUrl && (
-          <img src={user.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80" />
+          <img
+            src={user.coverUrl}
+            alt="Cover"
+            className="absolute inset-0 w-full h-full object-cover opacity-90"
+            style={{ objectPosition: `${user.coverPosition?.x ?? 50}% ${user.coverPosition?.y ?? 50}%` }}
+          />
         )}
         {/* Bottom fade to page bg */}
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#FDF9F6] to-transparent" />
@@ -651,7 +662,7 @@ export default function Profile() {
             <ArrowLeft size={18} className="text-gray-700" />
           </button>
         )}
-        <div className="absolute top-4 right-4 flex gap-2">
+        <div className="absolute top-4 right-4 flex gap-2 z-10">
           {isOwnProfile ? (
             <button
               onClick={() => setEditOpen(true)}
@@ -665,6 +676,16 @@ export default function Profile() {
             </button>
           )}
         </div>
+
+        {/* Edit Cover button — own profile only */}
+        {isOwnProfile && (
+          <button
+            onClick={() => setCoverEditorOpen(true)}
+            className="absolute bottom-6 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold bg-black/40 backdrop-blur-sm text-white shadow-sm hover:bg-black/55 active:scale-95 transition-all"
+          >
+            <Camera size={13} /> Edit Cover
+          </button>
+        )}
       </div>
 
       {/* ── Avatar row ──────────────────────────────────────────────────── */}
@@ -919,6 +940,20 @@ export default function Profile() {
             key="photo-viewer"
             src={photoViewer.src}
             onClose={() => setPhotoViewer(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {coverEditorOpen && isOwnProfile && (
+          <CoverPhotoEditor
+            key="cover-editor"
+            currentCoverUrl={user.coverUrl ?? ''}
+            currentPosition={user.coverPosition ?? { x: 50, y: 50 }}
+            gradientFrom={from}
+            gradientTo={to}
+            onSave={handleCoverSave}
+            onClose={() => setCoverEditorOpen(false)}
           />
         )}
       </AnimatePresence>

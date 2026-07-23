@@ -5,6 +5,8 @@ export interface User {
   bio: string;
   avatarUrl: string;
   coverUrl: string;
+  /** CSS object-position percentages (0–100). Defaults to { x: 50, y: 50 } (centre). */
+  coverPosition?: { x: number; y: number };
   interests: string[];
   followers: number;
   following: number;
