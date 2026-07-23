@@ -3,3 +3,4 @@
 - [Noelaven Cloudinary integration](noelaven-cloudinary.md) — unsigned preset `Noelaven_uploads`; GradientAvatar requires `src` prop on every user display; Vite must restart after secret changes.
 - [Noelaven overlay z-index stack](noelaven-z-index.md) — all sheet/drawer z-indices must follow the established stack or modals paint behind the backdrop.
 - [Noelaven AI spark — OpenAI model](noelaven-ai-spark.md) — gpt-5-nano returns empty content via Replit proxy; use gpt-4.1-mini with max_tokens (not max_completion_tokens).
+- [Noelaven story editor](noelaven-story-editor.md) — full-screen editor; EditorLayer types canonical in editor/types.ts; toolbar extended via TOOLBAR_TABS array; z-[90].

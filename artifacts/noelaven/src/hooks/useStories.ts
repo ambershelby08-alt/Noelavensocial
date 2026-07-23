@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
   type Story, type StoryGroup, type StoryMediaType,
+  type EditorLayer, type CropData, type TrimData,
   subscribeStories, createStory as fsCreateStory,
   markStoryViewed, groupStories,
 } from '@/lib/stories';
@@ -19,11 +20,7 @@ const DEMO_MEDIA = [
   'https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=600&q=80',
 ];
 const DEMO_CAPTIONS = [
-  'Good morning! ☀️',
-  'Living the dream 🌊',
-  'Golden hour 🌅',
-  '',
-  "Can't stop smiling today 🌸",
+  'Good morning! ☀️', 'Living the dream 🌊', 'Golden hour 🌅', '', "Can't stop smiling 🌸",
 ];
 
 function buildDemoStories(): Story[] {
@@ -40,6 +37,9 @@ function buildDemoStories(): Story[] {
     createdAt: new Date(now - i * 3_600_000),
     expiresAt: new Date(now + (24 - i) * 3_600_000),
     viewerIds: [],
+    layers: [],
+    cropData: null,
+    trimData: null,
   }));
 }
 
@@ -68,18 +68,28 @@ export function useStories() {
     [stories, currentUser?.id],
   );
 
-  /** Upload media to Cloudinary and persist a new Story to Firestore. */
+  /** Upload to Cloudinary (handled by StoryEditor) then persist to Firestore. */
   async function publishStory(
     mediaUrl: string,
     mediaType: StoryMediaType,
     caption: string,
+    layers: EditorLayer[] = [],
+    cropData: CropData | null = null,
+    trimData: TrimData | null = null,
   ): Promise<void> {
     if (!currentUser) return;
-    if (!isFirebaseConfigured) return; // demo mode — skip persistence
-    await fsCreateStory(currentUser as unknown as User, mediaUrl, mediaType, caption);
+    if (!isFirebaseConfigured) return;
+    await fsCreateStory(
+      currentUser as unknown as User,
+      mediaUrl,
+      mediaType,
+      caption,
+      layers,
+      cropData,
+      trimData,
+    );
   }
 
-  /** Mark a single story as viewed by the current user. */
   async function markViewed(storyId: string): Promise<void> {
     if (!currentUser || !isFirebaseConfigured) return;
     await markStoryViewed(storyId, currentUser.id);

@@ -17,6 +17,8 @@ import { useStories } from '@/hooks/useStories';
 import { StoriesRow } from '@/components/stories/StoriesRow';
 import { StoryCreator } from '@/components/stories/StoryCreator';
 import { StoryViewer } from '@/components/stories/StoryViewer';
+import { StoryEditor, type StoryEditorPublishPayload } from '@/components/stories/editor';
+import type { StoryMediaType } from '@/lib/stories';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import {
   reportPost as fsReportPost, unfollowUser as fsUnfollowUser,
@@ -1395,6 +1397,9 @@ export default function Home() {
   const { prompt: sparkPrompt } = useDailySpark();
   const { groups: storyGroups, publishStory, markViewed } = useStories();
   const [storyCreatorOpen, setStoryCreatorOpen] = useState(false);
+  const [pendingEditorData, setPendingEditorData] = useState<{
+    file: File; previewUrl: string; mediaType: StoryMediaType;
+  } | null>(null);
   const [viewingGroupIdx, setViewingGroupIdx] = useState<number | null>(null);
   const [commentsPost, setCommentsPost] = useState<Post | null>(null);
   const [sharePost, setSharePost] = useState<Post | null>(null);
@@ -1634,10 +1639,34 @@ export default function Home() {
           <StoryCreator
             key="story-creator"
             onClose={() => setStoryCreatorOpen(false)}
-            onPublish={publishStory}
+            onMediaReady={(file, previewUrl, mediaType) => {
+              setStoryCreatorOpen(false);
+              setPendingEditorData({ file, previewUrl, mediaType });
+            }}
           />
         )}
       </AnimatePresence>
+
+      {pendingEditorData && (
+        <StoryEditor
+          key="story-editor"
+          file={pendingEditorData.file}
+          previewUrl={pendingEditorData.previewUrl}
+          mediaType={pendingEditorData.mediaType}
+          onClose={() => setPendingEditorData(null)}
+          onPublish={async (payload: StoryEditorPublishPayload) => {
+            await publishStory(
+              payload.mediaUrl,
+              payload.mediaType,
+              payload.caption,
+              payload.layers,
+              payload.cropData,
+              payload.trimData,
+            );
+            setPendingEditorData(null);
+          }}
+        />
+      )}
 
       <AnimatePresence>
         {viewingGroupIdx !== null && storyGroups.length > 0 && (
