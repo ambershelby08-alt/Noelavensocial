@@ -8,6 +8,7 @@ description: Cover photo editor and display — layout, pointer-event architectu
 - `x`, `y`: CSS objectPosition percentages (0–100). Centre = 50.
 - `zoom`: CSS scale multiplier (≥ 1, default 1).
 `coverUrl`: Cloudinary URL (or '' when removed).
+Only one editor exists: `src/components/profile/CoverPhotoEditor.tsx`.
 
 ## CSS rendering (Profile.tsx)
 ```css
@@ -18,37 +19,48 @@ transformOrigin: x% y%;
 ```
 Container must have `overflow-hidden` to clip zoomed image.
 
-## CoverPhotoEditor layout (z-[70], full-screen)
+## CoverPhotoEditor layout (z-[70], full-screen flex-col using 100dvh)
 
-Five layers stacked in `position:absolute`:
+Three flex children — no absolute pixel offsets, no `calc()`:
 
-1. **Drag surface** (`ref={containerRef}`, `position:absolute inset-0`, `touchAction:none`)
-   - Image inside with objectFit:cover + scale + transformOrigin.
-   - Receives onPointerDown/Move/Up. `setPointerCapture` ensures tracking across the full screen.
+### ① Instruction bar (`flexShrink: 0`, ~72px)
+- Left: "Cancel" text button (outlined pill)
+- Center: "Move and zoom your photo" + "Drag to reposition · Pinch to zoom"
+- Right: circular Save icon button (gradient when canSave, dim otherwise)
+- `background: rgba(0,0,0,0.92)` + `backdropFilter: blur(12px)`
 
-2. **Overlay** (`pointer-events:none`, `top:safe+56px`, `bottom:200px`)
-   - Flex-column: dim-above (flex-1) | 3:1 frame | dim-below (flex-1 with instruction pill).
-   - Frame has white border (3px), corner accent squares (18×18px), rule-of-thirds grid, "Profile cover preview" pill label.
-   - Instruction: "☝️ Move and zoom your photo" + "Drag to reposition · Pinch to zoom" shown in the dim-below area.
+### ② Interactive zone (`flex: 1`, `minHeight: 0`)
+- Image: `position:absolute inset-0`, `objectFit:cover`, `objectPosition:x% y%`, `scale(zoom)`, `transformOrigin:x% y%`, `pointerEvents:none`
+- Dim overlay: `position:absolute inset-0 flex flex-col pointer-events-none`
+  - `flex-1` black div (top dim, ~70% opacity)
+  - `aspectRatio:'3/1'` div — the crop frame: white 2px border, 4 Corner L-marks (22×22px), rule-of-thirds grid, "Cover frame" pill label
+  - `flex-1` black div (bottom dim)
+- The crop frame is **always centered in ② by flexbox** — no pixel math, works on any screen height.
 
-3. **Title bar** (`position:absolute top-0`, `z-30`, `pointer-events:auto`)
-   - "Cancel" text button (left) + "Edit Cover Photo" title pill (center) + spacer (right).
-   - Gradient fade to transparent below it.
+### ③ Bottom bar (`flexShrink: 0`, ~230px)
+- Live cover preview: 3:1 strip with identical image CSS → real-time preview of saved result
+- Secondary row: "Change Photo" + "Remove" half-width buttons
+- Primary: "Save Cover Photo" full-width gradient button (56px tall)
+- `background: rgba(0,0,0,0.92)` + `backdropFilter: blur(16px)`
 
-4. **Bottom controls** (`position:absolute bottom-0`, `z-30`, `pointer-events:auto`, `bg-black/88`)
-   - Secondary row: "Change Photo" + "Remove Photo" buttons.
-   - Primary: large "Save Cover Photo" button (full width, 17px padding, gradient).
-   - Shows uploading/saved states. Error message above.
+## Pointer-event safety (crash fix — MUST NOT revert)
+`dragAnchor`/`pinchAnchor` refs are snapshotted into plain local `const` values
+**before** every `setPos(...)` call. The updater function reads ONLY those captured
+values — never the ref itself.
 
-**Why pointer-events-none on overlay**: the drag surface sits underneath; buttons get pointer-events-auto so they intercept taps without affecting drags.
+**Why:** React state updaters are async. `onPointerUp` nulls the ref between the
+guard check and updater execution → "Cannot read properties of null (reading 'posX')".
 
-## Pointer-event safety (crash fix)
-`dragAnchor.current` is snapshotted into a local `const anchor` BEFORE calling `setPos`.
-`setPos` updater uses only plain captured numbers — never reads the ref.
-Same pattern for `pinchAnchor.current` → `const anc`.
+```ts
+// CORRECT
+const a = drag.current; if (!a) return;
+const ox = a.ox, oy = a.oy;            // plain numbers
+setPos(p => ({ ...p, x: clamp(ox - ..., 0, 100) }));
 
-**Why**: React state updaters run asynchronously. `onPointerUp` nulls the ref between the guard check and the updater execution, causing "Cannot read properties of null".
+// WRONG — crashes
+setPos(p => ({ ...p, x: clamp(drag.current!.ox - ...) }));
+```
 
 ## Backward compatibility
-`docToUser` reads zoom with `?? 1` fallback.
-`Profile.tsx` passes `currentPosition ?? { x:50, y:50, zoom:1 }` to editor.
+`docToUser` reads zoom with `?? 1` fallback — old Firestore docs without zoom render correctly.
+Profile.tsx passes `currentPosition ?? { x:50, y:50, zoom:1 }` to editor.
