@@ -67,7 +67,7 @@ function Backdrop({ onClose }: { onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[55]"
       onClick={onClose}
     />
   );
@@ -184,7 +184,8 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] shadow-2xl max-h-[80vh] flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl flex flex-col"
+        style={{ maxHeight: 'min(80dvh, 80vh)' }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -201,15 +202,15 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
           </button>
         </div>
 
-        {/* Body */}
+        {/* Body — scrollable comment list */}
         {post.commentsDisabled ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-10">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-10 overflow-y-auto">
             <MessageCircleOff size={36} className="text-gray-200" />
             <p className="text-[14px] font-semibold text-gray-400">Comments are turned off</p>
             <p className="text-[12px] text-gray-300 text-center leading-relaxed">The author has disabled comments on this post.</p>
           </div>
         ) : loading ? (
-          <div className="flex-1 flex items-center justify-center py-10">
+          <div className="flex-1 flex items-center justify-center py-10 overflow-y-auto">
             <div className="w-6 h-6 border-2 border-gray-200 border-t-purple-400 rounded-full animate-spin" />
           </div>
         ) : (
@@ -266,9 +267,12 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
           </div>
         )}
 
-        {/* Input — hidden when comments are disabled */}
+        {/* Composer — pinned above safe-area, always visible */}
         {!post.commentsDisabled && (
-          <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0 pb-safe">
+          <div
+            className="px-4 pt-3 border-t border-gray-100 flex-shrink-0"
+            style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+          >
             {replyingTo && (
               <div className="flex items-center gap-2 mb-2 px-1">
                 <MessageCircle size={12} className="text-purple-400 flex-shrink-0" />
