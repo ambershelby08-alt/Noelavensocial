@@ -15,10 +15,11 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
+import { useConversations } from '@/hooks/useConversations';
 
 // ─── Floating Bottom Nav ──────────────────────────────────────────────────────
 
-export function BottomNav() {
+export function BottomNav({ totalUnread = 0 }: { totalUnread?: number }) {
   const [location] = useLocation();
 
   const navItems = [
@@ -67,6 +68,12 @@ export function BottomNav() {
                     isActive ? 'text-purple-500' : 'text-gray-400'
                   )}
                 />
+                {/* Unread message badge */}
+                {item.path === '/messages' && totalUnread > 0 && (
+                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full bg-pink-500 ring-[1.5px] ring-white flex items-center justify-center text-[8px] font-black text-white px-1">
+                    {totalUnread > 9 ? '9+' : totalUnread}
+                  </span>
+                )}
                 <span
                   className={cn(
                     'text-[10px] font-semibold transition-colors duration-200',
@@ -94,7 +101,7 @@ export function BottomNav() {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-export function Sidebar() {
+export function Sidebar({ totalUnread = 0 }: { totalUnread?: number }) {
   const [location, setLocation] = useLocation();
   const { currentUser, isDemoMode } = useAuth();
 
@@ -139,6 +146,12 @@ export function Sidebar() {
                 className="transition-transform duration-200 group-hover:scale-110"
               />
               <span className="text-[15px]">{item.label}</span>
+              {/* Unread message badge */}
+              {item.path === '/messages' && totalUnread > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-pink-500 flex items-center justify-center text-[9px] font-black text-white px-1">
+                  {totalUnread > 9 ? '9+' : totalUnread}
+                </span>
+              )}
               {isActive && (
                 <motion.div
                   layoutId="sidebarIndicator"
@@ -196,6 +209,8 @@ function MobileHeader() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuth();
+  const { conversations } = useConversations();
+  const totalUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
 
   if (isLoading) {
     return (
@@ -219,7 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
-      <Sidebar />
+      <Sidebar totalUnread={totalUnread} />
       <MobileHeader />
 
       {/* pt-14 clears the mobile header on small screens; md:pt-0 removes it on desktop (sidebar handles branding) */}
@@ -237,7 +252,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
       </main>
 
-      <BottomNav />
+      <BottomNav totalUnread={totalUnread} />
     </div>
   );
 }

@@ -415,11 +415,29 @@ export async function sendMessage(
     readBy: [senderId],
     createdAt: serverTimestamp(),
   });
+  // Increment unread counts for all other participants
+  const convSnap = await getDoc(doc(db, 'conversations', convId));
+  const unreadUpdates: Record<string, ReturnType<typeof increment>> = {};
+  if (convSnap.exists()) {
+    const pids = (convSnap.data().participantIds ?? []) as string[];
+    for (const pid of pids) {
+      if (pid !== senderId) unreadUpdates[`unreadCounts.${pid}`] = increment(1);
+    }
+  }
   await updateDoc(doc(db, 'conversations', convId), {
     lastMessage: content,
     lastMessageAt: serverTimestamp(),
+    ...unreadUpdates,
   });
 }
+
+export async function markConversationRead(convId: string, userId: string): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'conversations', convId), {
+    [`unreadCounts.${userId}`]: 0,
+  });
+}
+
 
 export async function subscribeConversation(
   convId: string,

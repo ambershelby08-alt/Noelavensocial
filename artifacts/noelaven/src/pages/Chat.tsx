@@ -504,48 +504,46 @@ export default function Chat() {
 
   // ── Send message ───────────────────────────────────────────────────────────
 
-  function sendMessage(content: string, type: 'text' | 'image' | 'voice' = 'text') {
+  async function sendMessage(content: string, type: 'text' | 'image' | 'voice' = 'text') {
     if (!content.trim() && type === 'text') return;
     const uid = currentUser!.id;
-    const msg: LocalMsg = {
-      id: `live-${Date.now()}`,
-      senderId: uid,
-      content,
-      type,
-      reactions: {},
-      readBy: [],
-      createdAt: new Date(),
-      pending: true,
-    };
-    setMessages(prev => [...prev, msg]);
+
     setInputText('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setEmojiOpen(false);
     setAttachOpen(false);
 
-    // Mark as delivered after 400ms
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, pending: false } : m));
-    }, 400);
-
-    // Simulate other person typing then replying
-    const typingDelay = 900 + Math.random() * 400;
-    const replyDelay  = typingDelay + 1200 + Math.random() * 800;
-
-    setTimeout(() => setOtherTyping(true), typingDelay);
-    setTimeout(() => {
-      setOtherTyping(false);
-      const reply: LocalMsg = {
-        id: `reply-${Date.now()}`,
-        senderId: other.id,
-        content: getCannedReply(convId),
-        type: 'text',
-        reactions: {},
-        readBy: [currentUser!.id],
-        createdAt: new Date(),
+    if (isFirebaseConfigured) {
+      // Optimistic pending bubble; onSnapshot will replace it with the real doc
+      const tempId = `pending-${Date.now()}`;
+      const msg: LocalMsg = {
+        id: tempId, senderId: uid, content, type,
+        reactions: {}, readBy: [uid], createdAt: new Date(), pending: true,
       };
-      setMessages(prev => [...prev, reply]);
-    }, replyDelay);
+      setMessages(prev => [...prev, msg]);
+      await hookSend(content, type);
+    } else {
+      // Demo mode — local state + simulated canned reply
+      const msg: LocalMsg = {
+        id: `live-${Date.now()}`, senderId: uid, content, type,
+        reactions: {}, readBy: [], createdAt: new Date(), pending: true,
+      };
+      setMessages(prev => [...prev, msg]);
+      setTimeout(() => {
+        setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, pending: false } : m));
+      }, 400);
+      const typingDelay = 900 + Math.random() * 400;
+      const replyDelay  = typingDelay + 1200 + Math.random() * 800;
+      setTimeout(() => setOtherTyping(true), typingDelay);
+      setTimeout(() => {
+        setOtherTyping(false);
+        setMessages(prev => [...prev, {
+          id: `reply-${Date.now()}`, senderId: other.id,
+          content: getCannedReply(convId), type: 'text',
+          reactions: {}, readBy: [currentUser!.id], createdAt: new Date(),
+        }]);
+      }, replyDelay);
+    }
   }
 
   function handleSend() {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { subscribeMessages, sendMessage as fsSend, subscribeConversation } from '@/lib/firestore';
+import { subscribeMessages, sendMessage as fsSend, subscribeConversation, markConversationRead } from '@/lib/firestore';
 import { mockConversations, mockMessages } from '@/lib/mockData';
 import type { Message, Conversation } from '@/lib/mockData';
 
@@ -36,6 +36,11 @@ export function useMessages(convId: string | undefined) {
       setMessages(msgs);
       setIsLoading(false);
     });
+
+    // Clear unread count for this user when they open the conversation
+    if (currentUser) {
+      markConversationRead(convId, currentUser.id).catch(console.error);
+    }
 
     return () => {
       unsubConv?.();
