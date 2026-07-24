@@ -10,7 +10,12 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
-import type { ReportType, ReportReason, ReportStatus, Report, ModerationLog, SafetySettings } from './mockData';
+import { FOUNDER_UID } from './founder';
+import type {
+  ReportType, ReportReason, ReportStatus, ReportPriority,
+  ReportEvidence, Report, ModerationLog, ModerationActionType,
+  SafetySettings,
+} from './mockData';
 
 // ─── localStorage keys (demo mode) ───────────────────────────────────────────
 
@@ -161,27 +166,69 @@ export async function updateSafetySettings(userId: string, settings: Partial<Saf
 // ─── Reports ──────────────────────────────────────────────────────────────────
 
 export interface ReportInput {
+  /** Content type being reported */
   type: ReportType;
+  targetType?: ReportType;
   targetId: string;
+  /** Firebase UID of the account that owns the reported content */
   targetOwnerId?: string;
+  reportedUserId?: string | null;
+  /** Short text snapshot saved for evidence even if content is later deleted */
   targetPreview?: string;
+  parentContentId?: string | null;
+  conversationId?: string | null;
   reporterId: string;
   reason: ReportReason;
+  category?: string;
   details?: string;
+  additionalDetails?: string | null;
+  evidence?: Partial<ReportEvidence>;
+}
+
+function emptyEvidence(): ReportEvidence {
+  return { textSnapshot: null, mediaUrl: null, authorId: null };
 }
 
 export async function submitReport(input: ReportInput): Promise<void> {
+  const targetType = input.targetType ?? input.type;
+  const payload = {
+    type:               targetType,
+    targetType,
+    targetId:           input.targetId,
+    targetOwnerId:      input.targetOwnerId ?? null,
+    reportedUserId:     input.reportedUserId ?? input.targetOwnerId ?? null,
+    targetPreview:      input.targetPreview ?? null,
+    parentContentId:    input.parentContentId ?? null,
+    conversationId:     input.conversationId ?? null,
+    reporterId:         input.reporterId,
+    reason:             input.reason,
+    category:           input.category ?? input.reason,
+    details:            input.details ?? null,
+    additionalDetails:  input.additionalDetails ?? null,
+    evidence: {
+      textSnapshot: input.evidence?.textSnapshot ?? input.targetPreview ?? null,
+      mediaUrl:     input.evidence?.mediaUrl ?? null,
+      authorId:     input.evidence?.authorId ?? input.targetOwnerId ?? null,
+    },
+    status:             'pending' as ReportStatus,
+    priority:           'medium' as ReportPriority,
+    assignedModeratorId: null,
+    resolution:         null,
+    moderationActionId: null,
+    reviewedAt:         null,
+    resolvedAt:         null,
+    createdAt:          serverTimestamp(),
+  };
+
   if (isFirebaseConfigured && db) {
-    await addDoc(collection(db, 'reports'), {
-      ...input, status: 'pending', createdAt: serverTimestamp(),
-    });
+    await addDoc(collection(db, 'reports'), payload);
   } else {
     try {
       const raw = localStorage.getItem(K.reports);
       const reports: Report[] = raw ? JSON.parse(raw) : [];
       reports.unshift({
-        ...input, id: `r_${Date.now()}`,
-        status: 'pending' as ReportStatus,
+        ...payload,
+        id: `r_${Date.now()}`,
         createdAt: new Date() as unknown as Date,
       } as Report);
       localStorage.setItem(K.reports, JSON.stringify(reports));
@@ -190,10 +237,29 @@ export async function submitReport(input: ReportInput): Promise<void> {
 }
 
 function firestoreToReport(id: string, d: Record<string, unknown>): Report {
+  function toDateOrNull(v: unknown): Date | null {
+    if (!v) return null;
+    if (v instanceof Timestamp) return v.toDate();
+    if (typeof v === 'string') return new Date(v);
+    return null;
+  }
   return {
-    id, ...d,
-    createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toDate() : new Date(d.createdAt as string),
-    resolvedAt: d.resolvedAt instanceof Timestamp ? d.resolvedAt.toDate() : (d.resolvedAt ? new Date(d.resolvedAt as string) : undefined),
+    id,
+    ...d,
+    targetType: (d.targetType ?? d.type) as ReportType,
+    reportedUserId:      d.reportedUserId     ?? null,
+    parentContentId:     d.parentContentId    ?? null,
+    conversationId:      d.conversationId     ?? null,
+    category:            d.category           ?? d.reason ?? '',
+    additionalDetails:   d.additionalDetails  ?? null,
+    evidence:            (d.evidence as ReportEvidence) ?? { textSnapshot: null, mediaUrl: null, authorId: null },
+    priority:            (d.priority as ReportPriority) ?? 'medium',
+    assignedModeratorId: d.assignedModeratorId ?? null,
+    resolution:          d.resolution         ?? null,
+    moderationActionId:  d.moderationActionId ?? null,
+    createdAt:   toDateOrNull(d.createdAt)  ?? new Date(),
+    reviewedAt:  toDateOrNull(d.reviewedAt),
+    resolvedAt:  toDateOrNull(d.resolvedAt),
   } as Report;
 }
 
@@ -215,8 +281,8 @@ export async function getUserReports(userId: string): Promise<Report[]> {
 export async function getPendingReports(statusFilter: ReportStatus | 'all' = 'pending'): Promise<Report[]> {
   if (isFirebaseConfigured && db) {
     const q = statusFilter === 'all'
-      ? query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100))
-      : query(collection(db, 'reports'), where('status', '==', statusFilter), orderBy('createdAt', 'desc'), limit(100));
+      ? query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(200))
+      : query(collection(db, 'reports'), where('status', '==', statusFilter), orderBy('createdAt', 'desc'), limit(200));
     const snap = await getDocs(q);
     return snap.docs.map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>));
   }
@@ -230,65 +296,162 @@ export async function getPendingReports(statusFilter: ReportStatus | 'all' = 'pe
 }
 
 export async function updateReportStatus(
-  reportId: string, status: ReportStatus, moderatorId: string, moderatorNote?: string
+  reportId: string, status: ReportStatus, moderatorId: string,
+  moderatorNote?: string, resolution?: string
 ): Promise<void> {
   if (isFirebaseConfigured && db) {
     await updateDoc(doc(db, 'reports', reportId), {
-      status, moderatorId, moderatorNote: moderatorNote ?? null, resolvedAt: serverTimestamp(),
+      status,
+      moderatorId,
+      moderatorNote: moderatorNote ?? null,
+      resolution: resolution ?? null,
+      resolvedAt: serverTimestamp(),
+      reviewedAt: serverTimestamp(),
     });
   } else {
     try {
       const raw = localStorage.getItem(K.reports);
       if (!raw) return;
       const reports: Report[] = JSON.parse(raw).map((r: Report) =>
-        r.id === reportId ? { ...r, status, moderatorNote, resolvedAt: new Date() } : r
+        r.id === reportId ? { ...r, status, moderatorNote, resolution, resolvedAt: new Date() } : r
       );
       localStorage.setItem(K.reports, JSON.stringify(reports));
     } catch {}
   }
 }
 
+export async function assignReport(reportId: string, moderatorId: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, 'reports', reportId), {
+      assignedModeratorId: moderatorId,
+      status: 'reviewing',
+      reviewedAt: serverTimestamp(),
+    });
+  }
+}
+
+export async function updateReportPriority(reportId: string, priority: ReportPriority): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, 'reports', reportId), { priority });
+  }
+}
+
 // ─── Moderation actions ───────────────────────────────────────────────────────
 
-async function logAction(
-  moderatorId: string, action: string, targetId: string, targetType: string,
-  reason: string, reportId?: string
-): Promise<void> {
+interface LogActionParams {
+  moderatorId: string;
+  action: ModerationActionType | string;
+  targetId: string;
+  targetType: string;
+  targetUserId?: string;
+  reason: string;
+  explanation?: string;
+  previousState?: string;
+  newState?: string;
+  reportId?: string;
+}
+
+async function logAction(params: LogActionParams): Promise<void> {
   const entry = {
-    moderatorId, action, targetId, targetType, reason,
-    reportId: reportId ?? null, createdAt: new Date().toISOString(),
+    moderatorId:   params.moderatorId,
+    action:        params.action,
+    targetId:      params.targetId,
+    targetType:    params.targetType,
+    targetUserId:  params.targetUserId ?? null,
+    reason:        params.reason,
+    explanation:   params.explanation ?? null,
+    previousState: params.previousState ?? null,
+    newState:      params.newState ?? null,
+    reportId:      params.reportId ?? null,
   };
   if (isFirebaseConfigured && db) {
     await addDoc(collection(db, 'moderationActions'), { ...entry, createdAt: serverTimestamp() });
   } else {
     try {
       const existing: ModerationLog[] = JSON.parse(localStorage.getItem(K.modActions) ?? '[]');
-      localStorage.setItem(K.modActions, JSON.stringify([{ id: `ma_${Date.now()}`, ...entry }, ...existing]));
+      localStorage.setItem(K.modActions, JSON.stringify([
+        { id: `ma_${Date.now()}`, ...entry, createdAt: new Date().toISOString() },
+        ...existing,
+      ]));
     } catch {}
   }
 }
 
 export async function suspendUser(
   userId: string, moderatorId: string, reason: string, days = 30, reportId?: string
-): Promise<void> {
+): Promise<string> {
+  if (userId === FOUNDER_UID) throw new Error('Cannot suspend the Founder account.');
+  let actionId = '';
   if (isFirebaseConfigured && db) {
     const expiresAt = new Date(); expiresAt.setDate(expiresAt.getDate() + days);
     await setDoc(doc(db, 'userSuspensions', userId), {
-      moderatorId, reason, days, suspendedAt: serverTimestamp(), expiresAt, active: true,
+      moderatorId, reason, days, suspendedAt: serverTimestamp(), expiresAt, active: true, permanent: false,
     });
   }
-  await logAction(moderatorId, `suspend_${days}d`, userId, 'user', reason, reportId);
+  const action = days === 1 ? 'suspend_1d' : days === 7 ? 'suspend_7d' : days === 30 ? 'suspend_30d' : 'suspend_custom';
+  await logAction({
+    moderatorId, action, targetId: userId, targetType: 'user', targetUserId: userId,
+    reason, explanation: `Suspended for ${days} day(s)`, previousState: 'active', newState: `suspended_${days}d`,
+    reportId,
+  });
+  return actionId;
 }
 
 export async function banUser(
   userId: string, moderatorId: string, reason: string, reportId?: string
 ): Promise<void> {
+  if (userId === FOUNDER_UID) throw new Error('Cannot ban the Founder account.');
   if (isFirebaseConfigured && db) {
     await setDoc(doc(db, 'userSuspensions', userId), {
       moderatorId, reason, permanent: true, suspendedAt: serverTimestamp(), expiresAt: null, active: true,
     });
   }
-  await logAction(moderatorId, 'permanent_ban', userId, 'user', reason, reportId);
+  await logAction({
+    moderatorId, action: 'permanent_ban', targetId: userId, targetType: 'user', targetUserId: userId,
+    reason, explanation: 'Permanently banned', previousState: 'active', newState: 'banned', reportId,
+  });
+}
+
+export async function unbanUser(
+  userId: string, moderatorId: string, reason: string
+): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, 'userSuspensions', userId), { active: false });
+  }
+  await logAction({
+    moderatorId, action: 'unban', targetId: userId, targetType: 'user', targetUserId: userId,
+    reason, previousState: 'banned', newState: 'active',
+  });
+}
+
+export async function sendWarning(
+  userId: string, moderatorId: string, reason: string, reportId?: string
+): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    await addDoc(collection(db, 'userWarnings'), {
+      userId, moderatorId, reason, createdAt: serverTimestamp(),
+    });
+  }
+  await logAction({
+    moderatorId, action: 'send_warning', targetId: userId, targetType: 'user', targetUserId: userId,
+    reason, reportId,
+  });
+}
+
+export async function restrictAccount(
+  userId: string, moderatorId: string, reason: string, reportId?: string
+): Promise<void> {
+  if (userId === FOUNDER_UID) throw new Error('Cannot restrict the Founder account.');
+  if (isFirebaseConfigured && db) {
+    await setDoc(doc(db, 'userRestrictions', `mod_${userId}`), {
+      restrictorId: moderatorId, restrictedId: userId, byModerator: true,
+      reason, createdAt: serverTimestamp(),
+    });
+  }
+  await logAction({
+    moderatorId, action: 'restrict_account', targetId: userId, targetType: 'user', targetUserId: userId,
+    reason, reportId,
+  });
 }
 
 export async function removeContent(
@@ -301,12 +464,65 @@ export async function removeContent(
       removedByMod: true, removalReason: reason, removedAt: serverTimestamp(),
     });
   }
-  await logAction(moderatorId, 'remove_content', targetId, targetType, reason, reportId);
+  await logAction({
+    moderatorId, action: 'remove_content', targetId, targetType,
+    reason, reportId,
+  });
+}
+
+export async function restoreContent(
+  targetId: string, targetType: 'post' | 'comment',
+  moderatorId: string, reason: string
+): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    const col = targetType === 'post' ? 'posts' : 'comments';
+    await updateDoc(doc(db, col, targetId), {
+      removedByMod: false, restoredAt: serverTimestamp(),
+    });
+  }
+  await logAction({
+    moderatorId, action: 'restore_content', targetId, targetType,
+    reason, previousState: 'removed', newState: 'visible',
+  });
+}
+
+export async function getSuspendedUsers(): Promise<Array<{
+  userId: string; reason: string; days?: number; permanent?: boolean;
+  suspendedAt: Date; expiresAt: Date | null;
+}>> {
+  if (!isFirebaseConfigured || !db) return [];
+  try {
+    const q = query(collection(db, 'userSuspensions'), where('active', '==', true), where('permanent', '==', false));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({
+      userId: d.id,
+      reason: d.data().reason,
+      days: d.data().days,
+      permanent: false,
+      suspendedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
+      expiresAt: d.data().expiresAt instanceof Timestamp ? d.data().expiresAt.toDate() : null,
+    }));
+  } catch { return []; }
+}
+
+export async function getBannedUsers(): Promise<Array<{
+  userId: string; reason: string; bannedAt: Date;
+}>> {
+  if (!isFirebaseConfigured || !db) return [];
+  try {
+    const q = query(collection(db, 'userSuspensions'), where('active', '==', true), where('permanent', '==', true));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({
+      userId: d.id,
+      reason: d.data().reason,
+      bannedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
+    }));
+  } catch { return []; }
 }
 
 export async function getModerationLog(): Promise<ModerationLog[]> {
   if (isFirebaseConfigured && db) {
-    const q = query(collection(db, 'moderationActions'), orderBy('createdAt', 'desc'), limit(100));
+    const q = query(collection(db, 'moderationActions'), orderBy('createdAt', 'desc'), limit(200));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({
       id: d.id, ...d.data(),
@@ -319,9 +535,12 @@ export async function getModerationLog(): Promise<ModerationLog[]> {
   } catch { return []; }
 }
 
-// ─── Admin check ──────────────────────────────────────────────────────────────
+// ─── Admin / Founder check ────────────────────────────────────────────────────
 
 export async function checkIsAdmin(userId: string): Promise<boolean> {
+  // Founder is always admin — checked by UID, not profile data
+  if (userId === FOUNDER_UID) return true;
+
   if (!isFirebaseConfigured || !db) {
     // Demo mode: user-1 is admin
     return userId === 'user-1' || userId === 'demo-user';

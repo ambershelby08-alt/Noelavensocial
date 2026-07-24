@@ -4,7 +4,10 @@ import {
   ChevronRight, Paintbrush, FileText, HelpCircle, Check, Camera,
   X, ChevronDown, Sun, Moon, Monitor, Eye, EyeOff, Send,
   UserPlus, UserCheck, Settings2, ArrowLeftRight, Trash2,
+  Crown, Download, Mail,
 } from 'lucide-react';
+import { FounderBadge } from '@/components/ui/FounderBadge';
+import { auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation, Link } from 'wouter';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
@@ -105,7 +108,7 @@ const THEME_KEY = 'nlv_theme';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Settings() {
-  const { signOut, currentUser, updateUser, savedAccounts, startAddAccount, switchToAccount } = useAuth();
+  const { signOut, currentUser, updateUser, savedAccounts, startAddAccount, switchToAccount, isFounder } = useAuth();
   const [, setLocation] = useLocation();
   const [toast, setToast] = useState('');
   const [toastVariant, setToastVariant] = useState<ToastVariant>('success');
@@ -126,6 +129,18 @@ export default function Settings() {
   const [confirmPw, setConfirmPw] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
+
+  // Change email
+  const [newEmail, setNewEmail] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  // Delete account
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // Download data
+  const [downloadingData, setDownloadingData] = useState(false);
 
   // Appearance
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() =>
@@ -152,6 +167,62 @@ export default function Settings() {
   const [reportText, setReportText] = useState('');
   const [reportCategory, setReportCategory] = useState('bug');
   const [sendingReport, setSendingReport] = useState(false);
+
+  async function handleChangeEmail() {
+    if (!newEmail.trim() || !auth?.currentUser) return;
+    setSavingEmail(true);
+    try {
+      const { updateEmail } = await import('firebase/auth');
+      await updateEmail(auth.currentUser, newEmail.trim());
+      showToast('Email updated! Check your inbox to verify.');
+      setNewEmail('');
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === 'auth/requires-recent-login') {
+        showToast('Sign out and sign back in to change your email.', 'error');
+      } else {
+        showToast('Could not update email. Try again.', 'error');
+      }
+    } finally { setSavingEmail(false); }
+  }
+
+  async function handleDownloadData() {
+    setDownloadingData(true);
+    try {
+      const data = {
+        exportedAt: new Date().toISOString(),
+        profile: currentUser ? {
+          id: currentUser.id, displayName: currentUser.displayName,
+          handle: currentUser.handle, bio: currentUser.bio,
+          joinedAt: currentUser.joinedAt,
+        } : null,
+        notice: 'Full post/story/message history is processed server-side and emailed within 24 hours.',
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'noelaven-data.json'; a.click();
+      URL.revokeObjectURL(url);
+      showToast('Profile data exported.');
+    } catch { showToast('Export failed. Try again.', 'error'); }
+    finally { setDownloadingData(false); }
+  }
+
+  async function handleDeleteAccount() {
+    if (!auth?.currentUser) return;
+    setDeletingAccount(true);
+    try {
+      const { deleteUser } = await import('firebase/auth');
+      await deleteUser(auth.currentUser);
+      showToast('Account deleted.');
+      await signOut();
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === 'auth/requires-recent-login') {
+        showToast('Sign out and sign in again to confirm deletion.', 'error');
+      } else { showToast('Could not delete account. Try again.', 'error'); }
+    } finally { setDeletingAccount(false); setDeleteConfirm(false); }
+  }
 
   function showToast(msg: string, variant: ToastVariant = 'success') {
     setToast(msg);
@@ -333,8 +404,10 @@ export default function Settings() {
     {
       title: 'Account',
       items: [
-        { icon: User,   label: 'Personal Information', desc: 'Name, handle, and bio', key: 'personal' },
-        { icon: Shield, label: 'Security',             desc: 'Change your password',  key: 'security' },
+        { icon: User,     label: 'Personal Information', desc: 'Name, handle, and bio',            key: 'personal'  },
+        { icon: Shield,   label: 'Security',             desc: 'Password & email',                   key: 'security'  },
+        { icon: Download, label: 'Download My Data',     desc: 'Export your profile & posts',        key: 'download'  },
+        { icon: Trash2,   label: 'Delete Account',       desc: 'Permanently remove your account',    key: 'delete', danger: true },
       ],
     },
     {
@@ -415,6 +488,51 @@ export default function Settings() {
           </Link>
         </div>
       )}
+
+      {/* Founder Control Center — only for the Founder account */}
+      <AnimatePresence>
+        {isFounder && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="rounded-[22px] overflow-hidden mb-6 shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #3B0764 0%, #5B21B6 45%, #92400E 100%)' }}
+          >
+            <div className="p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center ring-2 ring-white/10">
+                  <Crown size={20} className="text-yellow-300 drop-shadow" />
+                </div>
+                <div>
+                  <p className="text-[16px] font-black text-white leading-tight">Founder Control Center</p>
+                  <p className="text-[11.5px] text-white/60 mt-0.5">Full platform access · All actions logged</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Link href="/moderation">
+                  <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-left">
+                    <Shield size={15} className="text-purple-200 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13.5px] font-bold text-white">Moderation Dashboard</p>
+                      <p className="text-[11px] text-white/55">Reports · Suspensions · Bans</p>
+                    </div>
+                    <ChevronRight size={13} className="text-white/40 flex-shrink-0" />
+                  </button>
+                </Link>
+                <Link href="/moderation">
+                  <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-left">
+                    <UserCheck size={15} className="text-blue-200 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13.5px] font-bold text-white">Moderation Log</p>
+                      <p className="text-[11px] text-white/55">Full audit trail of all actions</p>
+                    </div>
+                    <ChevronRight size={13} className="text-white/40 flex-shrink-0" />
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Sections */}
       <div className="space-y-7">
@@ -573,6 +691,102 @@ export default function Settings() {
                             >
                               {savingPw ? 'Changing…' : 'Change Password'}
                             </motion.button>
+
+                            {/* ── Change Email ── */}
+                            <div className="border-t border-gray-100 pt-4 mt-2">
+                              <p className="text-[11.5px] font-black text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                                <Mail size={11} /> Change Email
+                              </p>
+                              {!isFirebaseConfigured && (
+                                <p className="text-[13px] text-amber-600 bg-amber-50 rounded-xl px-3 py-2.5 mb-2">
+                                  Email changes require a live account.
+                                </p>
+                              )}
+                              <input
+                                type="email"
+                                value={newEmail}
+                                onChange={e => setNewEmail(e.target.value)}
+                                placeholder="New email address"
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-black/[0.08] text-[14px] text-gray-900 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all bg-gray-50"
+                              />
+                              <motion.button
+                                whileTap={{ scale: 0.97 }}
+                                onClick={handleChangeEmail}
+                                disabled={savingEmail || !isFirebaseConfigured || !newEmail.trim()}
+                                className="mt-2 w-full py-3 rounded-xl font-bold text-[14px] text-white transition-opacity disabled:opacity-50"
+                                style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                              >
+                                {savingEmail ? 'Updating…' : 'Update Email'}
+                              </motion.button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Download My Data ── */}
+                        {item.key === 'download' && (
+                          <div className="space-y-3 pt-1">
+                            <p className="text-[13px] text-gray-600 leading-relaxed">
+                              Download a copy of your profile data. A full export of your posts, stories, and messages
+                              is processed server-side and emailed within 24 hours.
+                            </p>
+                            <motion.button
+                              whileTap={{ scale: 0.97 }}
+                              onClick={handleDownloadData}
+                              disabled={downloadingData}
+                              className="w-full py-3 rounded-xl font-bold text-[14px] text-white transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                            >
+                              <Download size={15} />
+                              {downloadingData ? 'Exporting…' : 'Download My Data'}
+                            </motion.button>
+                          </div>
+                        )}
+
+                        {/* ── Delete Account ── */}
+                        {item.key === 'delete' && (
+                          <div className="space-y-3 pt-1">
+                            <div className="bg-red-50 border border-red-100 rounded-xl px-3.5 py-3">
+                              <p className="text-[13px] font-bold text-red-700 mb-1">⚠️ This action is irreversible</p>
+                              <p className="text-[12.5px] text-red-600 leading-relaxed">
+                                Your account, posts, stories, and all associated data will be permanently deleted.
+                                This cannot be undone.
+                              </p>
+                            </div>
+                            {!deleteConfirm ? (
+                              <motion.button
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setDeleteConfirm(true)}
+                                disabled={!isFirebaseConfigured}
+                                className="w-full py-3 rounded-xl font-bold text-[14px] text-white bg-red-500 hover:bg-red-600 transition-all disabled:opacity-50"
+                              >
+                                {isFirebaseConfigured ? 'Delete My Account' : 'Requires live account'}
+                              </motion.button>
+                            ) : (
+                              <div className="space-y-2">
+                                <p className="text-[13px] font-bold text-gray-700">Type <span className="font-black text-red-500 font-mono">DELETE</span> to confirm:</p>
+                                <input
+                                  type="text"
+                                  value={deleteInput}
+                                  onChange={e => setDeleteInput(e.target.value)}
+                                  placeholder="DELETE"
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-red-200 text-[14px] text-gray-900 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 bg-red-50 transition-all font-mono"
+                                />
+                                <div className="flex gap-2">
+                                  <button onClick={() => { setDeleteConfirm(false); setDeleteInput(''); }}
+                                    className="flex-1 py-3 rounded-xl border border-black/[0.08] font-bold text-[14px] text-gray-700 hover:bg-gray-50">
+                                    Cancel
+                                  </button>
+                                  <motion.button
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={handleDeleteAccount}
+                                    disabled={deletingAccount || deleteInput !== 'DELETE'}
+                                    className="flex-1 py-3 rounded-xl font-bold text-[14px] text-white bg-red-500 hover:bg-red-600 transition-all disabled:opacity-50"
+                                  >
+                                    {deletingAccount ? 'Deleting…' : 'Confirm Delete'}
+                                  </motion.button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 

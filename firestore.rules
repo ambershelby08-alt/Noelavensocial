@@ -1,0 +1,196 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Founder UID — hardcoded server-side, never editable from client ─────────
+    // This string MUST match FOUNDER_UID in src/lib/founder.ts
+    function isFounder() {
+      return request.auth != null
+          && request.auth.uid == 'OJzzcq17QLRreaEINhQ2czxhtQ23';
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Founder OR a user listed in the admins collection
+    function isModerator() {
+      return isFounder()
+          || (isAuthenticated()
+              && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+
+      // New account creation
+      allow create: if isOwner(userId);
+
+      // Self-update: block all role / suspension / ban / founder fields
+      allow update: if isOwner(userId)
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['role', 'isFounder', 'isAdmin', 'isModerator',
+                       'suspended', 'banned', 'suspendedAt', 'bannedAt']);
+
+      // Founder can update any user (e.g. to set role fields)
+      allow update, delete: if isFounder();
+    }
+
+    // ── Protected roles document ───────────────────────────────────────────────
+    match /roles/{document} {
+      allow read:  if isModerator();
+      allow write: if isFounder();
+    }
+
+    // ── Admin roster ──────────────────────────────────────────────────────────
+    match /admins/{userId} {
+      allow read:  if isModerator();
+      allow write: if isFounder();   // Only Founder grants/revokes moderator roles
+    }
+
+    // ── Reports ───────────────────────────────────────────────────────────────
+    match /reports/{reportId} {
+      // Any authenticated user may create a report for their own UID
+      allow create: if isAuthenticated()
+          && request.resource.data.reporterId == request.auth.uid;
+
+      // Reporters can read their own submitted reports
+      // Moderators can read everything
+      allow read: if isModerator()
+          || (isAuthenticated() && resource.data.reporterId == request.auth.uid);
+
+      // Only moderators may update status/assignment; reporters cannot touch status
+      allow update: if isModerator()
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['reporterId', 'targetId', 'reportedUserId']);
+
+      // Only Founder can hard-delete reports
+      allow delete: if isFounder();
+    }
+
+    // ── Moderation audit log — immutable from client ───────────────────────────
+    match /moderationActions/{actionId} {
+      allow create: if isModerator();
+      allow read:   if isModerator();
+      // No update or delete — audit log is append-only
+      allow update, delete: if false;
+    }
+
+    // ── User suspensions / bans ───────────────────────────────────────────────
+    match /userSuspensions/{userId} {
+      allow read:  if isOwner(userId) || isModerator();
+      allow write: if isModerator();
+    }
+
+    // ── Blocks ────────────────────────────────────────────────────────────────
+    match /userBlocks/{docId} {
+      allow read:   if isAuthenticated()
+          && (resource.data.blockerId == request.auth.uid
+              || resource.data.blockedId == request.auth.uid);
+      allow create: if isAuthenticated()
+          && request.resource.data.blockerId == request.auth.uid;
+      allow delete: if isAuthenticated()
+          && resource.data.blockerId == request.auth.uid;
+    }
+
+    // ── Mutes ─────────────────────────────────────────────────────────────────
+    match /userMutes/{docId} {
+      allow read:   if isAuthenticated()
+          && resource.data.muterId == request.auth.uid;
+      allow create: if isAuthenticated()
+          && request.resource.data.muterId == request.auth.uid;
+      allow delete: if isAuthenticated()
+          && resource.data.muterId == request.auth.uid;
+    }
+
+    // ── Restrictions ──────────────────────────────────────────────────────────
+    match /userRestrictions/{docId} {
+      allow read:   if isAuthenticated()
+          && resource.data.restrictorId == request.auth.uid;
+      allow create: if isAuthenticated()
+          && request.resource.data.restrictorId == request.auth.uid;
+      allow delete: if isAuthenticated()
+          && resource.data.restrictorId == request.auth.uid;
+    }
+
+    // ── Safety settings ───────────────────────────────────────────────────────
+    match /userSafetySettings/{userId} {
+      allow read, write: if isOwner(userId) || isModerator();
+    }
+
+    // ── Posts ─────────────────────────────────────────────────────────────────
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+          && request.resource.data.authorId == request.auth.uid;
+      allow update: if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+          || isModerator();
+      allow delete: if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+          || isModerator();
+    }
+
+    // ── Comments ──────────────────────────────────────────────────────────────
+    match /comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+          && request.resource.data.authorId == request.auth.uid;
+      allow update, delete:
+          if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+          || isModerator();
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────────────
+    match /notifications/{notifId} {
+      // Recipient reads and manages their own
+      allow read, update, delete: if isAuthenticated()
+          && resource.data.userId == request.auth.uid;
+      // Any authenticated user may write (send a notification to another user)
+      allow create: if isAuthenticated();
+    }
+
+    // ── Conversations ─────────────────────────────────────────────────────────
+    match /conversations/{convId} {
+      allow read, update: if isAuthenticated()
+          && request.auth.uid in resource.data.participantIds;
+      allow create: if isAuthenticated()
+          && request.auth.uid in request.resource.data.participantIds;
+    }
+
+    match /conversations/{convId}/messages/{msgId} {
+      allow read: if isAuthenticated()
+          && request.auth.uid in
+             get(/databases/$(database)/documents/conversations/$(convId))
+             .data.participantIds;
+      allow create: if isAuthenticated()
+          && request.resource.data.senderId == request.auth.uid;
+    }
+
+    // ── Communities ───────────────────────────────────────────────────────────
+    match /communities/{communityId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isModerator();
+    }
+
+    // ── Follows ───────────────────────────────────────────────────────────────
+    match /follows/{followId} {
+      allow read:  if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // ── Stories ───────────────────────────────────────────────────────────────
+    match /stories/{storyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+          && request.resource.data.authorId == request.auth.uid;
+      allow update, delete:
+          if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+          || isModerator();
+    }
+  }
+}

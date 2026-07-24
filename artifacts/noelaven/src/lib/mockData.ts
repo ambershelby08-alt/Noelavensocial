@@ -654,7 +654,9 @@ export const dailySparks = [
 
 // ─── Safety & Moderation types ────────────────────────────────────────────────
 
-export type ReportType = 'user' | 'post' | 'comment' | 'story' | 'spark' | 'message' | 'profile';
+export type ReportType =
+  | 'user' | 'post' | 'comment' | 'reply' | 'story'
+  | 'spark' | 'dailySpark' | 'message' | 'profile';
 export type ReportReason =
   | 'Spam'
   | 'Harassment'
@@ -666,20 +668,46 @@ export type ReportReason =
   | 'Copyright Violation'
   | 'Other';
 export type ReportStatus = 'pending' | 'reviewing' | 'resolved' | 'dismissed';
-export type ModerationActionType = 'dismiss' | 'remove_content' | 'suspend_30d' | 'permanent_ban' | 'restore';
+export type ReportPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type ModerationActionType =
+  | 'dismiss' | 'remove_content' | 'restore_content'
+  | 'send_warning' | 'restrict_account'
+  | 'suspend_1d' | 'suspend_7d' | 'suspend_30d' | 'suspend_custom'
+  | 'permanent_ban' | 'unban'
+  | 'assign' | 'resolve';
+
+export interface ReportEvidence {
+  textSnapshot: string | null;
+  mediaUrl: string | null;
+  authorId: string | null;
+}
 
 export interface Report {
   id: string;
+  /** Deprecated — use targetType going forward */
   type: ReportType;
+  targetType: ReportType;
   targetId: string;
+  /** Firebase UID of the account that owns the reported content */
   targetOwnerId?: string;
+  reportedUserId: string | null;
   targetPreview?: string;
+  parentContentId: string | null;
+  conversationId: string | null;
   reporterId: string;
   reason: ReportReason;
+  category: string;
   details?: string;
+  additionalDetails: string | null;
+  evidence: ReportEvidence;
   status: ReportStatus;
+  priority: ReportPriority;
+  assignedModeratorId: string | null;
+  resolution: string | null;
+  moderationActionId: string | null;
   createdAt: Date;
-  resolvedAt?: Date;
+  reviewedAt: Date | null;
+  resolvedAt: Date | null;
   moderatorNote?: string;
   moderatorId?: string;
 }
@@ -687,10 +715,14 @@ export interface Report {
 export interface ModerationLog {
   id: string;
   moderatorId: string;
-  action: string;
+  action: ModerationActionType | string;
   targetId: string;
   targetType: string;
+  targetUserId?: string;
   reason: string;
+  explanation?: string;
+  previousState?: string;
+  newState?: string;
   reportId?: string;
   createdAt: Date;
 }

@@ -33,8 +33,8 @@ const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bg: st
 };
 
 const TYPE_LABELS: Record<ReportType, string> = {
-  user: 'Account', post: 'Post', comment: 'Comment',
-  story: 'Story', spark: 'Spark', message: 'Message', profile: 'Profile',
+  user: 'Account', post: 'Post', comment: 'Comment', reply: 'Reply',
+  story: 'Story', spark: 'Spark', dailySpark: 'Daily Spark', message: 'Message', profile: 'Profile',
 };
 
 const REASON_ICONS: Record<ReportReason, React.ElementType> = {

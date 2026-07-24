@@ -24,6 +24,7 @@ import { isFirebaseConfigured } from '@/lib/firebase';
 import { updatePostSparkAudience, followUser as fsFollow, unfollowUser as fsUnfollow, getUserDoc, getOrCreateDirectConversation } from '@/lib/firestore';
 import { notifyFollow } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
+import { FounderBadge } from '@/components/ui/FounderBadge';
 import { format } from 'date-fns';
 import { useSafety } from '@/contexts/SafetyContext';
 import { ReportSheet } from '@/components/ui/ReportSheet';
@@ -202,7 +203,10 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link href={`/profile/${u.id}`} onClick={onClose}>
-                    <p className="font-bold text-[14px] text-gray-900 hover:underline truncate">{u.displayName}</p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="font-bold text-[14px] text-gray-900 hover:underline truncate">{u.displayName}</p>
+                      <FounderBadge userId={u.id} size="xs" />
+                    </div>
                   </Link>
                   <p className="text-[12px] text-gray-400 truncate">@{u.handle} · {fmtNum(u.followers)} followers</p>
                 </div>
@@ -1011,7 +1015,10 @@ export default function Profile() {
       <div className="px-4 mt-4">
         {/* Name + badges */}
         <div className="flex items-start gap-2 flex-wrap mb-0.5">
-          <h1 className="text-[22px] font-black text-gray-900 tracking-tight leading-tight">{user.displayName}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-[22px] font-black text-gray-900 tracking-tight leading-tight">{user.displayName}</h1>
+            <FounderBadge userId={user.id} size="md" showLabel />
+          </div>
         </div>
         <p className="text-[14px] text-gray-400 font-medium mb-1">@{user.handle}</p>
 

@@ -14,6 +14,7 @@ import {
   setPendingSwitchEmail,
   type SavedAccount,
 } from '@/lib/accountStore';
+import { FOUNDER_UID, isFounderUid, ensureFounderRole } from '@/lib/founder';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ interface AuthContextType {
   savedAccounts: SavedAccount[];
   /** True while the user is mid-flow adding a second account (Login is shown instead of the app). */
   addingAccount: boolean;
+  /** True only for the hardcoded Founder Firebase UID — never based on editable profile data. */
+  isFounder: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -130,6 +133,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           upsertSavedAccount(saved);
           setSavedAccounts(getSavedAccounts());
+          // Initialize Founder role documents if this is the Founder signing in.
+          if (isFounderUid(firebaseUser.uid)) {
+            ensureFounderRole().catch(console.error);
+          }
         } else {
           // New or incomplete — persist base Google identity so it's
           // recoverable if the user closes before finishing profile setup.
@@ -411,11 +418,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isDemoMode, currentUser]);
 
+  const isFounder = isFounderUid(currentUser?.id);
+
   return (
     <AuthContext.Provider
       value={{
         currentUser, pendingUser, isLoading, isNewUser, isDemoMode, redirectError,
-        savedAccounts, addingAccount,
+        savedAccounts, addingAccount, isFounder,
         signIn, signUp, signInWithGoogle, signOut,
         startAddAccount, switchToAccount,
         completeProfile, resetPassword, updateUser,

@@ -47,8 +47,8 @@ const REASONS: ReasonOption[] = [
 ];
 
 const TYPE_LABELS: Record<ReportType, string> = {
-  user: 'account', post: 'post', comment: 'comment',
-  story: 'story', spark: 'spark', message: 'message', profile: 'profile',
+  user: 'account', post: 'post', comment: 'comment', reply: 'reply',
+  story: 'story', spark: 'spark', dailySpark: 'daily spark', message: 'message', profile: 'profile',
 };
 
 export function ReportSheet({

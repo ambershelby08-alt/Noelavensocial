@@ -43,6 +43,7 @@ import { Link } from 'wouter';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { PhotoViewer } from '@/components/ui/PhotoViewer';
+import { FounderBadge } from '@/components/ui/FounderBadge';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -248,7 +249,10 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                 <UserAvatar userId={c.authorId} fallbackName={c.author.displayName} fallbackSrc={c.author.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <div className="bg-gray-50 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
-                    <p className="font-semibold text-[13px] text-gray-900 mb-0.5">{c.author.displayName}</p>
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <p className="font-semibold text-[13px] text-gray-900">{c.author.displayName}</p>
+                      <FounderBadge userId={c.authorId} size="xs" />
+                    </div>
                     <p className="text-[13.5px] text-gray-700 leading-relaxed">{c.text}</p>
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 px-1">
@@ -1572,6 +1576,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
               <Link href={`/profile/${post.authorId}`} className="font-bold text-[14px] text-gray-900 hover:underline">
                 {post.author.displayName}
               </Link>
+              <FounderBadge userId={post.authorId} size="sm" />
               {post.communityId && (
                 <span className="text-[11px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
                   Community
