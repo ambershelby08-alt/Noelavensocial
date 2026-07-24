@@ -9,6 +9,11 @@ import { type FirebaseError } from 'firebase/app';
 import { auth, isFirebaseConfigured } from '@/lib/firebase';
 import { getUserDoc, createUserDoc, updateUserDoc, upsertUserBaseDoc, seedCommunitiesIfNeeded } from '@/lib/firestore';
 import { User, mockUsers } from '@/lib/mockData';
+import {
+  getSavedAccounts, upsertSavedAccount,
+  setPendingSwitchEmail,
+  type SavedAccount,
+} from '@/lib/accountStore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,10 +39,18 @@ interface AuthContextType {
   isDemoMode: boolean;
   /** Non-null when getRedirectResult throws — shows the raw Firebase error code */
   redirectError: string | null;
+  /** All accounts the user has previously signed in to on this device. */
+  savedAccounts: SavedAccount[];
+  /** True while the user is mid-flow adding a second account (Login is shown instead of the app). */
+  addingAccount: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Show Login without signing out the current account; new sign-in saves both accounts. */
+  startAddAccount: () => void;
+  /** Sign out current user and pre-fill Login with the target account's email. */
+  switchToAccount: (account: SavedAccount) => Promise<void>;
   completeProfile: (data: ProfileData) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
@@ -60,6 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [redirectError, setRedirectError] = useState<string | null>(null);
   // Track the Firebase Auth UID so completeProfile can write to the right doc
   const [pendingUid, setPendingUid] = useState<string | null>(null);
+  // Multi-account state
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>(() => getSavedAccounts());
+  const [addingAccount, setAddingAccount] = useState(false);
 
   // ─── Auth initialization ──────────────────────────────────────────────────
   //
@@ -103,6 +119,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setPendingUser(null);
           setPendingUid(null);
           setIsNewUser(false);
+          setAddingAccount(false);
+          // Persist account metadata for multi-account switching.
+          const saved: SavedAccount = {
+            uid: profile.id,
+            email: profile.email ?? firebaseUser.email ?? '',
+            displayName: profile.displayName,
+            handle: profile.handle,
+            avatarUrl: profile.avatarUrl ?? undefined,
+          };
+          upsertSavedAccount(saved);
+          setSavedAccounts(getSavedAccounts());
         } else {
           // New or incomplete — persist base Google identity so it's
           // recoverable if the user closes before finishing profile setup.
@@ -181,13 +208,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       await new Promise(r => setTimeout(r, 900));
       setCurrentUser(demoUser);
+      setAddingAccount(false);
       setIsLoading(false);
       return;
     }
     if (!auth) throw new Error('Firebase Auth not initialized');
     try {
+      setAddingAccount(false); // clear before Firebase picks up the new user
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged handles the rest
+      // onAuthStateChanged → resolveUser → upserts saved account
     } catch (err) {
       const e = err as FirebaseError;
       throw new Error(friendlyAuthError(e.code));
@@ -219,6 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       await new Promise(r => setTimeout(r, 700));
       setCurrentUser(demoUser);
+      setAddingAccount(false);
       setIsLoading(false);
       return;
     }
@@ -340,11 +370,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!isDemoMode && auth) {
       await firebaseSignOut(auth);
     }
-    setCurrentUser(isDemoMode ? null : null);
+    setCurrentUser(null);
     setIsNewUser(false);
     setPendingUser(null);
     setPendingUid(null);
+    setAddingAccount(false);
     // In demo mode, reload to reset all state
+    if (isDemoMode) window.location.reload();
+  }, [isDemoMode, currentUser]);
+
+  /** Show Login screen without signing the current user out first.
+   *  When the new user signs in, both accounts are stored in savedAccounts. */
+  const startAddAccount = useCallback(() => {
+    setAddingAccount(true);
+  }, []);
+
+  /** Sign out current user and pre-fill Login with the target account's email. */
+  const switchToAccount = useCallback(async (account: SavedAccount) => {
+    setPendingSwitchEmail(account.email);
+    // Evict per-user caches
+    if (currentUser) {
+      const { evictConversations } = await import('@/lib/msgCache');
+      evictConversations(currentUser.id);
+    }
+    if (!isDemoMode && auth) {
+      await firebaseSignOut(auth);
+    }
+    setCurrentUser(null);
+    setIsNewUser(false);
+    setPendingUser(null);
+    setPendingUid(null);
+    setAddingAccount(false);
     if (isDemoMode) window.location.reload();
   }, [isDemoMode, currentUser]);
 
@@ -359,7 +415,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         currentUser, pendingUser, isLoading, isNewUser, isDemoMode, redirectError,
+        savedAccounts, addingAccount,
         signIn, signUp, signInWithGoogle, signOut,
+        startAddAccount, switchToAccount,
         completeProfile, resetPassword, updateUser,
       }}
     >

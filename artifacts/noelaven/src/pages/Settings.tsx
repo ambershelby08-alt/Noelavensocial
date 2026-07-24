@@ -3,10 +3,13 @@ import {
   User, Bell, Lock, Shield, AlertTriangle, LogOut,
   ChevronRight, Paintbrush, FileText, HelpCircle, Check, Camera,
   X, ChevronDown, Sun, Moon, Monitor, Eye, EyeOff, Send,
+  UserPlus, UserCheck, Settings2, ArrowLeftRight, Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation, Link } from 'wouter';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import type { SavedAccount } from '@/lib/accountStore';
+import { removeSavedAccount, getSavedAccounts } from '@/lib/accountStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { isFirebaseConfigured } from '@/lib/firebase';
@@ -102,7 +105,7 @@ const THEME_KEY = 'nlv_theme';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Settings() {
-  const { signOut, currentUser, updateUser } = useAuth();
+  const { signOut, currentUser, updateUser, savedAccounts, startAddAccount, switchToAccount } = useAuth();
   const [, setLocation] = useLocation();
   const [toast, setToast] = useState('');
   const [toastVariant, setToastVariant] = useState<ToastVariant>('success');
@@ -134,6 +137,12 @@ export default function Settings() {
 
   // Sign out confirmation
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
+
+  // Multi-account sheets
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  // Local copy of saved accounts so we can remove without page reload
+  const [localAccounts, setLocalAccounts] = useState(() => getSavedAccounts());
 
   // Privacy
   const [privateAccount, setPrivateAccount] = useState(false);
@@ -279,9 +288,48 @@ export default function Settings() {
     desc: string;
     key: string;
     href?: string;
+    /** If set, tapping calls this function instead of opening an accordion panel. */
+    onPress?: () => void;
+    danger?: boolean;
   };
 
   const sections: { title: string; items: SectionItem[] }[] = [
+    {
+      title: 'Accounts',
+      items: [
+        {
+          icon: UserPlus,
+          label: 'Add Account',
+          desc: 'Sign in to another Noelaven account',
+          key: 'add-account',
+          onPress: startAddAccount,
+        },
+        {
+          icon: ArrowLeftRight,
+          label: 'Switch Account',
+          desc: savedAccounts.length > 1
+            ? `${savedAccounts.length} accounts saved on this device`
+            : 'Manage signed-in accounts',
+          key: 'switch-account',
+          onPress: () => setSwitcherOpen(true),
+        },
+        {
+          icon: UserCheck,
+          label: 'Manage Account',
+          desc: 'Email, membership, and account info',
+          key: 'manage-account',
+          onPress: () => setManageOpen(true),
+        },
+        {
+          icon: LogOut,
+          label: 'Sign Out',
+          desc: `Signed in as @${currentUser?.handle ?? '…'}`,
+          key: 'sign-out',
+          danger: true,
+          onPress: handleSignOut,
+        },
+      ],
+    },
     {
       title: 'Account',
       items: [
@@ -380,21 +428,39 @@ export default function Settings() {
                 <div key={item.key}>
                   <motion.button
                     whileTap={{ scale: 0.99 }}
-                    onClick={() => item.key === 'safety' ? setLocation('/safety') : togglePanel(item.key)}
+                    onClick={() => {
+                      if (item.onPress) { item.onPress(); return; }
+                      if (item.key === 'safety') { setLocation('/safety'); return; }
+                      togglePanel(item.key);
+                    }}
                     className="w-full flex items-center gap-3.5 px-4 py-4 text-left hover:bg-gray-50 transition-colors border-b border-black/[0.04] last:border-0 group"
                   >
                     <div className={cn(
                       'w-10 h-10 rounded-[14px] flex items-center justify-center flex-shrink-0 transition-colors',
-                      activePanel === item.key ? 'bg-purple-100' : 'bg-gray-100 group-hover:bg-purple-50'
+                      item.danger
+                        ? 'bg-red-50 group-hover:bg-red-100'
+                        : activePanel === item.key
+                          ? 'bg-purple-100'
+                          : 'bg-gray-100 group-hover:bg-purple-50'
                     )}>
-                      <item.icon size={19} className={cn('transition-colors', activePanel === item.key ? 'text-purple-600' : 'text-gray-500 group-hover:text-purple-500')} />
+                      <item.icon size={19} className={cn(
+                        'transition-colors',
+                        item.danger
+                          ? 'text-red-500'
+                          : activePanel === item.key
+                            ? 'text-purple-600'
+                            : 'text-gray-500 group-hover:text-purple-500'
+                      )} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[14.5px] text-gray-900">{item.label}</p>
+                      <p className={cn('font-semibold text-[14.5px]', item.danger ? 'text-red-500' : 'text-gray-900')}>{item.label}</p>
                       <p className="text-[12px] text-gray-400 mt-0.5">{item.desc}</p>
                     </div>
-                    {item.key === 'safety' ? (
-                      <ChevronRight size={17} className="text-gray-300 flex-shrink-0" />
+                    {/* Action items show ChevronRight; accordion items show ChevronDown */}
+                    {(item.onPress || item.key === 'safety') ? (
+                      item.danger
+                        ? null
+                        : <ChevronRight size={17} className="text-gray-300 flex-shrink-0" />
                     ) : (
                       <ChevronDown
                         size={17}
@@ -404,7 +470,7 @@ export default function Settings() {
                   </motion.button>
 
                   <AnimatePresence>
-                    {activePanel === item.key && (
+                    {!item.onPress && activePanel === item.key && (
                       <Panel key={item.key}>
 
                         {/* ── Personal Information ── */}
@@ -682,21 +748,151 @@ export default function Settings() {
           </div>
         ))}
 
-        {/* Sign out */}
-        <div className="pt-2">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-[20px] text-red-500 font-bold text-[15px] bg-red-50 hover:bg-red-100 border border-red-100 transition-colors"
-          >
-            <LogOut size={19} />
-            Sign Out
-          </motion.button>
-          <p className="text-center text-[12px] text-gray-400 mt-5 font-medium">
-            Noelaven v1.0.0 · Made with 💜
-          </p>
-        </div>
+        <p className="text-center text-[12px] text-gray-400 pt-2 pb-1 font-medium">
+          Noelaven v1.0.0 · Made with 💜
+        </p>
       </div>
+
+      {/* ── Account Switcher sheet ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {switcherOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[70]"
+              onClick={() => setSwitcherOpen(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-[75] bg-white rounded-t-[28px] shadow-2xl px-5 pb-8 pt-4"
+            >
+              <div className="flex justify-center mb-3">
+                <div className="w-10 h-1 rounded-full bg-gray-200" />
+              </div>
+              <p className="font-black text-[17px] text-gray-900 mb-1">Switch account</p>
+              <p className="text-[13px] text-gray-400 mb-5">Tap an account to sign in. You'll be asked to re-enter your password.</p>
+
+              <div className="space-y-2 mb-5">
+                {localAccounts.map(account => {
+                  const isActive = account.uid === currentUser?.id;
+                  return (
+                    <div key={account.uid} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 border border-black/[0.05]">
+                      <GradientAvatar name={account.displayName} src={account.avatarUrl} size={44} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-[14px] text-gray-900 truncate">{account.displayName}</p>
+                        <p className="text-[12px] text-gray-400 truncate">@{account.handle}</p>
+                      </div>
+                      {isActive ? (
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">
+                          <UserCheck size={12} /> Active
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={async () => {
+                              setSwitcherOpen(false);
+                              await switchToAccount(account);
+                            }}
+                            className="text-[12px] font-bold text-white bg-purple-500 px-3 py-1.5 rounded-full"
+                          >
+                            Switch
+                          </motion.button>
+                          <button
+                            aria-label="Remove account"
+                            onClick={() => {
+                              removeSavedAccount(account.uid);
+                              setLocalAccounts(getSavedAccounts());
+                            }}
+                            className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {localAccounts.length === 0 && (
+                  <p className="text-center text-[13px] text-gray-400 py-4">No other accounts saved yet.</p>
+                )}
+              </div>
+
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => { setSwitcherOpen(false); startAddAccount(); }}
+                className="w-full py-3.5 rounded-2xl mb-3 font-bold text-[15px] text-white flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              >
+                <UserPlus size={17} />
+                Add another account
+              </motion.button>
+              <button
+                onClick={() => setSwitcherOpen(false)}
+                className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Manage Account sheet ─────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {manageOpen && currentUser && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[70]"
+              onClick={() => setManageOpen(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-[75] bg-white rounded-t-[28px] shadow-2xl px-5 pb-8 pt-4"
+            >
+              <div className="flex justify-center mb-4">
+                <div className="w-10 h-1 rounded-full bg-gray-200" />
+              </div>
+              <div className="flex items-center gap-3 mb-6">
+                <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={52} />
+                <div>
+                  <p className="font-black text-[17px] text-gray-900">{currentUser.displayName}</p>
+                  <p className="text-[13px] text-gray-400">@{currentUser.handle}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-6">
+                {[
+                  { label: 'Email', value: (currentUser as { email?: string }).email ?? (isFirebaseConfigured ? '—' : 'demo@noelaven.app') },
+                  { label: 'Account type', value: 'Free' },
+                  { label: 'Member since', value: currentUser.joinedAt ? new Date(currentUser.joinedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : '—' },
+                  { label: 'User ID', value: currentUser.id.slice(0, 12) + '…' },
+                ].map(row => (
+                  <div key={row.label} className="flex items-center justify-between px-4 py-3 rounded-xl bg-gray-50">
+                    <span className="text-[13px] text-gray-500 font-medium">{row.label}</span>
+                    <span className="text-[13px] text-gray-900 font-semibold">{row.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-2xl bg-red-50 border border-red-100 px-4 py-3 mb-5">
+                <p className="text-[13px] text-red-700 font-semibold mb-0.5">Delete account</p>
+                <p className="text-[12px] text-red-500">Account deletion is permanent. Email <span className="font-bold">support@noelaven.app</span> from your registered address to request deletion.</p>
+              </div>
+
+              <button
+                onClick={() => setManageOpen(false)}
+                className="w-full py-3 rounded-2xl bg-gray-100 text-gray-600 font-semibold text-[15px]"
+              >
+                Close
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── Sign-out confirmation sheet ─────────────────────────────────────── */}
       <AnimatePresence>

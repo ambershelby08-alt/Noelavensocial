@@ -3,6 +3,7 @@ export interface User {
   displayName: string;
   handle: string;
   bio: string;
+  email?: string;
   avatarUrl: string;
   coverUrl: string;
   /** CSS focal-point + zoom for cover display.

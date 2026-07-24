@@ -6,7 +6,7 @@ import {
   Grid3X3, Heart, Bookmark, Calendar, Share2, UserPlus,
   UserCheck, ChevronRight, AtSign, FileText, Star, Plus,
   ArrowLeft, Globe, Lock, UserCircle, Flame, MoreHorizontal,
-  VolumeX, UserX, Shield, EyeOff,
+  VolumeX, UserX, Shield, EyeOff, Settings2,
 } from 'lucide-react';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { CoverPhotoEditor, type CoverSavePayload } from '@/components/profile/CoverPhotoEditor';
@@ -892,12 +892,22 @@ export default function Profile() {
         )}
         <div className="absolute top-4 right-4 flex gap-2 z-10">
           {isOwnProfile ? (
-            <button
-              onClick={() => setEditOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold bg-white/85 backdrop-blur-sm text-gray-700 shadow-sm hover:bg-white transition-all"
-            >
-              <Edit3 size={14} /> Edit
-            </button>
+            <>
+              <Link href="/settings">
+                <button
+                  aria-label="Settings"
+                  className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all"
+                >
+                  <Settings2 size={16} className="text-gray-700" />
+                </button>
+              </Link>
+              <button
+                onClick={() => setEditOpen(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold bg-white/85 backdrop-blur-sm text-gray-700 shadow-sm hover:bg-white transition-all"
+              >
+                <Edit3 size={14} /> Edit
+              </button>
+            </>
           ) : (
             <>
               <button className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all">

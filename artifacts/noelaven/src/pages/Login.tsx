@@ -67,9 +67,18 @@ export default function Login() {
   //       Firebase restricts OAuth redirects to authorised domains; a stable
   //       production URL must be added to the Firebase Console → Authentication →
   //       Settings → Authorised domains before re-enabling the button below.
-  const { signIn, signInWithGoogle: _signInWithGoogle, isLoading, redirectError } = useAuth();
+  const { signIn, signInWithGoogle: _signInWithGoogle, isLoading, redirectError, addingAccount } = useAuth();
 
-  const [email, setEmail]       = useState('');
+  // Pre-fill email when switching accounts (written to localStorage before sign-out).
+  const prefillEmail = (() => {
+    try {
+      const v = localStorage.getItem('nlv_switch_email') ?? '';
+      if (v) localStorage.removeItem('nlv_switch_email');
+      return v;
+    } catch { return ''; }
+  })();
+
+  const [email, setEmail]       = useState(prefillEmail);
   const [password, setPassword] = useState('');
   const [showPw, setShowPw]     = useState(false);
   const [errors, setErrors]     = useState<Record<string, string>>({});
@@ -115,10 +124,12 @@ export default function Login() {
           className="flex flex-col items-center mb-10"
         >
           <NoelavenLogo variant="mark" size="xl" className="mb-4" />
-          <h1 className="text-[28px] font-black text-gray-900 tracking-tight">Welcome back</h1>
+          <h1 className="text-[28px] font-black text-gray-900 tracking-tight">
+            {addingAccount ? 'Add account' : 'Welcome back'}
+          </h1>
           <p className="text-[13px] font-semibold tracking-widest uppercase mt-1.5"
              style={{ color: '#7C3AED', letterSpacing: '0.12em' }}>
-            Connect. Create. Belong.
+            {addingAccount ? 'Sign in to another account' : 'Connect. Create. Belong.'}
           </p>
         </motion.div>
 

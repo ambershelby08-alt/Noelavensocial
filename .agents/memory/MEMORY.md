@@ -14,3 +14,4 @@
 - [Noelaven Discover page](noelaven-discover.md) — usePersonalization + useDiscover hooks; SparkAudience filter is 'public' not 'everyone'; optimistic overrides pattern; CSS columns masonry.
 - [Noelaven Safety & Moderation](noelaven-safety-moderation.md) — full block/mute/restrict/report system; SafetyContext; SafetySettings/MyReports/ModerationDashboard pages; localStorage fallback in demo mode.
 - [Noelaven Notifications System](noelaven-notifications.md) — real-time notifs; client-side grouping; badge in header+sidebar; prefs panel; sign-out confirm; triggers in Profile/Home.
+- [Noelaven Multi-Account](noelaven-multi-account.md) — accountStore.ts (nlv_saved_accounts); addingAccount flag in AuthContext bypasses auth guard; switchToAccount pre-fills Login via nlv_switch_email; User type now has optional email field.

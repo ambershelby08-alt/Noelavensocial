@@ -86,13 +86,25 @@ function LoadingScreen() {
 const AUTH_ONLY_PATHS = ['/login', '/signup', '/forgot-password'];
 
 export default function AppRouter() {
-  const { currentUser, isLoading, isNewUser } = useAuth();
+  const { currentUser, isLoading, isNewUser, addingAccount } = useAuth();
   const [location] = useLocation();
 
   if (isLoading) return <LoadingScreen />;
 
   // After sign-up, before profile is complete
   if (isNewUser && !currentUser) return <CreateProfile />;
+
+  // "Add Account" flow — show Login even while a user is already signed in.
+  // When the new sign-in completes, addingAccount resets and AuthenticatedApp renders.
+  if (addingAccount) {
+    return (
+      <Switch>
+        <Route path="/signup"           component={Signup} />
+        <Route path="/forgot-password"  component={ForgotPassword} />
+        <Route path="*"                 component={Login} />
+      </Switch>
+    );
+  }
 
   // Unauthenticated routes
   if (!currentUser) {
