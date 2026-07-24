@@ -112,17 +112,43 @@ export interface Conversation {
   mutedBy?: string[];
 }
 
+export type NotificationType =
+  | 'like' | 'reaction' | 'comment' | 'reply' | 'like_comment'
+  | 'follow' | 'community_invite' | 'daily_spark'
+  | 'mention' | 'message' | 'story_reaction' | 'story_reply' | 'spark_reaction';
+
 export interface Notification {
   id: string;
-  type: 'like' | 'reaction' | 'comment' | 'reply' | 'like_comment' | 'follow' | 'community_invite' | 'daily_spark';
+  type: NotificationType;
   actorId: string;
   actor: User;
   postId?: string;
   communityId?: string;
-  targetId?: string;  // generic target (postId, communityId, actorId depending on type)
+  targetId?: string;
+  commentId?: string;
+  storyId?: string;
+  convId?: string;
+  emoji?: string;
+  targetPreview?: string;
   message: string;
   read: boolean;
   createdAt: Date;
+}
+
+export interface NotificationPrefs {
+  reactions: boolean;
+  comments: boolean;
+  replies: boolean;
+  follows: boolean;
+  messages: boolean;
+  mentions: boolean;
+  storyReplies: boolean;
+  dailySpark: boolean;
+  communityInvites: boolean;
+  // legacy keys kept for backward-compat with existing localStorage data
+  likes?: boolean;
+  followers?: boolean;
+  email?: boolean;
 }
 
 export const mockUsers: User[] = [

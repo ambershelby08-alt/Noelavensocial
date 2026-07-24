@@ -78,11 +78,17 @@ function Panel({ children }: { children: React.ReactNode }) {
 
 const NOTIF_KEY = 'nlv_notif_prefs';
 
+const DEFAULT_NOTIF_PREFS = {
+  likes: true, comments: true, replies: true, followers: true,
+  messages: true, mentions: true, storyReplies: true, dailySpark: true,
+  communityInvites: true, reactions: true, email: false,
+};
+
 function loadNotifPrefs() {
   try {
     const raw = localStorage.getItem(NOTIF_KEY);
-    return raw ? JSON.parse(raw) : { likes: true, comments: true, followers: true, messages: true, email: false };
-  } catch { return { likes: true, comments: true, followers: true, messages: true, email: false }; }
+    return raw ? { ...DEFAULT_NOTIF_PREFS, ...JSON.parse(raw) } : { ...DEFAULT_NOTIF_PREFS };
+  } catch { return { ...DEFAULT_NOTIF_PREFS }; }
 }
 
 function saveNotifPrefs(prefs: Record<string, boolean>) {
@@ -126,6 +132,9 @@ export default function Settings() {
   // Notifications
   const [notifPrefs, setNotifPrefs] = useState(loadNotifPrefs);
 
+  // Sign out confirmation
+  const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
+
   // Privacy
   const [privateAccount, setPrivateAccount] = useState(false);
   const [msgPrivacy, setMsgPrivacy] = useState<'everyone' | 'following'>('everyone');
@@ -147,7 +156,12 @@ export default function Settings() {
   }
 
   function handleSignOut() {
-    signOut();
+    setSignOutConfirmOpen(true);
+  }
+
+  async function confirmSignOut() {
+    setSignOutConfirmOpen(false);
+    await signOut();
     setLocation('/login');
   }
 
@@ -522,18 +536,21 @@ export default function Settings() {
                         {item.key === 'notifications' && (
                           <div className="pt-1 space-y-3">
                             {([
-                              { key: 'likes',     label: 'Likes & reactions',  desc: 'When someone likes your post' },
-                              { key: 'comments',  label: 'Comments & replies', desc: 'When someone replies to you' },
-                              { key: 'followers', label: 'New followers',       desc: 'When someone follows you' },
-                              { key: 'messages',  label: 'Messages',            desc: 'New direct message alerts' },
-                              { key: 'email',     label: 'Email digest',        desc: 'Weekly activity summary' },
-                            ] as const).map(row => (
+                              { key: 'reactions',       label: 'Reactions',           desc: 'When someone reacts to your posts or comments' },
+                              { key: 'comments',        label: 'Comments & replies',  desc: 'When someone comments or replies to you' },
+                              { key: 'followers',       label: 'New followers',        desc: 'When someone starts following you' },
+                              { key: 'messages',        label: 'Direct messages',      desc: 'New message notifications' },
+                              { key: 'mentions',        label: 'Mentions & tags',      desc: 'When someone mentions you in a post' },
+                              { key: 'storyReplies',    label: 'Story replies',        desc: 'Replies and reactions to your stories' },
+                              { key: 'dailySpark',      label: 'Daily Spark',          desc: 'Today\'s prompt and community activity' },
+                              { key: 'communityInvites', label: 'Community invites',   desc: 'Invitations to join circles' },
+                            ] as { key: string; label: string; desc: string }[]).map(row => (
                               <div key={row.key} className="flex items-center justify-between gap-3">
                                 <div>
                                   <p className="text-[13.5px] font-semibold text-gray-900">{row.label}</p>
                                   <p className="text-[12px] text-gray-400">{row.desc}</p>
                                 </div>
-                                <Toggle on={notifPrefs[row.key]} onChange={v => handleNotifToggle(row.key, v)} />
+                                <Toggle on={notifPrefs[row.key] ?? true} onChange={v => handleNotifToggle(row.key, v)} />
                               </div>
                             ))}
                           </div>
@@ -680,6 +697,51 @@ export default function Settings() {
           </p>
         </div>
       </div>
+
+      {/* ── Sign-out confirmation sheet ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {signOutConfirmOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[70]"
+              onClick={() => setSignOutConfirmOpen(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-[75] bg-white rounded-t-[28px] shadow-2xl px-5 pb-8 pt-4"
+            >
+              <div className="flex justify-center mb-4">
+                <div className="w-10 h-1 rounded-full bg-gray-200" />
+              </div>
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <LogOut size={22} className="text-red-500" />
+                </div>
+                <div>
+                  <p className="font-bold text-[17px] text-gray-900">Sign out?</p>
+                  <p className="text-[13px] text-gray-400 mt-0.5">You'll be returned to the login screen.</p>
+                </div>
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={confirmSignOut}
+                className="w-full py-3.5 rounded-2xl mb-3 font-bold text-[15px] text-white bg-red-500 active:bg-red-600 flex items-center justify-center gap-2"
+              >
+                <LogOut size={17} />
+                Sign out
+              </motion.button>
+              <button
+                onClick={() => setSignOutConfirmOpen(false)}
+                className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

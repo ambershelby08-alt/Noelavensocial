@@ -20,10 +20,14 @@ import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
 import { useConversations } from '@/hooks/useConversations';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { subscribeUnreadNotificationCount } from '@/lib/firestore';
+import { demoGetUserNotifs } from '@/lib/notifications';
+import { mockNotifications } from '@/lib/mockData';
 
 // ─── Floating Bottom Nav ──────────────────────────────────────────────────────
 
-export function BottomNav({ totalUnread = 0 }: { totalUnread?: number }) {
+export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread?: number; notifUnreadCount?: number }) {
   const [location] = useLocation();
 
   const navItems = [
@@ -105,7 +109,7 @@ export function BottomNav({ totalUnread = 0 }: { totalUnread?: number }) {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-export function Sidebar({ totalUnread = 0 }: { totalUnread?: number }) {
+export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread?: number; notifUnreadCount?: number }) {
   const [location, setLocation] = useLocation();
   const { currentUser, isDemoMode } = useAuth();
 
@@ -156,6 +160,12 @@ export function Sidebar({ totalUnread = 0 }: { totalUnread?: number }) {
                   {totalUnread > 9 ? '9+' : totalUnread}
                 </span>
               )}
+              {/* Unread notification badge */}
+              {item.path === '/notifications' && notifUnreadCount > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-purple-500 flex items-center justify-center text-[9px] font-black text-white px-1">
+                  {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
+                </span>
+              )}
               {isActive && (
                 <motion.div
                   layoutId="sidebarIndicator"
@@ -195,16 +205,26 @@ export function Sidebar({ totalUnread = 0 }: { totalUnread?: number }) {
 
 // ─── Mobile top header ────────────────────────────────────────────────────────
 
-function MobileHeader() {
+function MobileHeader({ notifUnreadCount = 0 }: { notifUnreadCount?: number }) {
   const { isDemoMode } = useAuth();
   return (
     <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-5 bg-[#FDF9F6]/90 backdrop-blur-xl border-b border-black/[0.05]">
       <NoelavenLogo variant="full" size="sm" />
-      {isDemoMode && (
-        <span className="text-[9px] uppercase font-black tracking-wider bg-purple-50 text-purple-500 px-2 py-1 rounded-full">
-          Demo
-        </span>
-      )}
+      <div className="flex items-center gap-3">
+        {isDemoMode && (
+          <span className="text-[9px] uppercase font-black tracking-wider bg-purple-50 text-purple-500 px-2 py-1 rounded-full">
+            Demo
+          </span>
+        )}
+        <Link href="/notifications" className="relative p-1.5">
+          <Bell size={20} className="text-gray-500" />
+          {notifUnreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-purple-500 ring-[1.5px] ring-[#FDF9F6] flex items-center justify-center text-[8px] font-black text-white px-1">
+              {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
+            </span>
+          )}
+        </Link>
+      </div>
     </header>
   );
 }
@@ -259,6 +279,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { call, endCall, toggleMute, toggleCamera, toggleSpeaker, incomingCall, answerIncoming, declineIncoming } = useCall();
   const [location] = useLocation();
   const totalUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
+
+  // Notification badge count
+  const [notifUnreadCount, setNotifUnreadCount] = useState(0);
+  useEffect(() => {
+    if (!currentUser) { setNotifUnreadCount(0); return; }
+    if (isFirebaseConfigured) {
+      return subscribeUnreadNotificationCount(currentUser.id, setNotifUnreadCount);
+    }
+    // Demo mode: count from demo + mock data
+    const demoUnread = demoGetUserNotifs(currentUser.id).filter((n: { read: boolean }) => !n.read).length;
+    const mockUnread = mockNotifications.filter(n => !n.read).length;
+    setNotifUnreadCount(demoUnread + mockUnread);
+    return undefined;
+  }, [currentUser?.id]);
   const [msgToast, setMsgToast] = useState<MsgToast | null>(null);
   const prevConvsRef = useRef<typeof conversations>([]);
 
@@ -312,8 +346,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
-      <Sidebar totalUnread={totalUnread} />
-      <MobileHeader />
+      <Sidebar totalUnread={totalUnread} notifUnreadCount={notifUnreadCount} />
+      <MobileHeader notifUnreadCount={notifUnreadCount} />
 
       {/* pt-14 clears the mobile header on small screens; md:pt-0 removes it on desktop (sidebar handles branding) */}
       <main className="flex-1 md:ml-64 w-full relative pb-20 md:pb-0 pt-14 md:pt-0">
@@ -330,7 +364,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
       </main>
 
-      <BottomNav totalUnread={totalUnread} />
+      <BottomNav totalUnread={totalUnread} notifUnreadCount={notifUnreadCount} />
 
       {/* In-app new message toast */}
       <AnimatePresence>

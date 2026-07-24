@@ -12,7 +12,7 @@ import {
   type DocumentData, type Unsubscribe, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { User, Post, Community, Message, Conversation, Notification } from './mockData';
+import type { User, Post, Community, Message, Conversation, Notification, NotificationType } from './mockData';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -880,18 +880,24 @@ export function subscribeTypingStatus(
 function docToNotification(id: string, d: DocumentData): Notification {
   return {
     id,
-    type: d.type,
+    type: d.type as NotificationType,
     actorId: d.actorId,
     actor: {
       id: d.actorId,
       displayName: d.actorName ?? '',
       handle: d.actorHandle ?? '',
-      bio: '', avatarUrl: '', coverUrl: '',
+      bio: '', avatarUrl: d.actorAvatar ?? '', coverUrl: '',
       interests: [], followers: 0, following: 0,
       postCount: 0, badges: [], joinedAt: new Date(),
     },
     postId: d.postId ?? undefined,
     communityId: d.communityId ?? undefined,
+    targetId: d.targetId ?? undefined,
+    commentId: d.commentId ?? undefined,
+    storyId: d.storyId ?? undefined,
+    convId: d.convId ?? undefined,
+    emoji: d.emoji ?? undefined,
+    targetPreview: d.targetPreview ?? undefined,
     message: d.message ?? '',
     read: d.read ?? false,
     createdAt: ts(d.createdAt),
@@ -923,6 +929,24 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 export async function markNotificationRead(notifId: string): Promise<void> {
   if (!db) return;
   await updateDoc(doc(db, 'notifications', notifId), { read: true }).catch(() => {});
+}
+
+export async function deleteNotification(notifId: string): Promise<void> {
+  if (!db) return;
+  await deleteDoc(doc(db, 'notifications', notifId)).catch(() => {});
+}
+
+export function subscribeUnreadNotificationCount(
+  userId: string,
+  onCount: (count: number) => void
+): Unsubscribe {
+  if (!db) return () => {};
+  const q = query(
+    collection(db, 'notifications'),
+    where('userId', '==', userId),
+    where('read', '==', false)
+  );
+  return onSnapshot(q, snap => onCount(snap.size));
 }
 
 // ─── Comments ─────────────────────────────────────────────────────────────────
@@ -1040,9 +1064,18 @@ export async function addReply(
  */
 export async function writeNotification(
   userId: string,
-  type: 'like' | 'reaction' | 'comment' | 'reply' | 'like_comment' | 'follow',
+  type: NotificationType,
   actor: User,
-  opts: { postId?: string; commentId?: string; message: string }
+  opts: {
+    postId?: string;
+    commentId?: string;
+    storyId?: string;
+    convId?: string;
+    communityId?: string;
+    emoji?: string;
+    targetPreview?: string;
+    message: string;
+  }
 ): Promise<void> {
   if (!db || userId === actor.id) return;
   await addDoc(collection(db, 'notifications'), {
@@ -1051,8 +1084,14 @@ export async function writeNotification(
     actorId: actor.id,
     actorName: actor.displayName,
     actorHandle: actor.handle,
+    actorAvatar: actor.avatarUrl ?? null,
     postId: opts.postId ?? null,
     commentId: opts.commentId ?? null,
+    storyId: opts.storyId ?? null,
+    convId: opts.convId ?? null,
+    communityId: opts.communityId ?? null,
+    emoji: opts.emoji ?? null,
+    targetPreview: opts.targetPreview ?? null,
     message: opts.message,
     read: false,
     createdAt: serverTimestamp(),

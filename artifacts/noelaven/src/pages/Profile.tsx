@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { updatePostSparkAudience, followUser as fsFollow, unfollowUser as fsUnfollow, getUserDoc, getOrCreateDirectConversation } from '@/lib/firestore';
+import { notifyFollow } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useSafety } from '@/contexts/SafetyContext';
@@ -839,6 +840,8 @@ export default function Profile() {
         if (isFirebaseConfigured) await fsFollow(currentUser.id, user.id);
         setIsFollowing(true);
         setFollowerCount(n => n + 1);
+        // Fire follow notification (works in both Firebase and demo mode)
+        notifyFollow(user.id, currentUser).catch(console.error);
       }
     } catch { /* ignore */ } finally {
       setFollowLoading(false);
