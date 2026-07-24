@@ -851,6 +851,8 @@ interface CommunityRevealProps {
   hasMore: boolean;
   loadMore: () => void;
   timedOut: boolean;
+  error: string | null;
+  retry: () => void;
   onOpenComments: (post: Post) => void;
   onOpenShare: (post: Post) => void;
   onReact: (postId: string, emoji: string) => void;
@@ -860,7 +862,7 @@ interface CommunityRevealProps {
 
 function CommunityReveal({
   prompt, streak, memoryLane, currentUserId,
-  posts, loading, hasMore, loadMore, timedOut,
+  posts, loading, hasMore, loadMore, timedOut, error, retry,
   onOpenComments, onOpenShare, onReact, onOpenMenu, onOpenPhoto,
 }: CommunityRevealProps) {
   const [sort, setSort] = useState<CommunitySort>('everyone');
@@ -976,16 +978,23 @@ function CommunityReveal({
       {/* ── Responses ───────────────────────────────────────────────────────── */}
       {loading && community.length === 0 ? (
         // Only reach here on the very first launch — no cache in either tier.
-        timedOut ? (
-          // 2 s timeout: show a friendly retry instead of endless placeholders.
+        (timedOut || error) ? (
+          // Firestore error or 2 s timeout — show what went wrong and let the user retry.
           <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-3 text-center">
             <span className="text-3xl">⏳</span>
-            <p className="font-bold text-gray-700 text-[14px]">Taking longer than usual…</p>
-            <p className="text-gray-400 text-[12.5px] max-w-[220px] leading-relaxed">
-              Check your connection, then tap below to try again.
+            <p className="font-bold text-gray-700 text-[14px]">
+              {error ? 'Could not load responses' : 'Taking longer than usual…'}
             </p>
+            <p className="text-gray-400 text-[12.5px] max-w-[240px] leading-relaxed">
+              {error
+                ? 'A Firestore error occurred. Tap below to try again.'
+                : 'Check your connection, then tap below to try again.'}
+            </p>
+            {error && import.meta.env.DEV && (
+              <p className="text-[10.5px] text-red-400 font-mono max-w-[280px] break-all">{error}</p>
+            )}
             <button
-              onClick={loadMore}
+              onClick={retry}
               className="px-6 py-2.5 rounded-full text-[13px] font-bold text-white mt-1"
               style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
             >
@@ -1757,6 +1766,8 @@ export default function Home() {
     hasMore: communityHasMore,
     loadMore: communityLoadMore,
     timedOut: communityTimedOut,
+    error: communityError,
+    retry: communityRetry,
   } = useSparkCommunity(sparkPrompt, !!sparkPrompt);
 
   const { groups: storyGroups, publishStory, markViewed, deleteStory } = useStories();
@@ -1999,6 +2010,8 @@ export default function Home() {
           hasMore={communityHasMore}
           loadMore={communityLoadMore}
           timedOut={communityTimedOut}
+          error={communityError}
+          retry={communityRetry}
           onOpenComments={p => setCommentsPost(p)}
           onOpenShare={p => setSharePost(p)}
           onReact={(id, emoji) => toggleReaction(id, emoji).catch(console.error)}

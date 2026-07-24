@@ -203,32 +203,60 @@ export async function createPost(
 }
 
 /**
- * Subscribe to community spark responses for TODAY's prompt in Eastern Time.
- * Filters by the ET day boundary so yesterday's posts never appear after midnight ET.
- * Initial page is limited to `pageSize` (default 20) for fast first load;
- * callers can re-subscribe with a larger limit to paginate.
+ * Subscribe to community spark responses for today's prompt.
+ *
+ * NOTE: We do NOT filter by createdAt here. The `sparkPrompt` field equals
+ * today's AI-generated question, which changes every day. Prompt-equality
+ * already scopes the query to today's posts — no date filter needed.
+ *
+ * Adding `where('createdAt', '>=', dayStart)` caused a `failed-precondition`
+ * error when the required composite index was not yet deployed, which silently
+ * timed out the feed because onSnapshot errors were not being caught.
+ *
+ * Supported by the existing composite index: (sparkPrompt ASC, createdAt DESC)
  */
 export function subscribeCommunitySparkPosts(
   prompt: string,
   onData: (posts: Post[]) => void,
-  pageSize = 10
+  pageSize = 10,
+  onError?: (err: Error) => void
 ): Unsubscribe {
   if (!db) return () => {};
-  const dayStart = getETDayStart();
+
   const q = query(
     collection(db, 'posts'),
     where('sparkPrompt', '==', prompt),
-    where('createdAt', '>=', Timestamp.fromDate(dayStart)),
     orderBy('createdAt', 'desc'),
     limit(pageSize)
   );
-  return onSnapshot(q, snap => {
-    // Client-side: exclude private/only_me posts
-    const posts = snap.docs
-      .map(d => docToPost(d.id, d.data()))
-      .filter(p => !p.sparkAudience || p.sparkAudience === 'public' || p.sparkAudience === 'friends');
-    onData(posts);
-  });
+
+  if (import.meta.env.DEV) {
+    console.info(
+      `[Firestore] subscribeCommunitySparkPosts — sparkPrompt="${prompt.slice(0, 40)}" pageSize=${pageSize}`
+    );
+  }
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      if (import.meta.env.DEV) {
+        console.info(
+          `[Firestore] subscribeCommunitySparkPosts ✓ — ${snap.docs.length} docs, fromCache=${snap.metadata.fromCache}`
+        );
+      }
+      // Client-side: exclude private/only_me posts
+      const posts = snap.docs
+        .map(d => docToPost(d.id, d.data()))
+        .filter(p => !p.sparkAudience || p.sparkAudience === 'public' || p.sparkAudience === 'friends');
+      onData(posts);
+    },
+    (err) => {
+      console.error(
+        `[Firestore] subscribeCommunitySparkPosts ✗ — ${err.code}: ${err.message}`
+      );
+      onError?.(err);
+    }
+  );
 }
 
 /**

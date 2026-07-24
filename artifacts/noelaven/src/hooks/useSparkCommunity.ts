@@ -14,7 +14,7 @@
  *  7. 2-second timeout                    — timedOut flag triggers a friendly retry card
  *                                           instead of infinite skeleton on bad connections.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { subscribeCommunitySparkPosts } from '@/lib/firestore';
 import { mockUsers } from '@/lib/mockData';
@@ -103,8 +103,13 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
   const [posts, setPosts]       = useState<Post[]>(initial ?? []);
   const [loading, setLoading]   = useState(!initial);   // false immediately when cached
   const [timedOut, setTimedOut] = useState(false);
+  const [error, setError]       = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [hasMore, setHasMore]   = useState(false);
+  // Incrementing this forces the useEffect to restart the subscription (retry).
+  const [retryKey, setRetryKey] = useState(0);
+  // Track initial value to keep setState calls out of render.
+  const initialRef = useRef(initial);
 
   // Timeout: if we're still loading after 2 s, surface the retry card.
   useEffect(() => {
@@ -133,37 +138,69 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
     // Only show skeleton on genuine first-ever load (no cache whatsoever).
     const hasCached = !!(memCache.get(prompt) ?? readLs(prompt));
     if (!hasCached) setLoading(true);
+    setError(null);
 
-    // Instrument query time in development.
+    // Log the exact query being fired so failures are easy to diagnose.
+    if (import.meta.env.DEV) {
+      console.info(
+        `[useSparkCommunity] Starting subscription — prompt="${prompt.slice(0, 40)}" pageSize=${pageSize} retryKey=${retryKey}`
+      );
+    }
+
     const t0 = performance.now();
 
-    const unsub = subscribeCommunitySparkPosts(prompt, (incoming) => {
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.info(
-          `[SparkCommunity] snapshot in ${(performance.now() - t0).toFixed(0)} ms — ${incoming.length} posts (pageSize=${pageSize})`
-        );
+    const unsub = subscribeCommunitySparkPosts(
+      prompt,
+      (incoming) => {
+        if (import.meta.env.DEV) {
+          console.info(
+            `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ${incoming.length} posts`
+          );
+        }
+        setPosts(incoming);
+        setLoading(false);
+        setTimedOut(false);
+        setError(null);
+        setHasMore(incoming.length >= pageSize);
+        memCache.set(prompt, incoming);
+        writeLs(prompt, incoming);
+      },
+      pageSize,
+      (err) => {
+        // Surface the real error so it can be shown and retried.
+        // FirestoreError extends Error and adds a `code` string field.
+        const code = (err as unknown as { code?: string }).code ?? 'unknown';
+        console.error('[useSparkCommunity] Firestore error:', code, err.message);
+        setError(`${code}: ${err.message}`);
+        setLoading(false);
+        setTimedOut(false);
+        // If we had cached data it stays visible; otherwise posts is empty.
+        if (!initialRef.current?.length && !memCache.get(prompt)?.length) {
+          setPosts([]);
+        }
       }
-      setPosts(incoming);
-      setLoading(false);
-      setTimedOut(false);
-      setHasMore(incoming.length >= pageSize);
-
-      // Write to both cache tiers so next render/session is instant.
-      memCache.set(prompt, incoming);
-      writeLs(prompt, incoming);
-    }, pageSize);
+    );
 
     return unsub;
-    // pageSize triggers a re-subscribe when the user requests more posts.
-    // Firestore efficiently sends only the additional documents.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prompt, enabled, pageSize]);
+  }, [prompt, enabled, pageSize, retryKey]);
 
-  /** Request the next page of results. Triggers re-subscription with larger limit. */
+  /** Load the next page (scroll lazy-load). */
   const loadMore = useCallback(() => {
     setPageSize(prev => prev + PAGE_SIZE);
   }, []);
 
-  return { posts, loading, hasMore, loadMore, timedOut };
+  /**
+   * Retry after an error or timeout.
+   * Resets all error/loading state and restarts the Firestore subscription
+   * by incrementing retryKey (which is in the useEffect dependency array).
+   */
+  const retry = useCallback(() => {
+    setError(null);
+    setTimedOut(false);
+    setLoading(true);
+    setRetryKey(k => k + 1);
+  }, []);
+
+  return { posts, loading, hasMore, loadMore, timedOut, error, retry };
 }
