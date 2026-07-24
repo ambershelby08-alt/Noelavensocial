@@ -9,11 +9,11 @@ const STREAK_KEY   = 'noelaven_spark_streak';
 
 interface StreakData {
   count: number;
-  lastDate: string; // YYYY-MM-DD
+  lastDate: string; // YYYY-MM-DD in ET
 }
 
 export interface MemoryLaneEntry {
-  date: string;    // YYYY-MM-DD (the original answer date)
+  date: string;    // YYYY-MM-DD
   postId: string;
   yearsAgo: number;
 }
@@ -27,17 +27,45 @@ export function streakBadges(count: number): string[] {
   return badges;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── ET Date Helpers (exported so other modules can use them) ─────────────────
 
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+/** Today's date as YYYY-MM-DD in America/New_York (Eastern Time). */
+export function todayKeyET(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
 }
 
-function yesterdayKey(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+/** Yesterday's date as YYYY-MM-DD in America/New_York. */
+function yesterdayKeyET(): string {
+  // Subtract 24h from now and format in ET
+  const d = new Date(Date.now() - 86_400_000);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d);
 }
+
+/**
+ * Returns the number of milliseconds until the next 00:00:00 in
+ * America/New_York. Used to schedule the automatic midnight reset.
+ */
+export function getMsUntilETMidnight(): number {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+
+  const get = (type: string) =>
+    parseInt(parts.find(p => p.type === type)?.value ?? '0', 10);
+
+  const elapsedMs =
+    (get('hour') * 3600 + get('minute') * 60 + get('second')) * 1000
+    + now.getMilliseconds();
+
+  return 86_400_000 - elapsedMs;
+}
+
+// ─── Internal Helpers ─────────────────────────────────────────────────────────
 
 function fallbackPrompt(): string {
   const start = new Date(new Date().getFullYear(), 0, 0).getTime();
@@ -53,11 +81,10 @@ function getStoredStreak(): StreakData {
   } catch { return { count: 0, lastDate: '' }; }
 }
 
-function computeMemoryLane(): MemoryLaneEntry | null {
+function computeMemoryLane(today: string): MemoryLaneEntry | null {
   if (typeof window === 'undefined') return null;
-  const today = new Date();
-  const todayMMDD  = today.toISOString().slice(5, 10); // MM-DD
-  const todayYear  = today.getFullYear();
+  const todayMMDD = today.slice(5); // MM-DD
+  const todayYear = parseInt(today.slice(0, 4), 10);
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k?.startsWith(DONE_PREFIX)) continue;
@@ -67,8 +94,8 @@ function computeMemoryLane(): MemoryLaneEntry | null {
     const dateYear = parseInt(dateStr.slice(0, 4), 10);
     if (dateMMDD === todayMMDD && dateYear < todayYear) {
       return {
-        date:     dateStr,
-        postId:   localStorage.getItem(k) ?? '',
+        date: dateStr,
+        postId: localStorage.getItem(k) ?? '',
         yearsAgo: todayYear - dateYear,
       };
     }
@@ -79,44 +106,74 @@ function computeMemoryLane(): MemoryLaneEntry | null {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useDailySpark(userId?: string) {
-  const today    = todayKey();
+  // ── `today` is reactive state so midnight rollovers trigger re-renders ──────
+  const [today, setToday] = useState<string>(todayKeyET);
+
   const cacheKey = CACHE_PREFIX + today;
   const doneKey  = DONE_PREFIX  + today;
 
   const [prompt, setPrompt] = useState<string>(() => {
     if (typeof window === 'undefined') return fallbackPrompt();
-    return localStorage.getItem(cacheKey) ?? fallbackPrompt();
+    return localStorage.getItem(CACHE_PREFIX + todayKeyET()) ?? fallbackPrompt();
   });
 
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
-    return !localStorage.getItem(cacheKey);
+    return !localStorage.getItem(CACHE_PREFIX + todayKeyET());
   });
 
   const [hasAnsweredToday, setHasAnsweredToday] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem(doneKey);
+    return !!localStorage.getItem(DONE_PREFIX + todayKeyET());
   });
 
   const [todayPostId, setTodayPostId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem(doneKey);
+    return localStorage.getItem(DONE_PREFIX + todayKeyET());
   });
 
   const [streak, setStreak] = useState<number>(() => getStoredStreak().count);
 
-  const [memoryLane] = useState<MemoryLaneEntry | null>(() => computeMemoryLane());
+  const [memoryLane, setMemoryLane] = useState<MemoryLaneEntry | null>(() =>
+    computeMemoryLane(todayKeyET())
+  );
+
+  // ── Midnight ET watcher — auto-resets when the day rolls over ───────────────
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+
+    function schedule() {
+      const ms = getMsUntilETMidnight();
+      timeout = setTimeout(() => {
+        const newToday = todayKeyET();
+        setToday(newToday);
+
+        // Reset answered state for the new day
+        const newDoneKey  = DONE_PREFIX  + newToday;
+        const newCacheKey = CACHE_PREFIX + newToday;
+        setHasAnsweredToday(!!localStorage.getItem(newDoneKey));
+        setTodayPostId(localStorage.getItem(newDoneKey));
+
+        // Reset prompt (new day = new prompt from API)
+        const cached = localStorage.getItem(newCacheKey);
+        setPrompt(cached ?? fallbackPrompt());
+        setLoading(!cached);
+        setMemoryLane(computeMemoryLane(newToday));
+
+        schedule(); // reschedule for the next midnight
+      }, ms + 250); // +250 ms buffer past midnight
+    }
+
+    schedule();
+    return () => clearTimeout(timeout);
+  }, []);
 
   // ── Sync answered state with Firestore (server-side enforcement) ────────────
-  // Runs once after the prompt loads. If the user somehow cleared localStorage
-  // but already answered, Firestore is the source of truth.
   useEffect(() => {
     if (!userId || !isFirebaseConfigured || hasAnsweredToday) return;
-    if (!prompt) return; // wait for prompt
+    if (!prompt) return;
     checkTodaySparkAnswer(userId, prompt)
-      .then(postId => {
-        if (postId) markAnswered(postId);
-      })
+      .then(postId => { if (postId) markAnswered(postId); })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, prompt]);
@@ -134,7 +191,7 @@ export function useDailySpark(userId?: string) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: { prompt: string; date: string } = await res.json();
         if (cancelled) return;
-        // Evict previous day cache entries (iterate backwards for safe removal)
+        // Evict previous day cache entries
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const k = localStorage.key(i);
           if (k?.startsWith(CACHE_PREFIX) && k !== cacheKey) localStorage.removeItem(k);
@@ -152,7 +209,7 @@ export function useDailySpark(userId?: string) {
 
   // ── Mark answered ─────────────────────────────────────────────────────────
   const markAnswered = useCallback((postId: string) => {
-    const key  = todayKey();
+    const key   = todayKeyET();
     const doneK = DONE_PREFIX + key;
     if (localStorage.getItem(doneK)) return; // idempotent
 
@@ -163,11 +220,11 @@ export function useDailySpark(userId?: string) {
 
     // Update streak
     const s         = getStoredStreak();
-    const yesterday = yesterdayKey();
+    const yesterday = yesterdayKeyET();
     let newCount: number;
-    if (s.lastDate === key)       newCount = s.count;           // already counted this turn
-    else if (s.lastDate === yesterday) newCount = s.count + 1;  // consecutive day
-    else                          newCount = 1;                  // streak reset
+    if (s.lastDate === key)            newCount = s.count;           // already counted
+    else if (s.lastDate === yesterday) newCount = s.count + 1;       // consecutive
+    else                               newCount = 1;                  // streak reset
     const newStreak: StreakData = { count: newCount, lastDate: key };
     localStorage.setItem(STREAK_KEY, JSON.stringify(newStreak));
     setStreak(newCount);

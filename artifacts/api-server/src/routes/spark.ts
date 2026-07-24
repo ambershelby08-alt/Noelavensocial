@@ -17,8 +17,9 @@ const FALLBACK_PROMPTS = [
   "What are you looking forward to this weekend?",
 ];
 
+/** Returns today's date as YYYY-MM-DD in America/New_York (Eastern Time). */
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
 }
 
 async function generateSparkPrompt(): Promise<string> {

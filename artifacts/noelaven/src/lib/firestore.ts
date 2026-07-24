@@ -22,6 +22,26 @@ function ts(v: Timestamp | Date | undefined): Date {
   return v as Date;
 }
 
+/**
+ * Returns the start of the current day (00:00:00.000) in America/New_York as
+ * a UTC Date. Works correctly during both EST (UTC-5) and EDT (UTC-4).
+ */
+function getETDayStart(): Date {
+  const etDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  const [y, m, d] = etDate.split('-').map(Number);
+  // Try UTC-4 (EDT) then UTC-5 (EST) — use whichever produces ET hour 0
+  for (const offsetH of [4, 5]) {
+    const candidate = new Date(Date.UTC(y, m - 1, d, offsetH, 0, 0));
+    const etHour = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      hour12: false,
+    }).format(candidate);
+    if (etHour === '0' || etHour === '00' || etHour === '24') return candidate;
+  }
+  return new Date(Date.UTC(y, m - 1, d, 5, 0, 0)); // safe fallback
+}
+
 // ─── User documents ───────────────────────────────────────────────────────────
 
 export async function getUserDoc(uid: string): Promise<User | null> {
@@ -183,24 +203,27 @@ export async function createPost(
 }
 
 /**
- * Subscribe to community spark responses for today's prompt.
- * Returns all public posts matching the given spark prompt text, ordered by recency.
+ * Subscribe to community spark responses for TODAY's prompt in Eastern Time.
+ * Filters by the ET day boundary so yesterday's posts never appear after midnight ET.
+ * Initial page is limited to `pageSize` (default 20) for fast first load;
+ * callers can re-subscribe with a larger limit to paginate.
  */
 export function subscribeCommunitySparkPosts(
   prompt: string,
   onData: (posts: Post[]) => void,
-  pageSize = 50
+  pageSize = 20
 ): Unsubscribe {
   if (!db) return () => {};
-  // Query posts matching today's spark prompt, ordered by createdAt desc
+  const dayStart = getETDayStart();
   const q = query(
     collection(db, 'posts'),
     where('sparkPrompt', '==', prompt),
+    where('createdAt', '>=', Timestamp.fromDate(dayStart)),
     orderBy('createdAt', 'desc'),
     limit(pageSize)
   );
   return onSnapshot(q, snap => {
-    // Filter out private/only_me posts from other users (client-side)
+    // Client-side: exclude private/only_me posts
     const posts = snap.docs
       .map(d => docToPost(d.id, d.data()))
       .filter(p => !p.sparkAudience || p.sparkAudience === 'public' || p.sparkAudience === 'friends');
@@ -216,8 +239,7 @@ export function subscribeCommunitySparkPosts(
 export async function checkTodaySparkAnswer(userId: string, sparkPrompt: string): Promise<string | null> {
   if (!db || !userId || !sparkPrompt) return null;
   try {
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
+    const dayStart = getETDayStart(); // use ET midnight, not local midnight
     const q = query(
       collection(db, 'posts'),
       where('authorId', '==', userId),

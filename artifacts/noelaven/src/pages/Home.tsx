@@ -806,6 +806,38 @@ export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, 
   );
 }
 
+// ─── Spark Skeleton Card ──────────────────────────────────────────────────────
+
+function SparkSkeletonCard({ index = 0 }: { index?: number }) {
+  return (
+    <div
+      className="mx-4 mb-4 bg-white rounded-[24px] p-4 border border-black/[0.04] shadow-sm overflow-hidden"
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      <div className="flex items-center gap-3 mb-3.5">
+        {/* Avatar */}
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-150 animate-pulse flex-shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3.5 bg-gray-100 animate-pulse rounded-full w-28" />
+          <div className="h-2.5 bg-gray-100 animate-pulse rounded-full w-20" />
+        </div>
+      </div>
+      {/* Content lines */}
+      <div className="space-y-2 mb-4">
+        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-full" />
+        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-[90%]" />
+        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-[70%]" />
+      </div>
+      {/* Action row */}
+      <div className="flex gap-5 pt-3 border-t border-gray-50">
+        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-10" />
+        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-10" />
+        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-10" />
+      </div>
+    </div>
+  );
+}
+
 // ─── Community Reveal ─────────────────────────────────────────────────────────
 
 interface CommunityRevealProps {
@@ -825,7 +857,7 @@ function CommunityReveal({
   onOpenComments, onOpenShare, onReact, onOpenMenu, onOpenPhoto,
 }: CommunityRevealProps) {
   const [sort, setSort] = useState<CommunitySort>('everyone');
-  const { posts, loading } = useSparkCommunity(prompt, true);
+  const { posts, loading, hasMore, loadMore } = useSparkCommunity(prompt, true);
 
   const SORT_TABS: { key: CommunitySort; label: string }[] = [
     { key: 'friends',   label: 'Friends'   },
@@ -923,9 +955,12 @@ function CommunityReveal({
 
       {/* ── Responses ───────────────────────────────────────────────────────── */}
       {loading ? (
-        <div className="flex justify-center py-10">
-          <div className="w-6 h-6 border-2 border-purple-200 border-t-purple-500 rounded-full animate-spin" />
-        </div>
+        // Skeleton cards — perceived as much faster than a spinner
+        <>
+          <SparkSkeletonCard index={0} />
+          <SparkSkeletonCard index={1} />
+          <SparkSkeletonCard index={2} />
+        </>
       ) : community.length === 0 ? (
         <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-2 text-center">
           <span className="text-3xl">🌱</span>
@@ -971,6 +1006,17 @@ function CommunityReveal({
                 />
               ))}
             </>
+          )}
+          {/* ── Load more ─────────────────────────────────────────────────── */}
+          {hasMore && (
+            <div className="px-4 pb-2">
+              <button
+                onClick={loadMore}
+                className="w-full py-3 rounded-[20px] bg-gray-50 border border-gray-100 text-gray-500 font-bold text-[13px] hover:bg-gray-100 active:scale-[0.98] transition-all"
+              >
+                Load more responses ↓
+              </button>
+            </div>
           )}
         </>
       )}
