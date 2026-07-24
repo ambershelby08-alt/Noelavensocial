@@ -348,6 +348,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsNewUser(false);
         setPendingUser(null);
         setPendingUid(null);
+        // Critical: clear the "adding account" flag so AppRouter renders the
+        // app instead of the Login page. Without this, addingAccount stays
+        // true after completeProfile finishes and the router shows Login.
+        setAddingAccount(false);
       }
     } finally {
       setIsLoading(false);

@@ -7,6 +7,7 @@
 - [Noelaven story editor](noelaven-story-editor.md) — full-screen editor; EditorLayer types canonical in editor/types.ts; toolbar extended via TOOLBAR_TABS array; z-[90].
 - [Noelaven cover photo](noelaven-cover-photo.md) — coverUrl + coverPosition ({x,y} %) in Firestore; CSS object-position at render; upload only on Save; z-[60] sheet.
 - [Noelaven UserCacheContext](noelaven-user-cache.md) — real-time deduped avatar cache; use UserAvatar (not GradientAvatar) whenever you have a non-currentUser userId.
+- [Noelaven timestamp safety](noelaven-timestamp-safety.md) — never call .getTime() directly; use normalizeDate/safeGetTime/formatRelativeTime from src/lib/timestamp.ts; instanceof Timestamp is unreliable in monorepos.
 - [Noelaven messaging architecture](noelaven-messaging-arch.md) — production messaging layer: extended Message/Conversation types, Firestore helpers, hooks (useMessages/useConversations/useVoiceRecorder), Chat.tsx + Messages.tsx patterns.
 - [Noelaven page wiring sweep](noelaven-page-wiring.md) — Discover/Profile/Notifications/Communities/PostDetail all wired to Firestore; see file for per-page details.
 - [Noelaven voice/video calls](noelaven-calls.md) — WebRTC + Firestore signaling; CallContext singleton; ICE candidate queuing pattern; demo mode simulates ring+connect.
@@ -16,3 +17,4 @@
 - [Noelaven Founder System](noelaven-founder.md) — FOUNDER_UID hardcoded in founder.ts AND firestore.rules; isFounder in AuthContext; FounderBadge component; ModerationDashboard rebuilt.
 - [Noelaven Notifications System](noelaven-notifications.md) — real-time notifs; client-side grouping; badge in header+sidebar; prefs panel; sign-out confirm; triggers in Profile/Home.
 - [Noelaven Multi-Account](noelaven-multi-account.md) — accountStore.ts (nlv_saved_accounts); addingAccount flag in AuthContext bypasses auth guard; switchToAccount pre-fills Login via nlv_switch_email; User type now has optional email field.
+- [Noelaven auth flow gotchas](noelaven-auth-flow.md) — completeProfile must call setAddingAccount(false); Signup.tsx must catch signUp errors; AppRouter guard order can trap users mid-transition.

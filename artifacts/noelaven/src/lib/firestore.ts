@@ -16,10 +16,34 @@ import type { User, Post, Community, Message, Conversation, Notification, Notifi
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function ts(v: Timestamp | Date | undefined): Date {
-  if (!v) return new Date();
-  if (v instanceof Timestamp) return v.toDate();
-  return v as Date;
+/**
+ * Converts a Firestore Timestamp, plain Date, or undefined to a Date.
+ *
+ * Uses duck-typing (`typeof v.toDate === 'function'`) instead of
+ * `instanceof Timestamp`.  In monorepo / split-bundle environments the
+ * Firebase SDK can be instantiated from more than one module path, which
+ * makes `instanceof` checks unreliable — an object from bundle A fails the
+ * check against the class from bundle B.  Checking for the method avoids
+ * this problem entirely.
+ */
+function ts(v: unknown): Date {
+  if (!v && v !== 0) return new Date();
+  if (v instanceof Date) return isNaN(v.getTime()) ? new Date() : v;
+  if (
+    typeof v === 'object' &&
+    v !== null &&
+    typeof (v as { toDate?: unknown }).toDate === 'function'
+  ) {
+    try {
+      const d = (v as { toDate: () => Date }).toDate();
+      return d instanceof Date && !isNaN(d.getTime()) ? d : new Date();
+    } catch { return new Date(); }
+  }
+  if (typeof v === 'string' || typeof v === 'number') {
+    const d = new Date(v as string | number);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+  return new Date();
 }
 
 /**

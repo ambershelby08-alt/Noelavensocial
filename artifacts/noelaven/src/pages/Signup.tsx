@@ -49,6 +49,7 @@ export default function Signup() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreed, setAgreed]         = useState(false);
   const [errors, setErrors]         = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   function validate() {
     const e: Record<string, string> = {};
@@ -65,8 +66,25 @@ export default function Signup() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!validate()) return;
-    await signUp(email, password, name);
+    if (!validate() || submitting) return;
+    setSubmitting(true);
+    try {
+      await signUp(email, password, name);
+      // On success, onAuthStateChanged → resolveUser → isNewUser = true.
+      // AppRouter automatically shows CreateProfile — no navigation needed here.
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      // Map common Firebase errors to specific fields where possible.
+      if (msg.toLowerCase().includes('email')) {
+        setErrors(prev => ({ ...prev, email: msg }));
+      } else if (msg.toLowerCase().includes('password')) {
+        setErrors(prev => ({ ...prev, password: msg }));
+      } else {
+        setErrors(prev => ({ ...prev, general: msg }));
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function clear(field: string) {
@@ -194,10 +212,18 @@ export default function Signup() {
             {errors.terms && <p className="text-[12px] text-red-500 font-medium mt-1 ml-8">{errors.terms}</p>}
           </div>
 
+          {/* General error banner */}
+          {errors.general && (
+            <div className="flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+              <span className="text-red-500 mt-0.5 flex-shrink-0">✕</span>
+              <p className="text-[13px] text-red-600 font-medium leading-relaxed">{errors.general}</p>
+            </div>
+          )}
+
           {/* Submit */}
           <motion.button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || submitting}
             whileTap={{ scale: 0.98 }}
             className="w-full text-white font-bold py-4 rounded-2xl text-[15px] transition-all disabled:opacity-70 flex items-center justify-center mt-2"
             style={{ background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)', boxShadow: '0 4px 18px rgba(107,115,255,0.35)' }}

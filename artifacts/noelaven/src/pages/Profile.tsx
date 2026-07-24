@@ -26,6 +26,7 @@ import { notifyFollow } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { FounderBadge } from '@/components/ui/FounderBadge';
 import { format } from 'date-fns';
+import { normalizeDate, safeGetTime } from '@/lib/timestamp';
 import { useSafety } from '@/contexts/SafetyContext';
 import { ReportSheet } from '@/components/ui/ReportSheet';
 
@@ -119,12 +120,14 @@ function fmtNum(n: number) {
   return String(n);
 }
 
-function relDate(d: Date) {
-  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+function relDate(d: unknown) {
+  const date = normalizeDate(d);
+  if (!date) return 'Today';
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7)  return `${days}d ago`;
-  return format(d, 'MMM d');
+  return format(date, 'MMM d');
 }
 
 function getInterestGradient(label: string): [string, string] {
@@ -273,7 +276,8 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
   }
 
   async function handleSave() {
-    if (!displayName.trim()) return;
+    const trimmed = displayName.trim();
+    if (!trimmed || trimmed.length < 2) return;
     setSaving(true);
     await new Promise(r => setTimeout(r, 400));
     onSave({
@@ -310,7 +314,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleSave}
-            disabled={!displayName.trim() || saving}
+            disabled={displayName.trim().length < 2 || saving}
             className="px-5 py-2 rounded-full text-[14px] font-bold text-white disabled:opacity-50 flex items-center gap-1.5"
             style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.35)' }}
           >
@@ -367,14 +371,26 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
 
           {/* Display name */}
           <div>
-            <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Display Name</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[13px] font-semibold text-gray-600 ml-1">Display Name</label>
+              <span className={`text-[12px] font-medium mr-1 ${displayName.length > 36 ? 'text-orange-400' : 'text-gray-400'}`}>
+                {displayName.length}/40
+              </span>
+            </div>
             <input
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
-              maxLength={50}
+              maxLength={40}
               placeholder="Your name"
-              className="w-full bg-white border border-black/[0.08] rounded-2xl px-4 py-3.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+              className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 transition-all ${
+                displayName.trim().length > 0 && displayName.trim().length < 2
+                  ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
+                  : 'border-black/[0.08] focus:border-purple-400 focus:ring-purple-100'
+              }`}
             />
+            {displayName.trim().length > 0 && displayName.trim().length < 2 && (
+              <p className="text-[12px] text-red-500 font-medium mt-1.5 ml-1">Display name must be at least 2 characters</p>
+            )}
           </div>
 
           {/* Handle */}
@@ -781,7 +797,7 @@ export default function Profile() {
   const userCircles  = communities.filter(c => c.isJoined || c.moderatorIds.includes(user.id));
   const sparks: SparkItem[] = userPosts
     .filter(p => p.sparkPrompt)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .sort((a, b) => safeGetTime(b.createdAt) - safeGetTime(a.createdAt))
     .map(p => ({
       id:       p.id,
       prompt:   p.sparkPrompt!,

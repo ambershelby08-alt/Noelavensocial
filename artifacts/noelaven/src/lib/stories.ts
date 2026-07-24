@@ -8,6 +8,7 @@ import {
   where, orderBy, onSnapshot, arrayUnion,
   Timestamp, type DocumentData, type Unsubscribe,
 } from 'firebase/firestore';
+import { safeGetTime } from '@/lib/timestamp';
 import { db } from './firebase';
 import type { User } from './mockData';
 import type { EditorLayer, CropData, TrimData } from '@/components/stories/editor/types';
@@ -167,14 +168,14 @@ export function groupStories(stories: Story[], currentUserId?: string): StoryGro
   }
 
   for (const g of map.values()) {
-    g.stories.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    g.stories.sort((a, b) => safeGetTime(a.createdAt) - safeGetTime(b.createdAt));
   }
 
   return Array.from(map.values()).sort((a, b) => {
     if (a.isOwn !== b.isOwn) return a.isOwn ? -1 : 1;
     if (a.hasUnseen !== b.hasUnseen) return a.hasUnseen ? -1 : 1;
-    const aL = Math.max(...a.stories.map(s => s.createdAt.getTime()));
-    const bL = Math.max(...b.stories.map(s => s.createdAt.getTime()));
+    const aL = Math.max(...a.stories.map(s => safeGetTime(s.createdAt)));
+    const bL = Math.max(...b.stories.map(s => safeGetTime(s.createdAt)));
     return bL - aL;
   });
 }

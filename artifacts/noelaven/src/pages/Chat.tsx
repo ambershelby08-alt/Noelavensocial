@@ -26,6 +26,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, isSameDay, differenceInMinutes } from 'date-fns';
+import { safeGetTime } from '@/lib/timestamp';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1298,7 +1299,7 @@ export default function Chat() {
   for (const msg of visibleMessages) {
     const last = groups[groups.length - 1];
     const prevMsg = last?.msgs[last.msgs.length - 1];
-    const sameWindow = prevMsg && (msg.createdAt.getTime() - prevMsg.createdAt.getTime() < 5 * 60_000);
+    const sameWindow = prevMsg && (safeGetTime(msg.createdAt) - safeGetTime(prevMsg.createdAt) < 5 * 60_000);
     if (last && last.senderId === msg.senderId && sameWindow) {
       last.msgs.push(msg);
     } else {

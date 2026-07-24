@@ -42,20 +42,14 @@ import { ReportSheet } from '@/components/ui/ReportSheet';
 import { Link } from 'wouter';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { useUserProfile } from '@/contexts/UserCacheContext';
 import { PhotoViewer } from '@/components/ui/PhotoViewer';
 import { FounderBadge } from '@/components/ui/FounderBadge';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatRelativeTime(date: Date) {
-  const diff = Date.now() - date.getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
+// Re-export the project-wide utility so every caller in this file is safe.
+import { formatRelativeTime } from '@/lib/timestamp';
 
 // ─── Comment types ────────────────────────────────────────────────────────────
 
@@ -1633,6 +1627,11 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
   const [commentsCount, setCommentsCount] = useState(post.comments);
   const [sharesCount, setSharesCount] = useState(post.shares);
 
+  // Live author name from the user cache — updates immediately when the author
+  // renames themselves without any re-fetch of the post document.
+  const cachedAuthor = useUserProfile(post.authorId);
+  const authorDisplayName = cachedAuthor?.displayName ?? post.author.displayName;
+
   // Sync saved from Firestore updates
   useEffect(() => { setSaved(post.saved); }, [post.saved]);
 
@@ -1658,7 +1657,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <Link href={`/profile/${post.authorId}`} className="font-bold text-[14px] text-gray-900 hover:underline">
-                {post.author.displayName}
+                {authorDisplayName}
               </Link>
               <FounderBadge userId={post.authorId} size="sm" />
               {post.communityId && (
