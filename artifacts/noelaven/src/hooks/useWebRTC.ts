@@ -55,13 +55,16 @@ export function useWebRTC() {
   const { currentUser } = useAuth();
   const [call, setCall] = useState<CallState>(INITIAL);
 
-  const pcRef       = useRef<RTCPeerConnection | null>(null);
-  const localRef    = useRef<MediaStream | null>(null);
-  const remoteRef   = useRef<MediaStream | null>(null);
-  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
-  const demoTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ringTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const unsubs      = useRef<Array<() => void>>([]);
+  const pcRef    = useRef<RTCPeerConnection | null>(null);
+  const localRef = useRef<MediaStream | null>(null);
+  const remoteRef = useRef<MediaStream | null>(null);
+  // Single combined timer ref — keeps hook count identical to original (no new useRef calls).
+  const timers   = useRef<{
+    interval: ReturnType<typeof setInterval> | null;
+    demo:     ReturnType<typeof setTimeout>  | null;
+    ring:     ReturnType<typeof setTimeout>  | null;
+  }>({ interval: null, demo: null, ring: null });
+  const unsubs   = useRef<Array<() => void>>([]);
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
@@ -72,16 +75,16 @@ export function useWebRTC() {
     remoteRef.current = null;
     unsubs.current.forEach(u => u());
     unsubs.current = [];
-    if (timerRef.current)  { clearInterval(timerRef.current);  timerRef.current  = null; }
-    if (demoTimer.current) { clearTimeout(demoTimer.current);  demoTimer.current = null; }
-    if (ringTimer.current) { clearTimeout(ringTimer.current);  ringTimer.current = null; }
+    if (timers.current.interval) { clearInterval(timers.current.interval); timers.current.interval = null; }
+    if (timers.current.demo)     { clearTimeout(timers.current.demo);      timers.current.demo     = null; }
+    if (timers.current.ring)     { clearTimeout(timers.current.ring);      timers.current.ring     = null; }
     setCall(INITIAL);
   }, []);
 
   // ── Duration timer ─────────────────────────────────────────────────────────
   function startTimer() {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
+    if (timers.current.interval) clearInterval(timers.current.interval);
+    timers.current.interval = setInterval(() => {
       setCall(s => ({ ...s, duration: s.duration + 1 }));
     }, 1000);
   }
@@ -166,8 +169,8 @@ export function useWebRTC() {
       if (!isFirebaseConfigured) {
         // Demo mode: simulate connected call after 2s
         setCall(s => ({ ...s, callId: 'demo-call' }));
-        demoTimer.current = setTimeout(() => {
-          demoTimer.current = null;
+        timers.current.demo = setTimeout(() => {
+          timers.current.demo = null;
           setCall(s => {
             // Guard: if cleanup() already ran (callId is null), don't resurrect state
             if (!s.callId) return s;
@@ -246,8 +249,8 @@ export function useWebRTC() {
       unsubs.current.push(u2);
 
       // Timeout after 45s → mark missed
-      ringTimer.current = setTimeout(() => {
-        ringTimer.current = null;
+      timers.current.ring = setTimeout(() => {
+        timers.current.ring = null;
         if (callIdRef.current) updateCallStatus(callIdRef.current, 'missed').catch(() => {});
         cleanup();
       }, 45_000);
