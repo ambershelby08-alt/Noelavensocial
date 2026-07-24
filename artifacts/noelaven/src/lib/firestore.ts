@@ -211,7 +211,7 @@ export async function createPost(
 export function subscribeCommunitySparkPosts(
   prompt: string,
   onData: (posts: Post[]) => void,
-  pageSize = 20
+  pageSize = 10
 ): Unsubscribe {
   if (!db) return () => {};
   const dayStart = getETDayStart();

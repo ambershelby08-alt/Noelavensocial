@@ -1,16 +1,20 @@
 /**
  * useSparkCommunity — loads today's community Daily Spark responses.
  *
- * Optimisations:
- *  • Instant render — serves cached posts from sessionStorage on first paint.
- *  • Skeleton-friendly — `loading` is only true when we have *no* data at all.
- *  • Pagination — starts at PAGE_SIZE posts; caller can call `loadMore()` to
- *    extend the window (reuses the same onSnapshot subscription, just with a
- *    larger limit so Firestore sends an incremental diff).
- *  • ET-aware cache key — cache is scoped to today's Eastern-Time date so
- *    yesterday's posts never surface after midnight ET.
+ * Performance design:
+ *  1. Module-level in-memory cache (Map)  — zero latency on re-mount / nav back.
+ *  2. localStorage persistence            — instant data on page-refresh within the
+ *                                           same ET day; evicted automatically on day change.
+ *  3. loading = false immediately          — when any cache tier has data, the component
+ *                                           renders real content with zero skeleton flash.
+ *  4. Background revalidation             — onSnapshot always runs; stale data updates
+ *                                           silently once the fresh snapshot arrives.
+ *  5. Pagination: 10 posts initially      — small Firestore reads; loadMore() adds 10.
+ *  6. Scroll lazy-load                    — caller pairs loadMore() with IntersectionObserver.
+ *  7. 2-second timeout                    — timedOut flag triggers a friendly retry card
+ *                                           instead of infinite skeleton on bad connections.
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { subscribeCommunitySparkPosts } from '@/lib/firestore';
 import { mockUsers } from '@/lib/mockData';
@@ -19,95 +23,73 @@ import type { Post } from '@/lib/mockData';
 
 export type CommunitySort = 'friends' | 'following' | 'everyone';
 
-const SESSION_PREFIX = 'noelaven_community_';
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
-// ── Session-storage cache ──────────────────────────────────────────────────────
+// ── Tier 1: module-level in-memory cache ─────────────────────────────────────
+// Survives component remounts / navigating away and back.
+// Cleared on hard page refresh.
+const memCache = new Map<string, Post[]>();
 
-function cacheKey(prompt: string): string {
-  // Scope to today's ET date + a safe slice of the prompt text
-  return SESSION_PREFIX + todayKeyET() + '_' + encodeURIComponent(prompt.slice(0, 60));
+// ── Tier 2: localStorage persistence ─────────────────────────────────────────
+// Persists across page refreshes. Scoped to today's ET date so yesterday's
+// posts are never served after midnight ET.
+
+function lsKey(prompt: string): string {
+  return `noelaven_community_${todayKeyET()}_${encodeURIComponent(prompt.slice(0, 60))}`;
 }
 
-function readCache(key: string): Post[] | null {
+function readLs(prompt: string): Post[] | null {
   try {
-    const raw = sessionStorage.getItem(key);
+    const raw = localStorage.getItem(lsKey(prompt));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { date: string; posts: Post[] };
-    // Reject if the cache was written on a different ET day
-    if (parsed.date !== todayKeyET()) return null;
-    return parsed.posts;
+    const { etDate, posts } = JSON.parse(raw) as { etDate: string; posts: Post[] };
+    if (etDate !== todayKeyET()) {
+      localStorage.removeItem(lsKey(prompt)); // evict stale entry
+      return null;
+    }
+    return posts;
   } catch { return null; }
 }
 
-function writeCache(key: string, posts: Post[]): void {
+function writeLs(prompt: string, posts: Post[]): void {
   try {
-    // Only persist the first page so session storage stays small
-    sessionStorage.setItem(key, JSON.stringify({ date: todayKeyET(), posts: posts.slice(0, PAGE_SIZE) }));
+    // Only persist the first page — keeps localStorage usage minimal.
+    localStorage.setItem(lsKey(prompt), JSON.stringify({
+      etDate: todayKeyET(),
+      posts: posts.slice(0, PAGE_SIZE),
+    }));
   } catch {}
 }
 
-// ── Demo posts ─────────────────────────────────────────────────────────────────
+// ── Demo posts (used when Firebase is not configured) ─────────────────────────
 
 function demoCommunityPosts(prompt: string): Post[] {
-  const now = new Date();
+  const now = Date.now();
   return [
     {
-      id: 'spark-demo-1',
-      authorId: 'user-1',
-      author: mockUsers[0],
+      id: 'spark-demo-1', authorId: 'user-1', author: mockUsers[0],
       content: 'This prompt really made me think! I believe small moments of kindness ripple out in ways we can never fully measure. 🌊',
-      sparkPrompt: prompt,
-      sparkAudience: 'public',
-      likes: 47,
-      comments: 9,
-      shares: 3,
-      liked: false,
-      saved: false,
-      createdAt: new Date(now.getTime() - 3_600_000 * 1),
+      sparkPrompt: prompt, sparkAudience: 'public', likes: 47, comments: 9,
+      shares: 3, liked: false, saved: false, createdAt: new Date(now - 3_600_000),
     },
     {
-      id: 'spark-demo-2',
-      authorId: 'user-2',
-      author: mockUsers[1],
+      id: 'spark-demo-2', authorId: 'user-2', author: mockUsers[1],
       content: 'Honestly? The best answer I can give is: my morning coffee. 😂 Simple pleasures are everything.',
-      sparkPrompt: prompt,
-      sparkAudience: 'public',
-      likes: 31,
-      comments: 4,
-      shares: 1,
-      liked: true,
-      saved: false,
-      createdAt: new Date(now.getTime() - 3_600_000 * 2),
+      sparkPrompt: prompt, sparkAudience: 'public', likes: 31, comments: 4,
+      shares: 1, liked: true, saved: false, createdAt: new Date(now - 7_200_000),
     },
     {
-      id: 'spark-demo-3',
-      authorId: 'user-4',
-      author: mockUsers[3],
+      id: 'spark-demo-3', authorId: 'user-4', author: mockUsers[3],
       content: "That question caught me off guard. I sat with it for a while and realised how much I've been taking the little things for granted.",
       imageUrl: 'https://picsum.photos/600/400?random=77',
-      sparkPrompt: prompt,
-      sparkAudience: 'public',
-      likes: 88,
-      comments: 15,
-      shares: 6,
-      liked: false,
-      saved: false,
-      createdAt: new Date(now.getTime() - 3_600_000 * 3),
+      sparkPrompt: prompt, sparkAudience: 'public', likes: 88, comments: 15,
+      shares: 6, liked: false, saved: false, createdAt: new Date(now - 10_800_000),
     },
     {
-      id: 'spark-demo-4',
-      authorId: 'user-5',
-      author: mockUsers[4],
+      id: 'spark-demo-4', authorId: 'user-5', author: mockUsers[4],
       content: "I always come back to the idea that connection is everything. Whether it's with people, nature, or a really good book. ✨",
-      sparkPrompt: prompt,
-      sparkAudience: 'public',
-      likes: 124,
-      comments: 22,
-      shares: 11,
-      liked: false,
-      saved: false,
-      createdAt: new Date(now.getTime() - 3_600_000 * 4),
+      sparkPrompt: prompt, sparkAudience: 'public', likes: 124, comments: 22,
+      shares: 11, liked: false, saved: false, createdAt: new Date(now - 14_400_000),
     },
   ];
 }
@@ -115,18 +97,21 @@ function demoCommunityPosts(prompt: string): Post[] {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useSparkCommunity(prompt: string, enabled: boolean) {
-  const ck = cacheKey(prompt);
+  // Read both cache tiers synchronously — no setState delay.
+  const initial = (prompt && enabled) ? (memCache.get(prompt) ?? readLs(prompt)) : null;
 
-  // Initialise from session-storage so the first render already has data
-  const initialPosts = useRef<Post[] | null>(
-    prompt && enabled ? readCache(ck) : null
-  );
-
-  const [posts, setPosts]     = useState<Post[]>(initialPosts.current ?? []);
-  // Only show the skeleton when we genuinely have nothing to show
-  const [loading, setLoading] = useState(!initialPosts.current?.length);
+  const [posts, setPosts]       = useState<Post[]>(initial ?? []);
+  const [loading, setLoading]   = useState(!initial);   // false immediately when cached
+  const [timedOut, setTimedOut] = useState(false);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [hasMore, setHasMore]   = useState(false);
+
+  // Timeout: if we're still loading after 2 s, surface the retry card.
+  useEffect(() => {
+    if (!loading) { setTimedOut(false); return; }
+    const t = setTimeout(() => setTimedOut(true), 2000);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   useEffect(() => {
     if (!enabled || !prompt) {
@@ -135,33 +120,50 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
       return;
     }
 
-    // Demo mode — instant, no Firestore
+    // Demo mode — instant, no Firestore.
     if (!isFirebaseConfigured) {
       const demo = demoCommunityPosts(prompt);
       setPosts(demo);
+      memCache.set(prompt, demo);
       setLoading(false);
       setHasMore(false);
       return;
     }
 
-    // Show skeleton only if we have nothing cached
-    if (!posts.length) setLoading(true);
+    // Only show skeleton on genuine first-ever load (no cache whatsoever).
+    const hasCached = !!(memCache.get(prompt) ?? readLs(prompt));
+    if (!hasCached) setLoading(true);
+
+    // Instrument query time in development.
+    const t0 = performance.now();
 
     const unsub = subscribeCommunitySparkPosts(prompt, (incoming) => {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.info(
+          `[SparkCommunity] snapshot in ${(performance.now() - t0).toFixed(0)} ms — ${incoming.length} posts (pageSize=${pageSize})`
+        );
+      }
       setPosts(incoming);
       setLoading(false);
+      setTimedOut(false);
       setHasMore(incoming.length >= pageSize);
-      writeCache(ck, incoming);
+
+      // Write to both cache tiers so next render/session is instant.
+      memCache.set(prompt, incoming);
+      writeLs(prompt, incoming);
     }, pageSize);
 
     return unsub;
+    // pageSize triggers a re-subscribe when the user requests more posts.
+    // Firestore efficiently sends only the additional documents.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prompt, enabled, pageSize, ck]);
+  }, [prompt, enabled, pageSize]);
 
-  /** Load the next page of responses. */
+  /** Request the next page of results. Triggers re-subscription with larger limit. */
   const loadMore = useCallback(() => {
     setPageSize(prev => prev + PAGE_SIZE);
   }, []);
 
-  return { posts, loading, hasMore, loadMore };
+  return { posts, loading, hasMore, loadMore, timedOut };
 }

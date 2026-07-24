@@ -845,6 +845,12 @@ interface CommunityRevealProps {
   streak: number;
   memoryLane: import('@/hooks/useDailySpark').MemoryLaneEntry | null;
   currentUserId?: string;
+  // Passed from parent (pre-warmed before user even answers)
+  posts: Post[];
+  loading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+  timedOut: boolean;
   onOpenComments: (post: Post) => void;
   onOpenShare: (post: Post) => void;
   onReact: (postId: string, emoji: string) => void;
@@ -854,10 +860,24 @@ interface CommunityRevealProps {
 
 function CommunityReveal({
   prompt, streak, memoryLane, currentUserId,
+  posts, loading, hasMore, loadMore, timedOut,
   onOpenComments, onOpenShare, onReact, onOpenMenu, onOpenPhoto,
 }: CommunityRevealProps) {
   const [sort, setSort] = useState<CommunitySort>('everyone');
-  const { posts, loading, hasMore, loadMore } = useSparkCommunity(prompt, true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Scroll-based lazy loading — fires loadMore() when the sentinel enters the viewport.
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { rootMargin: '300px' } // pre-load 300px before the user reaches the bottom
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, loadMore]);
 
   const SORT_TABS: { key: CommunitySort; label: string }[] = [
     { key: 'friends',   label: 'Friends'   },
@@ -954,13 +974,31 @@ function CommunityReveal({
       </div>
 
       {/* ── Responses ───────────────────────────────────────────────────────── */}
-      {loading ? (
-        // Skeleton cards — perceived as much faster than a spinner
-        <>
-          <SparkSkeletonCard index={0} />
-          <SparkSkeletonCard index={1} />
-          <SparkSkeletonCard index={2} />
-        </>
+      {loading && community.length === 0 ? (
+        // Only reach here on the very first launch — no cache in either tier.
+        timedOut ? (
+          // 2 s timeout: show a friendly retry instead of endless placeholders.
+          <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-3 text-center">
+            <span className="text-3xl">⏳</span>
+            <p className="font-bold text-gray-700 text-[14px]">Taking longer than usual…</p>
+            <p className="text-gray-400 text-[12.5px] max-w-[220px] leading-relaxed">
+              Check your connection, then tap below to try again.
+            </p>
+            <button
+              onClick={loadMore}
+              className="px-6 py-2.5 rounded-full text-[13px] font-bold text-white mt-1"
+              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          // Skeleton — only 2 cards so the UI doesn't feel heavy.
+          <>
+            <SparkSkeletonCard index={0} />
+            <SparkSkeletonCard index={1} />
+          </>
+        )
       ) : community.length === 0 ? (
         <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-2 text-center">
           <span className="text-3xl">🌱</span>
@@ -1007,17 +1045,8 @@ function CommunityReveal({
               ))}
             </>
           )}
-          {/* ── Load more ─────────────────────────────────────────────────── */}
-          {hasMore && (
-            <div className="px-4 pb-2">
-              <button
-                onClick={loadMore}
-                className="w-full py-3 rounded-[20px] bg-gray-50 border border-gray-100 text-gray-500 font-bold text-[13px] hover:bg-gray-100 active:scale-[0.98] transition-all"
-              >
-                Load more responses ↓
-              </button>
-            </div>
-          )}
+          {/* Sentinel: IntersectionObserver triggers loadMore() automatically */}
+          <div ref={sentinelRef} className="h-1 mt-1" aria-hidden />
         </>
       )}
 
@@ -1718,6 +1747,18 @@ export default function Home() {
   const { posts, addPost, toggleReaction, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   const { unreadCount } = useNotifications();
   const { prompt: sparkPrompt, hasAnsweredToday, streak, memoryLane, markAnswered } = useDailySpark(currentUser?.id);
+
+  // Pre-warm the community cache as soon as we have a prompt — before the user
+  // even answers today's spark.  When CommunityReveal mounts, the data is already
+  // in the module-level memCache and renders with loading=false.
+  const {
+    posts: communityPosts,
+    loading: communityLoading,
+    hasMore: communityHasMore,
+    loadMore: communityLoadMore,
+    timedOut: communityTimedOut,
+  } = useSparkCommunity(sparkPrompt, !!sparkPrompt);
+
   const { groups: storyGroups, publishStory, markViewed, deleteStory } = useStories();
 
   // ── Story composer state ──────────────────────────────────────────────────
@@ -1953,6 +1994,11 @@ export default function Home() {
           streak={streak}
           memoryLane={memoryLane}
           currentUserId={currentUser?.id}
+          posts={communityPosts}
+          loading={communityLoading}
+          hasMore={communityHasMore}
+          loadMore={communityLoadMore}
+          timedOut={communityTimedOut}
           onOpenComments={p => setCommentsPost(p)}
           onOpenShare={p => setSharePost(p)}
           onReact={(id, emoji) => toggleReaction(id, emoji).catch(console.error)}
