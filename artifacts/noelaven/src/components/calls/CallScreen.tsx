@@ -129,7 +129,7 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="absolute top-24 right-4 z-20 w-[100px] h-[140px] rounded-[16px] overflow-hidden ring-2 ring-white/30 shadow-xl"
+          className="absolute top-24 right-4 z-20 w-[160px] h-[220px] rounded-[20px] overflow-hidden ring-2 ring-white/30 shadow-xl"
         >
           <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
         </motion.div>
