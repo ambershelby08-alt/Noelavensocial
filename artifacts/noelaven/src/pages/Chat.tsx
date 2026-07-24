@@ -1001,6 +1001,16 @@ export default function Chat() {
   const bottomRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // ── Hooks that must run unconditionally (before any early return) ──────────
+  const [editText, setEditText] = useState('');
+
+  // Scroll to bottom when new messages or typing indicator arrives.
+  // Uses typingUserIds (available before currentUser guard) as proxy for typingUsers.length.
+  useEffect(() => {
+    if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, typingUserIds.length, atBottom]);
+
+  // ── Guard: must be after all hooks ────────────────────────────────────────
   if (!currentUser) return null;
   // Non-null alias so closures below don't require TypeScript re-narrowing
   const cu = currentUser;
@@ -1030,10 +1040,6 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior });
   }
 
-  useEffect(() => {
-    if (atBottom) scrollToBottom('smooth');
-  }, [messages, typingUsers.length]);
-
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
     const el = e.currentTarget;
     const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -1055,8 +1061,6 @@ export default function Chat() {
     }
     notifyTyping();
   }
-
-  const [editText, setEditText] = useState('');
 
   // ── Send message ───────────────────────────────────────────────────────────
 
