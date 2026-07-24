@@ -59,6 +59,8 @@ export function useWebRTC() {
   const localRef    = useRef<MediaStream | null>(null);
   const remoteRef   = useRef<MediaStream | null>(null);
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+  const demoTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ringTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unsubs      = useRef<Array<() => void>>([]);
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
@@ -70,7 +72,9 @@ export function useWebRTC() {
     remoteRef.current = null;
     unsubs.current.forEach(u => u());
     unsubs.current = [];
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (timerRef.current)  { clearInterval(timerRef.current);  timerRef.current  = null; }
+    if (demoTimer.current) { clearTimeout(demoTimer.current);  demoTimer.current = null; }
+    if (ringTimer.current) { clearTimeout(ringTimer.current);  ringTimer.current = null; }
     setCall(INITIAL);
   }, []);
 
@@ -162,8 +166,13 @@ export function useWebRTC() {
       if (!isFirebaseConfigured) {
         // Demo mode: simulate connected call after 2s
         setCall(s => ({ ...s, callId: 'demo-call' }));
-        setTimeout(() => {
-          setCall(s => ({ ...s, status: 'active', isActive: true, isRinging: false }));
+        demoTimer.current = setTimeout(() => {
+          demoTimer.current = null;
+          setCall(s => {
+            // Guard: if cleanup() already ran (callId is null), don't resurrect state
+            if (!s.callId) return s;
+            return { ...s, status: 'active', isActive: true, isRinging: false };
+          });
           startTimer();
         }, 2000);
         return;
@@ -237,7 +246,8 @@ export function useWebRTC() {
       unsubs.current.push(u2);
 
       // Timeout after 45s → mark missed
-      setTimeout(() => {
+      ringTimer.current = setTimeout(() => {
+        ringTimer.current = null;
         if (callIdRef.current) updateCallStatus(callIdRef.current, 'missed').catch(() => {});
         cleanup();
       }, 45_000);
@@ -292,10 +302,12 @@ export function useWebRTC() {
   // ── End active call ────────────────────────────────────────────────────────
   const endCall = useCallback(async () => {
     const id = call.callId;
-    if (id && isFirebaseConfigured) {
-      await updateCallStatus(id, 'ended').catch(() => {});
-    }
+    // Dismiss the UI immediately — don't wait for network
     cleanup();
+    // Fire-and-forget: mark the call ended in Firestore
+    if (id && id !== 'demo-call' && isFirebaseConfigured) {
+      updateCallStatus(id, 'ended').catch(() => {});
+    }
   }, [call.callId, cleanup]);
 
   // ── Toggle mute ────────────────────────────────────────────────────────────
