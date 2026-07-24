@@ -11,7 +11,7 @@ import {
 import { Link } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserReports } from '@/lib/safety';
+import { getUserReports, IndexBuildingError } from '@/lib/safety';
 import type { Report, ReportStatus, ReportType, ReportReason } from '@/lib/mockData';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -118,13 +118,18 @@ export default function MyReports() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<ReportStatus | 'all'>('all');
+  const [indexBuilding, setIndexBuilding] = useState(false);
 
   useEffect(() => {
     if (!currentUser) return;
     setLoading(true);
+    setIndexBuilding(false);
     getUserReports(currentUser.id)
-      .then(setReports)
-      .catch(() => setReports([]))
+      .then(data => { setReports(data); })
+      .catch((err: unknown) => {
+        if (err instanceof IndexBuildingError) setIndexBuilding(true);
+        setReports([]);
+      })
       .finally(() => setLoading(false));
   }, [currentUser]);
 
@@ -180,6 +185,31 @@ export default function MyReports() {
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="bg-white rounded-[22px] h-28 animate-pulse" />
           ))
+        ) : indexBuilding ? (
+          <div className="bg-white rounded-[24px] border border-amber-100 shadow-sm p-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
+              <Clock size={26} className="text-amber-400" />
+            </div>
+            <p className="text-[16px] font-black text-gray-900 mb-2">
+              Database indexes are building
+            </p>
+            <p className="text-[13px] text-gray-500 leading-relaxed mb-4">
+              Firestore is building the indexes needed to query your reports.
+              This is a one-time process that takes 1–5 minutes after first deployment.
+            </p>
+            <div className="bg-gray-900 rounded-xl px-3.5 py-2.5 text-left mb-4">
+              <code className="text-[12px] text-green-400 font-mono">
+                firebase deploy --only firestore:indexes
+              </code>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 rounded-full font-bold text-[13.5px] text-white"
+              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+            >
+              Retry
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">

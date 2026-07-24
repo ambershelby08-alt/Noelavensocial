@@ -17,6 +17,35 @@ import type {
   SafetySettings,
 } from './mockData';
 
+// ─── Index-building error ─────────────────────────────────────────────────────
+
+/**
+ * Thrown when a Firestore query fails because a required composite index
+ * is still being built (or was never deployed).
+ *
+ * Callers should catch this and show a friendly "indexes still building" UI
+ * rather than crashing or showing a generic error.
+ */
+export class IndexBuildingError extends Error {
+  constructor(public readonly originalMessage?: string) {
+    super('firestore_index_building');
+    this.name = 'IndexBuildingError';
+  }
+}
+
+/** Internal: re-throws as IndexBuildingError when the error signals a missing index. */
+function rethrowIfIndexError(err: unknown): void {
+  const code = (err as { code?: string })?.code ?? '';
+  const msg  = (err as { message?: string })?.message ?? '';
+  if (
+    code === 'failed-precondition' ||
+    msg.toLowerCase().includes('index') ||
+    msg.toLowerCase().includes('requires an index')
+  ) {
+    throw new IndexBuildingError(msg);
+  }
+}
+
 // ─── localStorage keys (demo mode) ───────────────────────────────────────────
 
 const K = {
@@ -265,9 +294,14 @@ function firestoreToReport(id: string, d: Record<string, unknown>): Report {
 
 export async function getUserReports(userId: string): Promise<Report[]> {
   if (isFirebaseConfigured && db) {
-    const q = query(collection(db, 'reports'), where('reporterId', '==', userId), orderBy('createdAt', 'desc'), limit(50));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>));
+    try {
+      const q = query(collection(db, 'reports'), where('reporterId', '==', userId), orderBy('createdAt', 'desc'), limit(50));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>));
+    } catch (err: unknown) {
+      rethrowIfIndexError(err);
+      throw err;
+    }
   }
   try {
     const raw = localStorage.getItem(K.reports);
@@ -280,11 +314,16 @@ export async function getUserReports(userId: string): Promise<Report[]> {
 
 export async function getPendingReports(statusFilter: ReportStatus | 'all' = 'pending'): Promise<Report[]> {
   if (isFirebaseConfigured && db) {
-    const q = statusFilter === 'all'
-      ? query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(200))
-      : query(collection(db, 'reports'), where('status', '==', statusFilter), orderBy('createdAt', 'desc'), limit(200));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>));
+    try {
+      const q = statusFilter === 'all'
+        ? query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(200))
+        : query(collection(db, 'reports'), where('status', '==', statusFilter), orderBy('createdAt', 'desc'), limit(200));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>));
+    } catch (err: unknown) {
+      rethrowIfIndexError(err);
+      throw err;
+    }
   }
   try {
     const raw = localStorage.getItem(K.reports);
@@ -502,7 +541,10 @@ export async function getSuspendedUsers(): Promise<Array<{
       suspendedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
       expiresAt: d.data().expiresAt instanceof Timestamp ? d.data().expiresAt.toDate() : null,
     }));
-  } catch { return []; }
+  } catch (err: unknown) {
+    rethrowIfIndexError(err);
+    return [];
+  }
 }
 
 export async function getBannedUsers(): Promise<Array<{
@@ -517,7 +559,10 @@ export async function getBannedUsers(): Promise<Array<{
       reason: d.data().reason,
       bannedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
     }));
-  } catch { return []; }
+  } catch (err: unknown) {
+    rethrowIfIndexError(err);
+    return [];
+  }
 }
 
 export async function getModerationLog(): Promise<ModerationLog[]> {

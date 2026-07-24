@@ -18,6 +18,7 @@ import {
   suspendUser, banUser, unbanUser, sendWarning, restrictAccount,
   removeContent, restoreContent,
   getSuspendedUsers, getBannedUsers, getModerationLog, checkIsAdmin,
+  IndexBuildingError,
 } from '@/lib/safety';
 import type {
   Report, ReportStatus, ReportPriority, ModerationLog,
@@ -426,6 +427,7 @@ export default function ModerationDashboard() {
   const [banned, setBanned] = useState<Awaited<ReturnType<typeof getBannedUsers>>>([]);
   const [log, setLog] = useState<ModerationLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [indexBuilding, setIndexBuilding] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
@@ -446,15 +448,24 @@ export default function ModerationDashboard() {
   const loadTab = useCallback(async (tab: TabId) => {
     if (!isAdmin) return;
     setLoading(true);
+    setIndexBuilding(false);
     try {
-      if (tab === 'pending')    setReports(await getPendingReports('pending'));
+      if (tab === 'pending')        setReports(await getPendingReports('pending'));
       else if (tab === 'reviewing') setReports(await getPendingReports('reviewing'));
       else if (tab === 'resolved')  setReports(await getPendingReports('resolved'));
       else if (tab === 'dismissed') setReports(await getPendingReports('dismissed'));
       else if (tab === 'suspended') setSuspended(await getSuspendedUsers());
       else if (tab === 'banned')    setBanned(await getBannedUsers());
       else if (tab === 'log')       setLog(await getModerationLog());
-    } finally { setLoading(false); }
+    } catch (err: unknown) {
+      if (err instanceof IndexBuildingError) {
+        setIndexBuilding(true);
+      } else {
+        showToast(`Error loading data: ${(err as Error)?.message ?? 'unknown'}`);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [isAdmin]);
 
   useEffect(() => { loadTab(activeTab); }, [activeTab, loadTab]);
@@ -632,6 +643,8 @@ export default function ModerationDashboard() {
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-white rounded-[22px] h-28 animate-pulse" />
           ))
+        ) : indexBuilding ? (
+          <IndexSetupBanner onRetry={() => loadTab(activeTab)} />
         ) : activeTab === 'log' ? (
           log.length === 0 ? (
             <EmptyState icon={Activity} title="No actions yet" desc="Moderation actions will appear here." />
@@ -677,6 +690,90 @@ export default function ModerationDashboard() {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Index setup banner ───────────────────────────────────────────────────────
+
+function IndexSetupBanner({ onRetry }: { onRetry: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const cmd = 'firebase deploy --only firestore:indexes';
+
+  function copy() {
+    navigator.clipboard.writeText(cmd).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-[24px] border border-amber-100 shadow-sm p-6"
+    >
+      {/* Icon */}
+      <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
+        <Activity size={26} className="text-amber-500" />
+      </div>
+
+      <h2 className="text-[17px] font-black text-gray-900 text-center mb-2">
+        Database indexes are building
+      </h2>
+      <p className="text-[13.5px] text-gray-500 text-center leading-relaxed mb-5">
+        Firestore requires composite indexes for the moderation queries.
+        This is a <strong>one-time setup</strong> — indexes usually finish
+        within 1–5 minutes after deployment.
+      </p>
+
+      {/* What's happening */}
+      <div className="bg-gray-50 rounded-2xl p-4 mb-5 space-y-2 text-[12.5px]">
+        <p className="font-bold text-gray-700 mb-1">Which queries need indexes?</p>
+        {[
+          { label: 'reports',          desc: 'status + createdAt  ·  reporterId + createdAt' },
+          { label: 'userSuspensions',  desc: 'active + permanent' },
+          { label: 'notifications',    desc: 'userId + createdAt  ·  userId + read' },
+          { label: 'posts',            desc: 'sparkPrompt + createdAt  ·  authorId + createdAt' },
+          { label: 'conversations',    desc: 'participantIds (array) + lastMessageAt' },
+        ].map(item => (
+          <div key={item.label} className="flex items-start gap-2">
+            <span className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 flex-shrink-0 mt-0.5">
+              {item.label}
+            </span>
+            <span className="text-gray-500">{item.desc}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Deploy instructions */}
+      <p className="text-[12.5px] font-bold text-gray-700 mb-2">
+        Deploy indexes with the Firebase CLI:
+      </p>
+      <div className="flex items-center gap-2 bg-gray-900 rounded-xl px-3.5 py-3 mb-1">
+        <code className="flex-1 text-[12px] text-green-400 font-mono">{cmd}</code>
+        <button
+          onClick={copy}
+          className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-[11.5px] font-bold text-white"
+        >
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+      </div>
+      <p className="text-[11.5px] text-gray-400 mb-5">
+        Or open the Firebase Console → Firestore → Indexes and create them manually.
+        The <code className="text-[11px] bg-gray-100 px-1 rounded">firestore.indexes.json</code> file
+        in the project root lists all required indexes.
+      </p>
+
+      {/* Retry */}
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={onRetry}
+        className="w-full py-3.5 rounded-2xl font-bold text-[14px] text-white flex items-center justify-center gap-2"
+        style={{ background: 'linear-gradient(135deg, #7C3AED, #D4AF37)' }}
+      >
+        <RefreshCw size={15} />
+        Retry — indexes may be ready
+      </motion.button>
+    </motion.div>
   );
 }
 
