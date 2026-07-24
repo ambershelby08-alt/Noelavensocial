@@ -295,9 +295,14 @@ function firestoreToReport(id: string, d: Record<string, unknown>): Report {
 export async function getUserReports(userId: string): Promise<Report[]> {
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, 'reports'), where('reporterId', '==', userId), orderBy('createdAt', 'desc'), limit(50));
+      // No orderBy — avoids a (reporterId, createdAt) composite index requirement.
+      // Single-field WHERE on reporterId uses the auto-created single-field index.
+      // Client-side sort is fine for the volumes a user ever generates.
+      const q = query(collection(db, 'reports'), where('reporterId', '==', userId), limit(50));
       const snap = await getDocs(q);
-      return snap.docs.map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>));
+      return snap.docs
+        .map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>))
+        .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
     } catch (err: unknown) {
       rethrowIfIndexError(err);
       throw err;
@@ -315,11 +320,17 @@ export async function getUserReports(userId: string): Promise<Report[]> {
 export async function getPendingReports(statusFilter: ReportStatus | 'all' = 'pending'): Promise<Report[]> {
   if (isFirebaseConfigured && db) {
     try {
+      // Drop orderBy from status-filtered queries: combining WHERE status == X
+      // with ORDER BY createdAt DESC requires a composite index that may not be
+      // deployed. The auto-created single-field index on `status` is enough for
+      // the equality filter; we sort client-side after fetching.
       const q = statusFilter === 'all'
-        ? query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(200))
-        : query(collection(db, 'reports'), where('status', '==', statusFilter), orderBy('createdAt', 'desc'), limit(200));
+        ? query(collection(db, 'reports'), limit(200))
+        : query(collection(db, 'reports'), where('status', '==', statusFilter), limit(200));
       const snap = await getDocs(q);
-      return snap.docs.map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>));
+      return snap.docs
+        .map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>))
+        .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
     } catch (err: unknown) {
       rethrowIfIndexError(err);
       throw err;
@@ -531,16 +542,21 @@ export async function getSuspendedUsers(): Promise<Array<{
 }>> {
   if (!isFirebaseConfigured || !db) return [];
   try {
-    const q = query(collection(db, 'userSuspensions'), where('active', '==', true), where('permanent', '==', false));
+    // Only filter on `active` (single-field auto-index). Filtering on two
+    // equality fields (active + permanent) requires a composite index.
+    // We filter `permanent` client-side instead.
+    const q = query(collection(db, 'userSuspensions'), where('active', '==', true));
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({
-      userId: d.id,
-      reason: d.data().reason,
-      days: d.data().days,
-      permanent: false,
-      suspendedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
-      expiresAt: d.data().expiresAt instanceof Timestamp ? d.data().expiresAt.toDate() : null,
-    }));
+    return snap.docs
+      .filter(d => d.data().permanent !== true)
+      .map(d => ({
+        userId: d.id,
+        reason: d.data().reason,
+        days: d.data().days,
+        permanent: false,
+        suspendedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
+        expiresAt: d.data().expiresAt instanceof Timestamp ? d.data().expiresAt.toDate() : null,
+      }));
   } catch (err: unknown) {
     rethrowIfIndexError(err);
     return [];
@@ -552,13 +568,17 @@ export async function getBannedUsers(): Promise<Array<{
 }>> {
   if (!isFirebaseConfigured || !db) return [];
   try {
-    const q = query(collection(db, 'userSuspensions'), where('active', '==', true), where('permanent', '==', true));
+    // Same pattern: filter only on `active` to avoid composite index; check
+    // `permanent` client-side.
+    const q = query(collection(db, 'userSuspensions'), where('active', '==', true));
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({
-      userId: d.id,
-      reason: d.data().reason,
-      bannedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
-    }));
+    return snap.docs
+      .filter(d => d.data().permanent === true)
+      .map(d => ({
+        userId: d.id,
+        reason: d.data().reason,
+        bannedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
+      }));
   } catch (err: unknown) {
     rethrowIfIndexError(err);
     return [];
