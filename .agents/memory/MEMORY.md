@@ -12,3 +12,4 @@
 - [Noelaven voice/video calls](noelaven-calls.md) — WebRTC + Firestore signaling; CallContext singleton; ICE candidate queuing pattern; demo mode simulates ring+connect.
 - [Noelaven reaction system](noelaven-reactions.md) — 20 emoji reactions replacing likes; Firestore transaction model; ReactionButton long-press tray; notification format.
 - [Noelaven Discover page](noelaven-discover.md) — usePersonalization + useDiscover hooks; SparkAudience filter is 'public' not 'everyone'; optimistic overrides pattern; CSS columns masonry.
+- [Noelaven Safety & Moderation](noelaven-safety-moderation.md) — full block/mute/restrict/report system; SafetyContext; SafetySettings/MyReports/ModerationDashboard pages; localStorage fallback in demo mode.

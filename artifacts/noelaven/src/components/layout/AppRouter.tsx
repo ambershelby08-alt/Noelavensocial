@@ -13,17 +13,22 @@ import Discover from '@/pages/Discover';
 import Notifications from '@/pages/Notifications';
 import Settings from '@/pages/Settings';
 import PostDetail from '@/pages/PostDetail';
+import SafetySettings from '@/pages/SafetySettings';
+import MyReports from '@/pages/MyReports';
+import ModerationDashboard from '@/pages/ModerationDashboard';
 
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import ForgotPassword from '@/pages/ForgotPassword';
 import CreateProfile from '@/pages/CreateProfile';
 import { CallProvider } from '@/contexts/CallContext';
+import { SafetyProvider } from '@/contexts/SafetyContext';
 
 // ─── Authenticated shell ──────────────────────────────────────────────────────
 
 function AuthenticatedApp() {
   return (
+    <SafetyProvider>
     <CallProvider>
     <AppShell>
       <Switch>
@@ -37,6 +42,9 @@ function AuthenticatedApp() {
         <Route path="/notifications"      component={Notifications} />
         <Route path="/settings"           component={Settings} />
         <Route path="/post/:postId"       component={PostDetail} />
+        <Route path="/safety"             component={SafetySettings} />
+        <Route path="/my-reports"         component={MyReports} />
+        <Route path="/moderation"         component={ModerationDashboard} />
         <Route>
           <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6">
             <p className="text-6xl mb-5">🌿</p>
@@ -56,6 +64,7 @@ function AuthenticatedApp() {
       </Switch>
     </AppShell>
     </CallProvider>
+    </SafetyProvider>
   );
 }
 
@@ -96,14 +105,12 @@ export default function AppRouter() {
     );
   }
 
-  // Authenticated user landed on an auth-only path (e.g. /login, /signup after
-  // sign-in completes) — redirect to home so the authenticated shell never 404s.
+  // Authenticated user landed on an auth-only path
   if (AUTH_ONLY_PATHS.some(p => location === p || location.startsWith(p + '/'))) {
     return <Redirect to="/" />;
   }
 
-  // Browser at the exact base path without trailing slash (e.g. /noelaven vs /noelaven/)
-  // — wouter strips the base and gets "" which won't match any route.
+  // Browser at the exact base path without trailing slash
   if (location === '') {
     return <Redirect to="/" />;
   }

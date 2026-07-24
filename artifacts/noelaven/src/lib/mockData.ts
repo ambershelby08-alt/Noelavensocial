@@ -624,3 +624,54 @@ export const dailySparks = [
   "Share a photo that means a lot to you.",
   "What are you looking forward to this weekend?",
 ];
+
+// ─── Safety & Moderation types ────────────────────────────────────────────────
+
+export type ReportType = 'user' | 'post' | 'comment' | 'story' | 'spark' | 'message' | 'profile';
+export type ReportReason =
+  | 'Spam'
+  | 'Harassment'
+  | 'Hate Speech'
+  | 'Nudity or Sexual Content'
+  | 'Violence or Dangerous Content'
+  | 'Misinformation'
+  | 'Scam or Fraud'
+  | 'Copyright Violation'
+  | 'Other';
+export type ReportStatus = 'pending' | 'reviewing' | 'resolved' | 'dismissed';
+export type ModerationActionType = 'dismiss' | 'remove_content' | 'suspend_30d' | 'permanent_ban' | 'restore';
+
+export interface Report {
+  id: string;
+  type: ReportType;
+  targetId: string;
+  targetOwnerId?: string;
+  targetPreview?: string;
+  reporterId: string;
+  reason: ReportReason;
+  details?: string;
+  status: ReportStatus;
+  createdAt: Date;
+  resolvedAt?: Date;
+  moderatorNote?: string;
+  moderatorId?: string;
+}
+
+export interface ModerationLog {
+  id: string;
+  moderatorId: string;
+  action: string;
+  targetId: string;
+  targetType: string;
+  reason: string;
+  reportId?: string;
+  createdAt: Date;
+}
+
+export interface SafetySettings {
+  whoCanMessage:            'everyone' | 'friends' | 'followers' | 'none';
+  whoCanComment:            'everyone' | 'friends' | 'followers' | 'none';
+  whoCanMention:            'everyone' | 'friends' | 'followers' | 'none';
+  allowFollows:             boolean;
+  contentFilterSensitivity: 'off' | 'low' | 'medium' | 'high';
+}

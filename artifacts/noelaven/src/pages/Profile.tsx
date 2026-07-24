@@ -5,7 +5,8 @@ import {
   Edit3, Camera, X, Check, Sparkles, Users, MessageCircle,
   Grid3X3, Heart, Bookmark, Calendar, Share2, UserPlus,
   UserCheck, ChevronRight, AtSign, FileText, Star, Plus,
-  ArrowLeft, Globe, Lock, UserCircle, Flame,
+  ArrowLeft, Globe, Lock, UserCircle, Flame, MoreHorizontal,
+  VolumeX, UserX, Shield, EyeOff,
 } from 'lucide-react';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { CoverPhotoEditor, type CoverSavePayload } from '@/components/profile/CoverPhotoEditor';
@@ -23,6 +24,8 @@ import { isFirebaseConfigured } from '@/lib/firebase';
 import { updatePostSparkAudience, followUser as fsFollow, unfollowUser as fsUnfollow, getUserDoc, getOrCreateDirectConversation } from '@/lib/firestore';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useSafety } from '@/contexts/SafetyContext';
+import { ReportSheet } from '@/components/ui/ReportSheet';
 
 // ─── Audience helpers ─────────────────────────────────────────────────────────
 
@@ -748,6 +751,14 @@ export default function Profile() {
   const [isFollowing, setIsFollowing]   = useState(false);
   const [followerCount, setFollowerCount] = useState(user.followers);
   const [photoViewer, setPhotoViewer] = useState<{ src: string } | null>(null);
+  const [safetySheetOpen, setSafetySheetOpen] = useState(false);
+  const [profileReportOpen, setProfileReportOpen] = useState(false);
+  const {
+    isBlocked, isMuted, isRestricted,
+    blockUser: doBlock, unblockUser: doUnblock,
+    muteUser: doMute, unmuteUser: doUnmute,
+    restrictUser: doRestrict, unrestrictUser: doUnrestrict,
+  } = useSafety();
 
   const tabs = (isOwnProfile ? TABS_OWN : TABS_OTHER) as readonly TabLabel[];
   const tabIcons: Record<TabLabel, React.ReactNode> = {
@@ -885,9 +896,17 @@ export default function Profile() {
               <Edit3 size={14} /> Edit
             </button>
           ) : (
-            <button className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all">
-              <Share2 size={16} className="text-gray-700" />
-            </button>
+            <>
+              <button className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all">
+                <Share2 size={16} className="text-gray-700" />
+              </button>
+              <button
+                onClick={() => setSafetySheetOpen(true)}
+                className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all"
+              >
+                <MoreHorizontal size={16} className="text-gray-700" />
+              </button>
+            </>
           )}
         </div>
 
@@ -1189,6 +1208,121 @@ export default function Profile() {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Safety action sheet (non-own profiles) ──────────────────────── */}
+      <AnimatePresence>
+        {safetySheetOpen && !isOwnProfile && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[60]"
+              onClick={() => setSafetySheetOpen(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-[65] bg-white rounded-t-[28px] shadow-2xl"
+            >
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-gray-200" />
+              </div>
+              <div className="px-5 pt-2 pb-3 flex items-center gap-3 border-b border-gray-50">
+                <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={38} />
+                <div>
+                  <p className="font-bold text-[14px] text-gray-900">{user.displayName}</p>
+                  <p className="text-[12px] text-gray-400">@{user.handle}</p>
+                </div>
+              </div>
+
+              {/* Mute */}
+              <button
+                onClick={async () => {
+                  if (isMuted(user.id)) await doUnmute(user.id);
+                  else await doMute(user.id);
+                  setSafetySheetOpen(false);
+                }}
+                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50"
+              >
+                <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
+                  <VolumeX size={17} className="text-blue-500" />
+                </div>
+                <span className="text-[15px] font-medium text-gray-800 flex-1 text-left">
+                  {isMuted(user.id) ? `Unmute @${user.handle}` : `Mute @${user.handle}`}
+                </span>
+              </button>
+
+              {/* Restrict */}
+              <button
+                onClick={async () => {
+                  if (isRestricted(user.id)) await doUnrestrict(user.id);
+                  else await doRestrict(user.id);
+                  setSafetySheetOpen(false);
+                }}
+                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50"
+              >
+                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                  <EyeOff size={17} className="text-gray-500" />
+                </div>
+                <span className="text-[15px] font-medium text-gray-800 flex-1 text-left">
+                  {isRestricted(user.id) ? `Unrestrict @${user.handle}` : `Restrict @${user.handle}`}
+                </span>
+              </button>
+
+              {/* Block */}
+              <button
+                onClick={async () => {
+                  if (isBlocked(user.id)) await doUnblock(user.id);
+                  else await doBlock(user.id);
+                  setSafetySheetOpen(false);
+                }}
+                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50"
+              >
+                <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
+                  <UserX size={17} className="text-red-500" />
+                </div>
+                <span className="text-[15px] font-medium text-red-500 flex-1 text-left">
+                  {isBlocked(user.id) ? `Unblock @${user.handle}` : `Block @${user.handle}`}
+                </span>
+              </button>
+
+              {/* Report */}
+              <button
+                onClick={() => { setSafetySheetOpen(false); setProfileReportOpen(true); }}
+                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50"
+              >
+                <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
+                  <Shield size={17} className="text-red-500" />
+                </div>
+                <span className="text-[15px] font-medium text-red-500 flex-1 text-left">
+                  Report @{user.handle}
+                </span>
+              </button>
+
+              <div className="px-5 py-4 border-t border-gray-100">
+                <button
+                  onClick={() => setSafetySheetOpen(false)}
+                  className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Report profile sheet */}
+      {profileReportOpen && currentUser && (
+        <ReportSheet
+          open
+          targetId={user.id}
+          targetType="profile"
+          targetOwnerId={user.id}
+          targetPreview={`${user.displayName} (@${user.handle})`}
+          reporterId={currentUser.id}
+          onClose={() => setProfileReportOpen(false)}
+        />
+      )}
     </div>
   );
 }

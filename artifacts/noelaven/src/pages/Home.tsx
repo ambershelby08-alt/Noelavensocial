@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageCircle, Share2, Bookmark,
+  MessageCircle, Share2, Bookmark, Heart,
   Image as ImageIcon, Smile, MapPin, Send,
   Bell, MoreHorizontal, Sparkles, X,
   Link as LinkIcon, Users, MessageSquare, Check,
   ChevronDown, Trash2, Flag, EyeOff, UserMinus,
   Edit2, MessageCircleOff, ClipboardCopy,
-  Globe, Lock, UserCircle, Flame,
+  Globe, Lock, UserCircle, Flame, VolumeX, UserX,
 } from 'lucide-react';
 import { ReactionButton } from '@/components/ui/ReactionButton';
 import { reactionPhrase } from '@/lib/reactions';
@@ -37,6 +37,8 @@ import { useConversations } from '@/hooks/useConversations';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
+import { useSafety } from '@/contexts/SafetyContext';
+import { ReportSheet } from '@/components/ui/ReportSheet';
 import { Link } from 'wouter';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -1132,7 +1134,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
 
 // ─── Post Menu ────────────────────────────────────────────────────────────────
 
-type PostMenuStep = 'main' | 'confirmDelete' | 'reportSelect' | 'confirmUnfollow';
+type PostMenuStep = 'main' | 'confirmDelete' | 'confirmBlock' | 'confirmMute' | 'confirmUnfollow';
 
 interface PostMenuProps {
   post: Post;
@@ -1142,12 +1144,14 @@ interface PostMenuProps {
   onEdit: (post: Post) => void;
   onHide: (postId: string) => void;
   onSave: (postId: string, currentlySaved: boolean) => void;
-  onReport: (postId: string, reason: string) => Promise<void>;
+  onOpenReport: () => void;
   onToggleComments: (postId: string, currentlyDisabled: boolean) => void;
   onUnfollow: (userId: string) => Promise<void>;
+  isBlocked: boolean;
+  isMuted: boolean;
+  onBlock: () => Promise<void>;
+  onMute: () => Promise<void>;
 }
-
-const REPORT_REASONS = ['Spam', 'Harassment', 'Misinformation', 'Inappropriate content'];
 
 interface MenuRowProps {
   icon: React.ElementType;
@@ -1177,7 +1181,8 @@ function MenuRow({ icon: Icon, label, iconBg, iconColor, destructive = false, on
 function PostMenu({
   post, isOwner, onClose,
   onDelete, onEdit, onHide, onSave,
-  onReport, onToggleComments, onUnfollow,
+  onOpenReport, onToggleComments, onUnfollow,
+  isBlocked, isMuted, onBlock, onMute,
 }: PostMenuProps) {
   const [step, setStep] = useState<PostMenuStep>('main');
   const [loading, setLoading] = useState(false);
@@ -1192,13 +1197,6 @@ function PostMenu({
   async function handleDelete() {
     setLoading(true);
     await onDelete(post.id);
-    setLoading(false);
-    onClose();
-  }
-
-  async function handleReport(reason: string) {
-    setLoading(true);
-    await onReport(post.id, reason);
     setLoading(false);
     onClose();
   }
@@ -1253,7 +1251,9 @@ function PostMenu({
               <>
                 <MenuRow icon={Bookmark}  label={post.saved ? 'Unsave post' : 'Save post'} iconBg="#F5EEF8" iconColor="#9B59B6" onClick={() => { onSave(post.id, post.saved); onClose(); }} />
                 <MenuRow icon={EyeOff}    label="Hide post"   iconBg="#F3F4F6" iconColor="#6B7280" onClick={() => { onHide(post.id); onClose(); }} />
-                <MenuRow icon={Flag}      label="Report post" iconBg="#FFF0F0" iconColor="#FF5E5E" destructive onClick={() => setStep('reportSelect')} />
+                <MenuRow icon={VolumeX}   label={isMuted ? `Unmute @${post.author.handle}` : `Mute @${post.author.handle}`} iconBg="#EFF6FF" iconColor="#3B82F6" onClick={() => setStep('confirmMute')} />
+                <MenuRow icon={UserX}     label={isBlocked ? `Unblock @${post.author.handle}` : `Block @${post.author.handle}`} iconBg="#FFF0F0" iconColor="#E74C3C" destructive onClick={() => setStep('confirmBlock')} />
+                <MenuRow icon={Flag}      label="Report post" iconBg="#FFF0F0" iconColor="#FF5E5E" destructive onClick={() => { onOpenReport(); onClose(); }} />
                 <MenuRow icon={UserMinus} label={`Unfollow @${post.author.handle}`} iconBg="#FFF8EE" iconColor="#FF8C42" destructive onClick={() => setStep('confirmUnfollow')} />
                 <MenuRow icon={copied ? Check : ClipboardCopy} label={copied ? 'Copied!' : 'Copy link'} iconBg="#F3F4F6" iconColor="#6B7280" onClick={copyLink} />
               </>
@@ -1296,29 +1296,51 @@ function PostMenu({
           </div>
         )}
 
-        {/* ── Report reasons ───────────────────────────────────────────── */}
-        {step === 'reportSelect' && (
+        {/* ── Confirm block ──────────────────────────────────────────────── */}
+        {step === 'confirmBlock' && (
           <div className="px-5 pb-6">
-            <p className="font-bold text-[16px] text-gray-900 mb-0.5 pt-1">Report this post</p>
-            <p className="text-[13px] text-gray-400 mb-4">Why are you reporting this?</p>
-            <div className="space-y-2 mb-3">
-              {REPORT_REASONS.map(reason => (
-                <motion.button
-                  key={reason}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => handleReport(reason)}
-                  disabled={loading}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 active:bg-gray-100 text-left"
-                >
-                  <Flag size={16} className="text-red-400 flex-shrink-0" />
-                  <span className="text-[14px] font-medium text-gray-700 flex-1">{reason}</span>
-                  {loading && <div className="w-4 h-4 border-2 border-gray-200 border-t-red-400 rounded-full animate-spin" />}
-                </motion.button>
-              ))}
+            <div className="flex items-center gap-3 mb-5 pt-1">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <UserX size={20} className="text-red-500" />
+              </div>
+              <div>
+                <p className="font-bold text-[16px] text-gray-900">{isBlocked ? 'Unblock' : 'Block'} @{post.author.handle}?</p>
+                <p className="text-[13px] text-gray-400">{isBlocked ? 'They can see your content again.' : "They won't be able to see your posts or contact you."}</p>
+              </div>
             </div>
-            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]">
-              Cancel
+            <button
+              onClick={async () => { setLoading(true); await onBlock(); setLoading(false); onClose(); }}
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl mb-2.5 font-bold text-[15px] text-white bg-red-500 active:bg-red-600 flex items-center justify-center gap-2"
+            >
+              {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <UserX size={16} />}
+              {isBlocked ? 'Unblock' : 'Block'}
             </button>
+            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]">Cancel</button>
+          </div>
+        )}
+
+        {/* ── Confirm mute ───────────────────────────────────────────────── */}
+        {step === 'confirmMute' && (
+          <div className="px-5 pb-6">
+            <div className="flex items-center gap-3 mb-5 pt-1">
+              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <VolumeX size={20} className="text-blue-500" />
+              </div>
+              <div>
+                <p className="font-bold text-[16px] text-gray-900">{isMuted ? 'Unmute' : 'Mute'} @{post.author.handle}?</p>
+                <p className="text-[13px] text-gray-400">{isMuted ? 'Their posts will reappear in your feed.' : "Their posts won't appear in your feed."}</p>
+              </div>
+            </div>
+            <button
+              onClick={async () => { setLoading(true); await onMute(); setLoading(false); onClose(); }}
+              disabled={loading}
+              className="w-full py-3.5 rounded-2xl mb-2.5 font-bold text-[15px] text-white bg-blue-500 active:bg-blue-600 flex items-center justify-center gap-2"
+            >
+              {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <VolumeX size={16} />}
+              {isMuted ? 'Unmute' : 'Mute'}
+            </button>
+            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]">Cancel</button>
           </div>
         )}
 
@@ -1669,6 +1691,8 @@ export default function Home() {
   const [sparkOpen, setSparkOpen] = useState(false);
   const [sparkJustCompleted, setSparkJustCompleted] = useState(false);
   const [menuPost, setMenuPost] = useState<Post | null>(null);
+  const [reportTarget, setReportTarget] = useState<{targetId: string; targetOwnerId: string; targetPreview?: string} | null>(null);
+  const { blockedIds, mutedIds, isBlocked, isMuted, blockUser, muteUser } = useSafety();
   const [editPost, setEditPost] = useState<Post | null>(null);
   const [photoViewer, setPhotoViewer] = useState<{ src: string } | null>(null);
   const [toast, setToast] = useState('');
@@ -1722,11 +1746,19 @@ export default function Home() {
     showToast(currentlySaved ? 'Post unsaved' : 'Post saved! 🔖');
   }
 
-  async function handleReportPost(postId: string, reason: string) {
-    if (isFirebaseConfigured && currentUser) {
-      await fsReportPost(postId, currentUser.id, reason).catch(console.error);
-    }
-    showToast('Report submitted. Thank you.', 'info');
+  function openReportSheet(post: Post) {
+    setReportTarget({ targetId: post.id, targetOwnerId: post.authorId, targetPreview: post.content.slice(0, 120) });
+    setMenuPost(null);
+  }
+
+  async function handleBlockUser(userId: string, handle: string) {
+    await blockUser(userId);
+    showToast(`@${handle} blocked`, 'info');
+  }
+
+  async function handleMuteUser(userId: string, handle: string) {
+    await muteUser(userId);
+    showToast(`@${handle} muted`, 'info');
   }
 
   function handleToggleComments(postId: string, currentlyDisabled: boolean) {
@@ -2045,9 +2077,13 @@ export default function Home() {
             onEdit={handleEditPost}
             onHide={handleHidePost}
             onSave={handleSavePost}
-            onReport={handleReportPost}
+            onOpenReport={() => openReportSheet(menuPost)}
             onToggleComments={handleToggleComments}
             onUnfollow={handleUnfollowUser}
+            isBlocked={isBlocked(menuPost.authorId)}
+            isMuted={isMuted(menuPost.authorId)}
+            onBlock={() => handleBlockUser(menuPost.authorId, menuPost.author.handle)}
+            onMute={() => handleMuteUser(menuPost.authorId, menuPost.author.handle)}
           />
         )}
       </AnimatePresence>
@@ -2126,6 +2162,20 @@ export default function Home() {
           />
         )}
       </AnimatePresence>
+
+      {/* Report sheet — opened from post menu */}
+      {reportTarget && currentUser && (
+        <ReportSheet
+          open
+          targetId={reportTarget.targetId}
+          targetType="post"
+          targetOwnerId={reportTarget.targetOwnerId}
+          targetPreview={reportTarget.targetPreview}
+          reporterId={currentUser.id}
+          onClose={() => setReportTarget(null)}
+          onSubmitted={() => showToast('Report submitted. Thank you.', 'info')}
+        />
+      )}
     </div>
   );
 }

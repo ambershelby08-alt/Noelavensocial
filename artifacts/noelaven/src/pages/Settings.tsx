@@ -280,7 +280,7 @@ export default function Settings() {
       items: [
         { icon: Paintbrush, label: 'Appearance',    desc: 'Light, dark, or system theme',      key: 'appearance'  },
         { icon: Bell,       label: 'Notifications', desc: 'Likes, comments, and messages',     key: 'notifications' },
-        { icon: Lock,       label: 'Privacy',       desc: 'Who can see your posts and DM you', key: 'privacy'     },
+        { icon: Shield,     label: 'Safety & Privacy', desc: 'Block, mute, content filter, and more', key: 'safety'  },
       ],
     },
     {
@@ -366,7 +366,7 @@ export default function Settings() {
                 <div key={item.key}>
                   <motion.button
                     whileTap={{ scale: 0.99 }}
-                    onClick={() => togglePanel(item.key)}
+                    onClick={() => item.key === 'safety' ? setLocation('/safety') : togglePanel(item.key)}
                     className="w-full flex items-center gap-3.5 px-4 py-4 text-left hover:bg-gray-50 transition-colors border-b border-black/[0.04] last:border-0 group"
                   >
                     <div className={cn(
@@ -379,10 +379,14 @@ export default function Settings() {
                       <p className="font-semibold text-[14.5px] text-gray-900">{item.label}</p>
                       <p className="text-[12px] text-gray-400 mt-0.5">{item.desc}</p>
                     </div>
-                    <ChevronDown
-                      size={17}
-                      className={cn('text-gray-300 transition-all flex-shrink-0', activePanel === item.key ? 'rotate-180 text-purple-400' : 'group-hover:text-gray-500')}
-                    />
+                    {item.key === 'safety' ? (
+                      <ChevronRight size={17} className="text-gray-300 flex-shrink-0" />
+                    ) : (
+                      <ChevronDown
+                        size={17}
+                        className={cn('text-gray-300 transition-all flex-shrink-0', activePanel === item.key ? 'rotate-180 text-purple-400' : 'group-hover:text-gray-500')}
+                      />
+                    )}
                   </motion.button>
 
                   <AnimatePresence>
@@ -535,8 +539,8 @@ export default function Settings() {
                           </div>
                         )}
 
-                        {/* ── Privacy ── */}
-                        {item.key === 'privacy' && (
+                        {/* ── Privacy (legacy — replaced by /safety page) ── */}
+                        {item.key === '_privacy_legacy' && (
                           <div className="pt-1 space-y-4">
                             <div className="flex items-center justify-between gap-3">
                               <div>

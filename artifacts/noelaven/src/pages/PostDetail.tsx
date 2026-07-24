@@ -246,7 +246,6 @@ export default function PostDetail() {
         <PostCard
           post={post}
           index={0}
-          onLike={() => {}}
           onSave={() => {}}
         />
       </div>
