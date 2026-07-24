@@ -35,6 +35,10 @@ export interface Post {
   shares: number;
   liked: boolean;
   saved: boolean;
+  /** emoji → [userId, …] — full reaction map from Firestore */
+  reactions?: Record<string, string[]>;
+  /** Which emoji the current user chose, or null */
+  myReaction?: string | null;
   mood?: string;
   commentsDisabled?: boolean;
   createdAt: Date;
@@ -110,7 +114,7 @@ export interface Conversation {
 
 export interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'reply' | 'like_comment' | 'follow' | 'community_invite' | 'daily_spark';
+  type: 'like' | 'reaction' | 'comment' | 'reply' | 'like_comment' | 'follow' | 'community_invite' | 'daily_spark';
   actorId: string;
   actor: User;
   postId?: string;

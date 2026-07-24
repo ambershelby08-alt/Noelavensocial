@@ -1,31 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Heart, MessageCircle, UserPlus, Users, Sparkles, CheckCheck, Reply } from 'lucide-react';
+import { MessageCircle, UserPlus, Users, Sparkles, CheckCheck, Reply } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'wouter';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
-const FILTERS = ['All', 'Likes', 'Comments', 'Follows'] as const;
+const FILTERS = ['All', 'Reactions', 'Comments', 'Follows'] as const;
 type Filter = typeof FILTERS[number];
 
-function getIcon(type: string) {
+/** Extract the reaction emoji from a notification message like "Ashley 🌊 Vibed your post" */
+function extractReactionEmoji(message: string): string {
+  // Second word is the emoji
+  const parts = message.trim().split(/\s+/);
+  return parts[1] ?? '🌊';
+}
+
+function getIcon(type: string, message = '') {
   switch (type) {
-    case 'like':             return <Heart size={15} className="fill-red-500 text-red-500" />;
+    case 'reaction':
+    case 'like':
+      return <span className="text-[13px] leading-none">{extractReactionEmoji(message)}</span>;
+    case 'like_comment':
+      return <span className="text-[13px] leading-none">🌊</span>;
     case 'comment':          return <MessageCircle size={15} className="text-purple-500 fill-purple-100" />;
     case 'reply':            return <Reply size={15} className="text-purple-400" />;
-    case 'like_comment':     return <Heart size={15} className="fill-pink-400 text-pink-400" />;
     case 'follow':           return <UserPlus size={15} className="text-blue-500" />;
     case 'community_invite': return <Users size={15} className="text-indigo-500" />;
     case 'daily_spark':      return <Sparkles size={15} className="text-yellow-500 fill-yellow-400" />;
-    default:                 return <Heart size={15} className="text-gray-400" />;
+    default:                 return <span className="text-[13px]">🌊</span>;
   }
 }
 
 function matchesFilter(type: string, filter: Filter): boolean {
   if (filter === 'All') return true;
-  if (filter === 'Likes') return type === 'like' || type === 'like_comment';
+  if (filter === 'Reactions') return type === 'reaction' || type === 'like' || type === 'like_comment';
   if (filter === 'Comments') return type === 'comment' || type === 'reply';
   if (filter === 'Follows') return type === 'follow' || type === 'community_invite';
   return false;
@@ -33,7 +43,7 @@ function matchesFilter(type: string, filter: Filter): boolean {
 
 function linkForNotif(notif: { type: string; postId?: string; communityId?: string; actorId?: string; targetId?: string }): string | null {
   const { type, postId, communityId, actorId, targetId } = notif;
-  if (type === 'like' || type === 'comment' || type === 'reply' || type === 'like_comment') {
+  if (type === 'reaction' || type === 'like' || type === 'comment' || type === 'reply' || type === 'like_comment') {
     const id = postId || targetId;
     return id ? `/post/${id}` : null;
   }

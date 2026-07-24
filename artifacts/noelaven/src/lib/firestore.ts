@@ -8,6 +8,7 @@ import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc,
   deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot,
   serverTimestamp, increment, arrayUnion, arrayRemove, Timestamp,
+  runTransaction,
   type DocumentData, type Unsubscribe, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -146,6 +147,8 @@ function docToPost(id: string, d: DocumentData): Post {
     shares: d.shares ?? 0,
     liked: false,
     saved: false,
+    reactions: (d.reactions as Record<string, string[]>) ?? {},
+    myReaction: null,
     mood: d.mood ?? undefined,
     commentsDisabled: d.commentsDisabled ?? false,
     createdAt: ts(d.createdAt),
@@ -298,14 +301,16 @@ export function subscribeFeed(
     const posts = snap.docs.map(d => docToPost(d.id, d.data()));
 
     if (currentUserId && db) {
-      const [likedSnap, savedSnap] = await Promise.all([
-        getDocs(collection(db, 'users', currentUserId, 'liked_posts')),
-        getDocs(collection(db, 'users', currentUserId, 'saved_posts')),
-      ]);
-      const likedIds = new Set(likedSnap.docs.map(d => d.id));
+      const savedSnap = await getDocs(collection(db, 'users', currentUserId, 'saved_posts'));
       const savedIds = new Set(savedSnap.docs.map(d => d.id));
       posts.forEach(p => {
-        p.liked = likedIds.has(p.id);
+        // Derive myReaction from the reactions map embedded in the post doc
+        let myReaction: string | null = null;
+        for (const [emoji, users] of Object.entries(p.reactions ?? {})) {
+          if ((users as string[]).includes(currentUserId)) { myReaction = emoji; break; }
+        }
+        p.myReaction = myReaction;
+        p.liked = myReaction !== null;
         p.saved = savedIds.has(p.id);
       });
     }
@@ -334,6 +339,57 @@ export async function togglePostLike(postId: string, userId: string, currentlyLi
   } else {
     await Promise.all([updateDoc(postRef, { likes: increment(1) }), setDoc(likeRef, { likedAt: serverTimestamp() })]);
   }
+}
+
+/**
+ * Toggle a Noelaven reaction on a post.
+ * - Same emoji → remove (toggle off)
+ * - Different emoji → switch (remove old, add new, count unchanged)
+ * - No previous → add new (count +1)
+ */
+export async function togglePostReaction(
+  postId: string,
+  userId: string,
+  emoji: string,
+): Promise<void> {
+  if (!db) return;
+  const postRef = doc(db, 'posts', postId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(postRef);
+    if (!snap.exists()) return;
+    const currentReactions: Record<string, string[]> = (snap.data().reactions as Record<string, string[]>) ?? {};
+
+    // Find user's existing reaction
+    let prevEmoji: string | null = null;
+    for (const [e, users] of Object.entries(currentReactions)) {
+      if ((users as string[]).includes(userId)) { prevEmoji = e; break; }
+    }
+
+    const toggledOff = prevEmoji === emoji;
+    const updates: Record<string, unknown> = {};
+
+    if (toggledOff) {
+      // Remove: filter userId out of this emoji's array
+      updates[`reactions.${emoji}`] = (currentReactions[emoji] ?? []).filter((id: string) => id !== userId);
+      updates.likes = increment(-1);
+    } else {
+      if (prevEmoji) {
+        // Switch: remove from previous
+        updates[`reactions.${prevEmoji}`] = (currentReactions[prevEmoji] ?? []).filter((id: string) => id !== userId);
+        // likes count unchanged when switching
+      } else {
+        // Brand new reaction
+        updates.likes = increment(1);
+      }
+      // Add to new emoji (deduped)
+      updates[`reactions.${emoji}`] = [
+        ...(currentReactions[emoji] ?? []).filter((id: string) => id !== userId),
+        userId,
+      ];
+    }
+
+    tx.update(postRef, updates);
+  });
 }
 
 export async function togglePostSave(postId: string, userId: string, currentlySaved: boolean): Promise<void> {
@@ -984,7 +1040,7 @@ export async function addReply(
  */
 export async function writeNotification(
   userId: string,
-  type: 'like' | 'comment' | 'reply' | 'like_comment' | 'follow',
+  type: 'like' | 'reaction' | 'comment' | 'reply' | 'like_comment' | 'follow',
   actor: User,
   opts: { postId?: string; commentId?: string; message: string }
 ): Promise<void> {

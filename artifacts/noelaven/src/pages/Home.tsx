@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Heart, MessageCircle, Share2, Bookmark,
+  MessageCircle, Share2, Bookmark,
   Image as ImageIcon, Smile, MapPin, Send,
   Bell, MoreHorizontal, Sparkles, X,
   Link as LinkIcon, Users, MessageSquare, Check,
@@ -9,6 +9,8 @@ import {
   Edit2, MessageCircleOff, ClipboardCopy,
   Globe, Lock, UserCircle, Flame,
 } from 'lucide-react';
+import { ReactionButton } from '@/components/ui/ReactionButton';
+import { reactionPhrase } from '@/lib/reactions';
 import { useAuth } from '@/contexts/AuthContext';
 import { dailySparks, mockUsers } from '@/lib/mockData';
 import type { Post, User, SparkAudience } from '@/lib/mockData';
@@ -807,14 +809,14 @@ interface CommunityRevealProps {
   currentUserId?: string;
   onOpenComments: (post: Post) => void;
   onOpenShare: (post: Post) => void;
-  onLike: (postId: string, liked: boolean) => void;
+  onReact: (postId: string, emoji: string) => void;
   onOpenMenu: (post: Post) => void;
   onOpenPhoto: (src: string) => void;
 }
 
 function CommunityReveal({
   prompt, streak, memoryLane, currentUserId,
-  onOpenComments, onOpenShare, onLike, onOpenMenu, onOpenPhoto,
+  onOpenComments, onOpenShare, onReact, onOpenMenu, onOpenPhoto,
 }: CommunityRevealProps) {
   const [sort, setSort] = useState<CommunitySort>('everyone');
   const { posts, loading } = useSparkCommunity(prompt, true);
@@ -938,7 +940,7 @@ function CommunityReveal({
               index={idx}
               onOpenComments={onOpenComments}
               onOpenShare={onOpenShare}
-              onLike={(id, liked) => onLike(id, liked)}
+              onReact={onReact}
               onSave={() => {}}
               onOpenMenu={onOpenMenu}
               onOpenPhoto={onOpenPhoto}
@@ -956,7 +958,7 @@ function CommunityReveal({
                   index={featured.length + idx}
                   onOpenComments={onOpenComments}
                   onOpenShare={onOpenShare}
-                  onLike={(id, liked) => onLike(id, liked)}
+                  onReact={onReact}
                   onSave={() => {}}
                   onOpenMenu={onOpenMenu}
                   onOpenPhoto={onOpenPhoto}
@@ -1507,7 +1509,8 @@ interface PostCardProps {
   index: number;
   onOpenComments?: (post: Post) => void;
   onOpenShare?: (post: Post) => void;
-  onLike?: (postId: string, newLiked: boolean) => void;
+  /** Called when the user picks or removes a reaction (emoji). */
+  onReact?: (postId: string, emoji: string) => void;
   onSave?: (postId: string, newSaved: boolean) => void;
   /** Opens the post three-dot menu */
   onOpenMenu?: (post: Post) => void;
@@ -1515,24 +1518,13 @@ interface PostCardProps {
   onOpenPhoto?: (src: string) => void;
 }
 
-export function PostCard({ post, index, onOpenComments, onOpenShare, onLike, onSave, onOpenMenu, onOpenPhoto }: PostCardProps) {
-  const [liked, setLiked] = useState(post.liked);
-  const [likesCount, setLikesCount] = useState(post.likes);
+export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, onSave, onOpenMenu, onOpenPhoto }: PostCardProps) {
   const [saved, setSaved] = useState(post.saved);
   const [commentsCount, setCommentsCount] = useState(post.comments);
   const [sharesCount, setSharesCount] = useState(post.shares);
 
-  // Sync when post prop changes (Firestore updates)
-  useEffect(() => { setLiked(post.liked); }, [post.liked]);
-  useEffect(() => { setLikesCount(post.likes); }, [post.likes]);
+  // Sync saved from Firestore updates
   useEffect(() => { setSaved(post.saved); }, [post.saved]);
-
-  function handleLike() {
-    const newLiked = !liked;
-    setLiked(newLiked);
-    setLikesCount(prev => newLiked ? prev + 1 : prev - 1);
-    onLike?.(post.id, newLiked);
-  }
 
   function handleSave() {
     const newSaved = !saved;
@@ -1599,21 +1591,13 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onLike, onS
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-2.5 border-t border-gray-50">
-        <div className="flex items-center gap-1">
-          {/* Like */}
-          <motion.button
-            whileTap={{ scale: 0.82 }}
-            onClick={handleLike}
-            className={cn(
-              'flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full transition-all',
-              liked ? 'text-pink-500 bg-pink-50' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
-            )}
-          >
-            <motion.span animate={liked ? { scale: [1, 1.4, 1] } : { scale: 1 }} transition={{ duration: 0.25 }}>
-              <Heart size={16} className={cn(liked && 'fill-pink-500 stroke-pink-500')} />
-            </motion.span>
-            <span>{likesCount}</span>
-          </motion.button>
+        <div className="flex items-center gap-0.5">
+          {/* Reaction */}
+          <ReactionButton
+            reactions={post.reactions ?? {}}
+            myReaction={post.myReaction ?? null}
+            onReact={(emoji) => onReact?.(post.id, emoji)}
+          />
 
           {/* Comment */}
           <button
@@ -1658,7 +1642,7 @@ export default function Home() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = currentUser?.displayName.split(' ')[0] ?? 'there';
 
-  const { posts, addPost, toggleLike, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
+  const { posts, addPost, toggleReaction, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   const { unreadCount } = useNotifications();
   const { prompt: sparkPrompt, hasAnsweredToday, streak, memoryLane, markAnswered } = useDailySpark(currentUser?.id);
   const { groups: storyGroups, publishStory, markViewed, deleteStory } = useStories();
@@ -1888,7 +1872,7 @@ export default function Home() {
           currentUserId={currentUser?.id}
           onOpenComments={p => setCommentsPost(p)}
           onOpenShare={p => setSharePost(p)}
-          onLike={(id, liked) => toggleLike(id, !liked).catch(console.error)}
+          onReact={(id, emoji) => toggleReaction(id, emoji).catch(console.error)}
           onOpenMenu={p => setMenuPost(p)}
           onOpenPhoto={src => setPhotoViewer({ src })}
         />
@@ -1904,12 +1888,13 @@ export default function Home() {
             index={index}
             onOpenComments={p => setCommentsPost(p)}
             onOpenShare={p => setSharePost(p)}
-            onLike={(id, liked) => {
-              toggleLike(id, !liked).catch(console.error);
-              if (!liked && post.authorId !== currentUser?.id && isFirebaseConfigured && currentUser) {
-                fsWriteNotification(post.authorId, 'like', currentUser as unknown as User, {
+            onReact={(id, emoji) => {
+              const isRemoving = post.myReaction === emoji;
+              toggleReaction(id, emoji).catch(console.error);
+              if (!isRemoving && post.authorId !== currentUser?.id && isFirebaseConfigured && currentUser) {
+                fsWriteNotification(post.authorId, 'reaction', currentUser as unknown as User, {
                   postId: id,
-                  message: `${currentUser.displayName} liked your post`,
+                  message: `${currentUser.displayName} ${emoji} ${reactionPhrase(emoji)} your post`,
                 }).catch(console.error);
               }
             }}

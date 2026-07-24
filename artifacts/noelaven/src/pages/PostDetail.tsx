@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Send, Heart, Loader2, MessageCircle, Sparkles,
+  ArrowLeft, Send, Loader2, MessageCircle, Sparkles,
 } from 'lucide-react';
+import { CommentReactionButton } from '@/components/ui/ReactionButton';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
@@ -77,17 +78,11 @@ function CommentRow({
           <span className="text-[11.5px] text-gray-400">
             {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
           </span>
-          <button
-            onClick={handleLike}
-            disabled={!currentUserId}
-            className={cn(
-              'flex items-center gap-1 text-[11.5px] font-bold transition-colors disabled:opacity-40',
-              liked ? 'text-red-500' : 'text-gray-400 hover:text-red-400'
-            )}
-          >
-            <Heart size={11} className={liked ? 'fill-red-500' : ''} />
-            {likes > 0 && likes}
-          </button>
+          <CommentReactionButton
+            likes={likes}
+            liked={liked}
+            onToggle={handleLike}
+          />
         </div>
       </div>
     </motion.div>
