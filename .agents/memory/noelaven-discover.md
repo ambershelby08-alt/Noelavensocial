@@ -8,6 +8,9 @@ description: Architecture and key decisions for the production Discover experien
 - `src/hooks/useDiscover.ts` — Firestore subscription, trending/suggested derivation, live search
 - `src/pages/Discover.tsx` — full rewrite (~1 100 lines), all sub-components inline
 
+## Tab structure (updated)
+`TABS = ['For You', 'Trending', 'Suggested', 'Search']` — Search is a first-class tab, not a focus-mode overlay. `isSearchMode = activeTab === 'Search'`. Clicking the Search tab (or focusing the input) switches to it and stores the previous tab in `prevTab` so Cancel can navigate back. TrendingView Top Posts now uses `ExploreGrid` with local `pageCount` pagination (TRENDING_PAGE_SIZE=12) instead of a static `slice(0,12)`.
+
 ## Architecture decisions
 
 **Privacy filter:** public posts filter uses `!p.sparkAudience || p.sparkAudience === 'public'`.

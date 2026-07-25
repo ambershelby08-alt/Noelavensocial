@@ -859,11 +859,22 @@ interface TrendingViewProps {
   onSave: (postId: string, saved: boolean) => void;
 }
 
+const TRENDING_PAGE_SIZE = 12;
+
 function TrendingView({
   hashtags, sparks, creators, posts, currentUserId, onSearch, onReact, onSave,
 }: TrendingViewProps) {
   const displayHashtags = hashtags.length >= 4 ? hashtags : DEMO_TRENDING_HASHTAGS;
   const displaySparks   = sparks.length  >= 1 ? sparks   : DEMO_TRENDING_SPARKS;
+
+  // Paginated top-posts — reset page when posts list changes (e.g. category filter)
+  const [pageCount, setPageCount] = useState(TRENDING_PAGE_SIZE);
+  useEffect(() => { setPageCount(TRENDING_PAGE_SIZE); }, [posts]);
+  const pagedPosts = posts.slice(0, pageCount);
+  const hasMore    = pageCount < posts.length;
+  const loadMore   = useCallback(() =>
+    setPageCount(n => Math.min(n + TRENDING_PAGE_SIZE, posts.length)),
+  [posts.length]);
 
   return (
     <motion.div
@@ -907,14 +918,19 @@ function TrendingView({
         </section>
       )}
 
-      {/* Top Posts Grid */}
+      {/* Top Posts Grid — infinite scroll via ExploreGrid */}
       {posts.length > 0 && (
         <section className="px-4">
           <SectionHeader emoji="📈" title="Top Posts" />
-          <div className="mt-3" style={{ columns: 2, columnGap: 8 }}>
-            {posts.slice(0, 12).map(p => (
-              <ExploreCard key={p.id} post={p} onReact={onReact} onSave={onSave} />
-            ))}
+          <div className="mt-3">
+            <ExploreGrid
+              posts={pagedPosts}
+              hasMore={hasMore}
+              loadMore={loadMore}
+              loading={false}
+              onReact={onReact}
+              onSave={onSave}
+            />
           </div>
         </section>
       )}
@@ -1024,7 +1040,7 @@ function SuggestedView({
 
 // ─── Main Discover Page ────────────────────────────────────────────────────────
 
-const TABS = ['For You', 'Trending', 'Suggested'] as const;
+const TABS = ['For You', 'Trending', 'Suggested', 'Search'] as const;
 type Tab = typeof TABS[number];
 
 export default function Discover() {
@@ -1033,13 +1049,13 @@ export default function Discover() {
 
   // ── Search state ───────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery]   = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isSearchMode = searchFocused || searchQuery.length > 0;
 
   // ── Tab + category state ───────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<Tab>('For You');
+  const [activeTab, setActiveTab]     = useState<Tab>('For You');
+  const [prevTab,   setPrevTab]       = useState<Tab>('For You');
   const [activeCategory, setActiveCategory] = useState('for-you');
+  const isSearchMode = activeTab === 'Search';
 
   // ── Data ───────────────────────────────────────────────────────────────────
   const discover = useDiscover(activeCategory);
@@ -1121,26 +1137,37 @@ export default function Discover() {
   function handleSearch(term: string) {
     setSearchQuery(term);
     personalization.trackSearch(term);
+    if (activeTab !== 'Search') {
+      setPrevTab(activeTab);
+      setActiveTab('Search');
+    }
     inputRef.current?.focus();
   }
 
   function dismissSearch() {
     setSearchQuery('');
-    setSearchFocused(false);
     inputRef.current?.blur();
+    setActiveTab(prevTab !== 'Search' ? prevTab : 'For You');
   }
 
   // ── Category tap ──────────────────────────────────────────────────────────
   function handleCategorySelect(slug: string) {
     setActiveCategory(slug);
     personalization.trackCategory(slug);
-    // Map category to tab
     if (slug === 'trending') setActiveTab('Trending');
     else setActiveTab('For You');
   }
 
   // ── Tab switch ────────────────────────────────────────────────────────────
   function handleTabSelect(tab: Tab) {
+    if (tab === 'Search') {
+      setPrevTab(activeTab !== 'Search' ? activeTab : prevTab);
+      setActiveTab('Search');
+      // Delay focus so the tab animation can settle first
+      setTimeout(() => inputRef.current?.focus(), 50);
+      return;
+    }
+    setSearchQuery('');
     setActiveTab(tab);
     if (tab === 'Trending') setActiveCategory('trending');
     else if (activeCategory === 'trending') setActiveCategory('for-you');
@@ -1162,7 +1189,7 @@ export default function Discover() {
       <div className="sticky top-0 z-30" style={{ background: 'rgba(253,249,246,0.96)', backdropFilter: 'blur(16px)' }}>
         <div className="px-4 pt-6 pb-3">
           <AnimatePresence mode="wait">
-            {!isSearchMode && (
+            {activeTab !== 'Search' && (
               <motion.h1
                 key="title"
                 initial={{ opacity: 0, y: -6 }}
@@ -1188,8 +1215,19 @@ export default function Discover() {
                 type="text"
                 placeholder="Search people, posts, topics…"
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  if (activeTab !== 'Search') {
+                    setPrevTab(activeTab);
+                    setActiveTab('Search');
+                  }
+                }}
+                onFocus={() => {
+                  if (activeTab !== 'Search') {
+                    setPrevTab(activeTab);
+                    setActiveTab('Search');
+                  }
+                }}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && searchQuery.trim()) {
                     personalization.trackSearch(searchQuery);
@@ -1223,43 +1261,34 @@ export default function Discover() {
           </div>
         </div>
 
-        {/* Tab bar (hidden in search mode) */}
-        <AnimatePresence>
-          {!isSearchMode && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="flex border-b border-black/[0.05]"
+        {/* Tab bar — always visible */}
+        <div className="flex border-b border-black/[0.05]">
+          {TABS.map(tab => (
+            <button
+              key={tab}
+              onClick={() => handleTabSelect(tab)}
+              className={cn(
+                'flex-1 py-2.5 text-[12px] font-bold transition-all relative',
+                activeTab === tab ? 'text-gray-900' : 'text-gray-400',
+              )}
             >
-              {TABS.map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => handleTabSelect(tab)}
-                  className={cn(
-                    'flex-1 py-2.5 text-[13.5px] font-bold transition-all relative',
-                    activeTab === tab ? 'text-gray-900' : 'text-gray-400',
-                  )}
-                >
-                  {tab}
-                  {activeTab === tab && (
-                    <motion.div
-                      layoutId="tab-indicator"
-                      className="absolute bottom-0 inset-x-4 h-0.5 rounded-full"
-                      style={{ background: 'linear-gradient(90deg, #6B73FF, #FF6B9D)' }}
-                    />
-                  )}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {tab}
+              {activeTab === tab && (
+                <motion.div
+                  layoutId="tab-indicator"
+                  className="absolute bottom-0 inset-x-3 h-0.5 rounded-full"
+                  style={{ background: 'linear-gradient(90deg, #6B73FF, #FF6B9D)' }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Content ───────────────────────────────────────────────────────── */}
       <AnimatePresence mode="wait">
-        {isSearchMode ? (
-          <motion.div key="search-mode" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        {activeTab === 'Search' ? (
+          <motion.div key="search" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <SearchView
               query={searchQuery}
               onSearch={handleSearch}
@@ -1271,7 +1300,7 @@ export default function Discover() {
             />
           </motion.div>
         ) : (
-          <motion.div key="browse-mode" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div key="browse" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {/* Category chips */}
             <CategoryChips active={activeCategory} onSelect={handleCategorySelect} />
 
