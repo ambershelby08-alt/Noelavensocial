@@ -23,8 +23,25 @@ import {
 } from 'firebase/firestore';
 import { isFirebaseConfigured } from '@/lib/firebase';
 
+/** Statuses stored in Firestore and synced between peers. */
 export type CallStatus = 'ringing' | 'active' | 'ended' | 'declined' | 'missed';
 export type CallType   = 'voice' | 'video';
+
+/**
+ * Local-only call phase — drives UI display and is never written to Firestore.
+ *
+ *  connecting   – ICE gathering / STUN probing in progress
+ *  ringing      – offer sent (caller) or received (callee), waiting for answer
+ *  connected    – ICE in 'connected' or 'completed', media flowing
+ *  reconnecting – ICE in 'disconnected'; attempting to recover
+ *  failed       – ICE permanently failed or timed out; call will be torn down
+ */
+export type LocalCallPhase =
+  | 'connecting'
+  | 'ringing'
+  | 'connected'
+  | 'reconnecting'
+  | 'failed';
 
 export interface CallDoc {
   callId: string;
