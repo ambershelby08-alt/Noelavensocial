@@ -276,17 +276,26 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
   }
 
   async function handleSave() {
-    const trimmed = displayName.trim();
-    if (!trimmed || trimmed.length < 2) return;
+    const trimmedName   = displayName.trim();
+    const trimmedHandle = handle.trim();
+    // Require display name ≥ 2 chars; allow handle to be unchanged (empty input kept as-is)
+    if (!trimmedName || trimmedName.length < 2) return;
+    if (trimmedHandle && trimmedHandle.length < 2) return;
+
     setSaving(true);
     await new Promise(r => setTimeout(r, 400));
-    onSave({
-      displayName: displayName.trim(),
-      handle: handle.trim() || user.handle,
-      bio: bio.trim(),
-      interests,
-      ...(avatarUrl !== (user.avatarUrl ?? '') ? { avatarUrl } : {}),
-    });
+
+    // Build a partial update — only include fields that actually changed so that
+    // editing the display name never silently clears a previously set @handle.
+    const updates: Partial<User> = {};
+    if (trimmedName !== user.displayName) updates.displayName = trimmedName;
+    else updates.displayName = user.displayName; // always include to keep type happy
+    updates.handle     = trimmedHandle || user.handle; // fall back to existing if cleared
+    updates.bio        = bio.trim();
+    updates.interests  = interests;
+    if (avatarUrl !== (user.avatarUrl ?? '')) updates.avatarUrl = avatarUrl;
+
+    onSave(updates);
     setSaving(false);
     onClose();
   }

@@ -80,7 +80,12 @@ export function usePersonalization() {
       .map(post => {
         let score = 0;
         // Recency: lose 1 pt per 8 h, floor at 0
-        const ageH = (Date.now() - post.createdAt.getTime()) / 3_600_000;
+        // post.createdAt is typed as Date but may arrive as a Firestore Timestamp.
+        // Use duck-typed extraction so the hook never crashes on .getTime().
+        const rawMs = (post.createdAt as unknown as { toDate?: () => Date })?.toDate
+          ? (post.createdAt as unknown as { toDate: () => Date }).toDate().getTime()
+          : post.createdAt instanceof Date ? post.createdAt.getTime() : Date.now();
+        const ageH = (Date.now() - rawMs) / 3_600_000;
         score += Math.max(0, 10 - ageH / 8);
         // Engagement (0–8)
         score += Math.min(8, ((post.likes ?? 0) + (post.comments ?? 0) * 1.5) / 60);

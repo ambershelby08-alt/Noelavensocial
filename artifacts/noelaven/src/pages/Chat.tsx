@@ -237,7 +237,7 @@ function VoiceMessageBubble({ msg, isMe }: { msg: LocalMsg; isMe: boolean }) {
 
 // ─── Image bubble ─────────────────────────────────────────────────────────────
 
-function ImageBubble({ msg, isMe }: { msg: LocalMsg; isMe: boolean }) {
+function ImageBubble({ msg, isMe, onOpen }: { msg: LocalMsg; isMe: boolean; onOpen?: (url: string) => void }) {
   const [loaded, setLoaded] = useState(false);
   const url = msg.mediaUrl ?? msg.localMediaUrl;
 
@@ -253,7 +253,10 @@ function ImageBubble({ msg, isMe }: { msg: LocalMsg; isMe: boolean }) {
   }
 
   return (
-    <div className="relative rounded-[18px] overflow-hidden w-52">
+    <div
+      className="relative rounded-[18px] overflow-hidden w-52 cursor-pointer active:scale-[0.97] transition-transform"
+      onClick={() => onOpen?.(url)}
+    >
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-200 z-10 rounded-[18px]">
           <Loader2 size={20} className="text-gray-400 animate-spin" />
@@ -373,9 +376,10 @@ interface BubbleProps {
   onActivate: () => void;
   onLongPress: () => void;
   onReact: (emoji: string) => void;
+  onOpenPhoto: (url: string) => void;
 }
 
-function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, currentUserId, showPicker, onActivate, onLongPress, onReact }: BubbleProps) {
+function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, currentUserId, showPicker, onActivate, onLongPress, onReact, onOpenPhoto }: BubbleProps) {
   const readByOthers = msg.readBy.filter(id => id !== currentUserId);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -457,7 +461,7 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
             <VoiceMessageBubble msg={msg} isMe={isMe} />
           </div>
         ) : isImage ? (
-          <ImageBubble msg={msg} isMe={isMe} />
+          <ImageBubble msg={msg} isMe={isMe} onOpen={onOpenPhoto} />
         ) : isVideo ? (
           <div className="relative rounded-[18px] overflow-hidden w-52 h-44 bg-gray-900 flex items-center justify-center">
             {msg.mediaUrl ? (
@@ -997,18 +1001,27 @@ export default function Chat() {
   const [forwardMsg, setForwardMsg]       = useState<LocalMsg | null>(null);
   const [atBottom, setAtBottom]           = useState(true);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [viewingPhoto, setViewingPhoto]   = useState<string | null>(null);
 
-  const scrollRef   = useRef<HTMLDivElement>(null);
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef        = useRef<HTMLDivElement>(null);
+  const bottomRef        = useRef<HTMLDivElement>(null);
+  const textareaRef      = useRef<HTMLTextAreaElement>(null);
+  const isInitialLoadRef = useRef(true);
 
   // ── Hooks that must run unconditionally (before any early return) ──────────
   const [editText, setEditText] = useState('');
 
   // Scroll to bottom when new messages or typing indicator arrives.
-  // Uses typingUserIds (available before currentUser guard) as proxy for typingUsers.length.
+  // Initial load scrolls instantly (no visible jump); subsequent arrivals
+  // scroll smoothly only when already at the bottom.
   useEffect(() => {
-    if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!messages.length) return;
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+    } else if (atBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, typingUserIds.length, atBottom]);
 
   // ── Guard: must be after all hooks ────────────────────────────────────────
@@ -1428,6 +1441,7 @@ export default function Chat() {
                         onActivate={() => setActivePicker(p => p === msg.id ? null : msg.id)}
                         onLongPress={() => { setActionMsg(msg); setActivePicker(null); }}
                         onReact={emoji => handleReact(msg.id, emoji)}
+                        onOpenPhoto={url => setViewingPhoto(url)}
                       />
                       <ReactionDisplay
                         reactions={msg.reactions}
@@ -1600,6 +1614,37 @@ export default function Chat() {
           />
         )}
       </AnimatePresence>
+
+      {/* Full-screen photo viewer */}
+      {viewingPhoto && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/95 flex items-center justify-center"
+          onClick={() => setViewingPhoto(null)}
+        >
+          <button
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+            onClick={() => setViewingPhoto(null)}
+          >
+            ✕
+          </button>
+          <img
+            src={viewingPhoto}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={e => e.stopPropagation()}
+          />
+          <a
+            href={viewingPhoto}
+            download
+            target="_blank"
+            rel="noreferrer"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 px-5 py-2.5 bg-white/15 text-white text-[13px] font-semibold rounded-full hover:bg-white/25 transition-colors"
+            onClick={e => e.stopPropagation()}
+          >
+            Download
+          </a>
+        </div>
+      )}
     </div>
   );
 }

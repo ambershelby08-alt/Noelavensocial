@@ -82,12 +82,49 @@ export function useDiscover(activeCategory = '') {
   const trendingHashtags = useMemo(() => extractHashtags(allPosts), [allPosts]);
   const trendingSparks   = useMemo(() => extractSparks(allPosts),   [allPosts]);
 
-  const suggestedCreators: User[] = useMemo(
-    () => (isFirebaseConfigured ? [] : mockUsers)
-      .filter(u => u.id !== currentUser?.id)
-      .sort((a, b) => b.followers - a.followers),
-    [currentUser?.id]
+  const [suggestedCreators, setSuggestedCreators] = useState<User[]>(() =>
+    isFirebaseConfigured
+      ? []
+      : mockUsers.filter(u => u.id !== currentUser?.id).sort((a, b) => b.followers - a.followers)
   );
+
+  // Fetch top creators from Firestore (by follower count), excluding self.
+  // Runs once per session — no real-time subscription needed.
+  useEffect(() => {
+    if (!isFirebaseConfigured || !currentUser) return;
+    import('@/lib/firebase').then(({ db }) => {
+      if (!db) return;
+      import('firebase/firestore').then(({ getDocs, collection, query, orderBy, limit }) => {
+        getDocs(query(collection(db, 'users'), orderBy('followers', 'desc'), limit(10)))
+          .then(snap => {
+            const creators: User[] = snap.docs
+              .map(d => {
+                const data = d.data();
+                return {
+                  id: d.id,
+                  displayName: data.displayName ?? '',
+                  handle: data.handle ?? '',
+                  bio: data.bio ?? '',
+                  avatarUrl: data.avatarUrl ?? '',
+                  coverUrl: data.coverUrl ?? '',
+                  interests: data.interests ?? [],
+                  followers: data.followers ?? 0,
+                  following: data.following ?? 0,
+                  postCount: data.postCount ?? 0,
+                  badges: data.badges ?? [],
+                  joinedAt: data.joinedAt?.toDate?.() ?? new Date(),
+                } as User;
+              })
+              .filter(u => u.id !== currentUser.id)
+              .slice(0, 5);
+            setSuggestedCreators(creators);
+          })
+          .catch(console.error);
+      });
+    });
+  // Only run once per userId (session-scoped cache)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   async function search(query: string): Promise<{
     users: User[]; posts: Post[]; hashtags: string[];

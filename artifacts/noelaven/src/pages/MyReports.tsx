@@ -16,7 +16,9 @@ import type { Report, ReportStatus, ReportType, ReportReason } from '@/lib/mockD
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function relDate(d: Date): string {
+function relDate(raw: unknown): string {
+  const d: Date = (raw as { toDate?: () => Date })?.toDate?.()
+    ?? (raw instanceof Date ? raw : new Date(0));
   const diff = Date.now() - d.getTime();
   if (diff < 60000) return 'Just now';
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;

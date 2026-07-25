@@ -15,7 +15,11 @@ import { format, isToday, isYesterday } from 'date-fns';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtTime(d: Date): string {
+function fmtTime(raw: unknown): string {
+  // Conversation timestamps arrive as Firestore Timestamps at runtime
+  // even though the type says Date — normalize before any date-fns calls.
+  const d: Date = (raw as { toDate?: () => Date })?.toDate?.()
+    ?? (raw instanceof Date ? raw : new Date(0));
   if (isToday(d))     return format(d, 'h:mm a');
   if (isYesterday(d)) return 'Yesterday';
   const days = Math.floor((Date.now() - d.getTime()) / 86400000);

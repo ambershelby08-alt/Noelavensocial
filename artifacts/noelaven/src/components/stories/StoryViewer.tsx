@@ -78,8 +78,13 @@ function cropStyle(cropData: CropData | null): React.CSSProperties {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function relativeTime(date: Date): string {
-  const diff = Date.now() - date.getTime();
+function relativeTime(date: unknown): string {
+  // Use duck-typed normalisation — story timestamps may arrive as Firestore
+  // Timestamp objects even though the type annotation says Date.
+  const ms = (date as { toDate?: () => Date })?.toDate
+    ? ((date as { toDate: () => Date }).toDate()).getTime()
+    : date instanceof Date ? date.getTime() : 0;
+  const diff = Date.now() - ms;
   const mins = Math.floor(diff / 60_000);
   if (mins < 1)  return 'just now';
   if (mins < 60) return `${mins}m`;

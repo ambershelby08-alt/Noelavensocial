@@ -349,7 +349,11 @@ export async function toggleCommentsDisabled(postId: string, disabled: boolean):
   await updateDoc(doc(db, 'posts', postId), { commentsDisabled: disabled });
 }
 
-export async function followUser(currentUserId: string, targetUserId: string): Promise<void> {
+export async function followUser(
+  currentUserId: string,
+  targetUserId: string,
+  actor?: User
+): Promise<void> {
   if (!db) return;
   await Promise.all([
     setDoc(doc(db, 'users', currentUserId, 'following', targetUserId), { createdAt: serverTimestamp() }),
@@ -357,6 +361,12 @@ export async function followUser(currentUserId: string, targetUserId: string): P
     updateDoc(doc(db, 'users', currentUserId), { following: increment(1) }).catch(() => {}),
     updateDoc(doc(db, 'users', targetUserId), { followers: increment(1) }).catch(() => {}),
   ]);
+  // Notify the target user that someone followed them (fire-and-forget)
+  if (actor) {
+    writeNotification(targetUserId, 'follow', actor, {
+      message: `${actor.displayName} started following you`,
+    }).catch(console.error);
+  }
 }
 
 export async function unfollowUser(currentUserId: string, targetUserId: string): Promise<void> {
@@ -395,7 +405,7 @@ export function subscribeFeed(
       });
     }
     onData(posts);
-  });
+  }, err => console.error('[subscribeFeed]', err.code, err.message));
 }
 
 export function subscribeUserPosts(userId: string, onData: (posts: Post[]) => void): Unsubscribe {
@@ -407,7 +417,7 @@ export function subscribeUserPosts(userId: string, onData: (posts: Post[]) => vo
   );
   return onSnapshot(q, snap => {
     onData(snap.docs.map(d => docToPost(d.id, d.data())));
-  });
+  }, err => console.error('[subscribeUserPosts]', err.code, err.message));
 }
 
 export async function togglePostLike(postId: string, userId: string, currentlyLiked: boolean): Promise<void> {
@@ -431,12 +441,17 @@ export async function togglePostReaction(
   postId: string,
   userId: string,
   emoji: string,
+  actorProfile?: User
 ): Promise<void> {
   if (!db) return;
   const postRef = doc(db, 'posts', postId);
+  let postAuthorId: string | null = null;
+  let isNewReaction = false;
+
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(postRef);
     if (!snap.exists()) return;
+    postAuthorId = snap.data().authorId ?? null;
     const currentReactions: Record<string, string[]> = (snap.data().reactions as Record<string, string[]>) ?? {};
 
     // Find user's existing reaction
@@ -452,14 +467,17 @@ export async function togglePostReaction(
       // Remove: filter userId out of this emoji's array
       updates[`reactions.${emoji}`] = (currentReactions[emoji] ?? []).filter((id: string) => id !== userId);
       updates.likes = increment(-1);
+      isNewReaction = false;
     } else {
       if (prevEmoji) {
         // Switch: remove from previous
         updates[`reactions.${prevEmoji}`] = (currentReactions[prevEmoji] ?? []).filter((id: string) => id !== userId);
         // likes count unchanged when switching
+        isNewReaction = false; // switching emoji, not a new reaction event
       } else {
         // Brand new reaction
         updates.likes = increment(1);
+        isNewReaction = true;
       }
       // Add to new emoji (deduped)
       updates[`reactions.${emoji}`] = [
@@ -470,6 +488,15 @@ export async function togglePostReaction(
 
     tx.update(postRef, updates);
   });
+
+  // Notify the post's author of a new reaction (fire-and-forget; no-op if self)
+  if (isNewReaction && postAuthorId && actorProfile) {
+    writeNotification(postAuthorId, 'reaction', actorProfile, {
+      postId,
+      emoji,
+      message: `${actorProfile.displayName} reacted ${emoji} to your post`,
+    }).catch(console.error);
+  }
 }
 
 export async function togglePostSave(postId: string, userId: string, currentlySaved: boolean): Promise<void> {
@@ -522,7 +549,7 @@ export function subscribeCommunities(
       joinedIds = new Set(joinedSnap.docs.map(d => d.id));
     }
     onData(snap.docs.map(d => docToCommunity(d.id, d.data(), joinedIds)));
-  });
+  }, err => console.error('[subscribeCommunities]', err.code, err.message));
 }
 
 export async function toggleCommunityMembership(
@@ -617,7 +644,7 @@ export function subscribeConversations(userId: string, onData: (convs: Conversat
   );
   return onSnapshot(q, snap => {
     onData(snap.docs.map(d => docToConversation(d.id, d.data(), userId)));
-  });
+  }, err => console.error('[subscribeConversations]', err.code, err.message));
 }
 
 /**
@@ -646,7 +673,7 @@ export function subscribeMessages(
     // The oldest document is the last in the desc-sorted snapshot
     const oldestDoc = snap.docs.length >= pageSize ? snap.docs[snap.docs.length - 1] : undefined;
     onData(msgs, oldestDoc);
-  });
+  }, err => console.error('[subscribeMessages]', err.code, err.message));
 }
 
 /**
@@ -688,7 +715,8 @@ export async function sendMessage(
     voiceWaveformData?: number[];
     sharedPost?: Message['sharedPost'];
     forwardedFrom?: Message['forwardedFrom'];
-  } = {}
+  } = {},
+  senderProfile?: User
 ): Promise<string> {
   if (!db) return '';
   const ref = await addDoc(collection(db, 'conversations', convId, 'messages'), {
@@ -738,6 +766,28 @@ export async function sendMessage(
     ...unreadUpdates,
   });
 
+  // Write a `type:'message'` notification for every participant except the sender.
+  // Fire-and-forget — don't block the UI on notification delivery.
+  if (senderProfile && convSnap.exists()) {
+    const pids = (convSnap.data().participantIds ?? []) as string[];
+    for (const pid of pids) {
+      if (pid !== senderId) {
+        const notifMessage = type === 'image'
+          ? `${senderProfile.displayName} sent you a photo`
+          : type === 'voice'
+          ? `${senderProfile.displayName} sent you a voice message`
+          : type === 'video'
+          ? `${senderProfile.displayName} sent you a video`
+          : `${senderProfile.displayName}: ${content.slice(0, 80)}`;
+        writeNotification(pid, 'message', senderProfile, {
+          convId,
+          message: notifMessage,
+          targetPreview: preview.length > 80 ? preview.slice(0, 80) : preview,
+        }).catch(console.error);
+      }
+    }
+  }
+
   return ref.id;
 }
 
@@ -758,7 +808,7 @@ export async function subscribeConversation(
   return onSnapshot(doc(db, 'conversations', convId), snap => {
     if (!snap.exists()) { onData(null); return; }
     onData(docToConversation(snap.id, snap.data(), currentUserId));
-  });
+  }, err => console.error('[subscribeConversation]', err.code, err.message));
 }
 
 export async function getOrCreateDirectConversation(
@@ -946,12 +996,13 @@ export function subscribeTypingStatus(
       const ids = snap.docs
         .filter(d => {
           const t = d.data().typingAt as Timestamp | undefined;
-          const ms = t?.toDate ? t.toDate().getTime() : 0;
+          const ms = (t as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
           return d.id !== currentUserId && now - ms < 8000;
         })
         .map(d => d.id);
       onData(ids);
-    }
+    },
+    err => console.error('[subscribeTypingStatus]', err.code, err.message)
   );
 }
 
@@ -992,7 +1043,8 @@ export function subscribeNotifications(userId: string, onData: (notifs: Notifica
     orderBy('createdAt', 'desc'),
     limit(50)
   );
-  return onSnapshot(q, snap => onData(snap.docs.map(d => docToNotification(d.id, d.data()))));
+  return onSnapshot(q, snap => onData(snap.docs.map(d => docToNotification(d.id, d.data()))),
+    err => console.error('[subscribeNotifications]', err.code, err.message));
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
@@ -1026,7 +1078,8 @@ export function subscribeUnreadNotificationCount(
     where('userId', '==', userId),
     where('read', '==', false)
   );
-  return onSnapshot(q, snap => onCount(snap.size));
+  return onSnapshot(q, snap => onCount(snap.size),
+    err => console.error('[subscribeUnreadNotificationCount]', err.code, err.message));
 }
 
 // ─── Comments ─────────────────────────────────────────────────────────────────
@@ -1074,13 +1127,14 @@ export function subscribeComments(
         } satisfies RawComment;
       })
     );
-  });
+  }, err => console.error('[subscribeComments]', err.code, err.message));
 }
 
 export async function addComment(
   postId: string,
   author: User,
-  text: string
+  text: string,
+  postAuthorId?: string
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
   const ref = await addDoc(collection(db, 'posts', postId, 'comments'), {
@@ -1094,6 +1148,15 @@ export async function addComment(
     createdAt: serverTimestamp(),
   });
   await updateDoc(doc(db, 'posts', postId), { comments: increment(1) });
+  // Notify the post's author (fire-and-forget, no-ops if actor === recipient)
+  if (postAuthorId) {
+    writeNotification(postAuthorId, 'comment', author, {
+      postId,
+      commentId: ref.id,
+      message: `${author.displayName} commented: "${text.slice(0, 60)}"`,
+      targetPreview: text.slice(0, 80),
+    }).catch(console.error);
+  }
   return ref.id;
 }
 

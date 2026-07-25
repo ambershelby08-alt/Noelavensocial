@@ -99,8 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     seedCommunitiesIfNeeded();
 
     // Shared logic: resolve a Firebase user to app state (Firestore profile check).
-    async function resolveUser(firebaseUser: import('firebase/auth').User | null) {
+    async function resolveUser(
+      firebaseUser: import('firebase/auth').User | null,
+      isCurrent: () => boolean = () => true
+    ) {
       if (!firebaseUser) {
+        if (!isCurrent()) return;
         setCurrentUser(null);
         setPendingUser(null);
         setPendingUid(null);
@@ -115,6 +119,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const profile = await getUserDoc(firebaseUser.uid);
+
+        // Discard stale result if a newer auth-state change has already fired.
+        if (!isCurrent()) return;
 
         if (profile && profile.handle) {
           // Complete profile — route to Home.
@@ -192,12 +199,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Step 2 — register the auth listener only after the redirect result
         // has been applied to Firebase's internal auth state.
+        //
+        // resolveGen guards against rapid sign-out/sign-in races: if a newer
+        // auth-state change fires before an earlier resolveUser finishes its
+        // async Firestore fetch, the earlier result is silently discarded.
+        let resolveGen = 0;
         unsub = onAuthStateChanged(_auth, async firebaseUser => {
           if (cancelled) return;
+          const myGen = ++resolveGen;
+          const isCurrent = () => !cancelled && myGen === resolveGen;
           try {
-            await resolveUser(firebaseUser);
+            await resolveUser(firebaseUser, isCurrent);
           } finally {
-            if (!cancelled) setIsLoading(false);
+            if (isCurrent()) setIsLoading(false);
           }
         });
       });

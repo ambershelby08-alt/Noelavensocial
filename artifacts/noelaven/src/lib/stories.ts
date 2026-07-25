@@ -54,8 +54,10 @@ export interface StoryGroup {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function toDate(v: Timestamp | undefined): Date {
-  return v instanceof Timestamp ? v.toDate() : new Date();
+function toDate(v: unknown): Date {
+  // Duck-type instead of instanceof so this works across split-bundle monorepos
+  // where the same Timestamp class may be imported from different module paths.
+  return (v as { toDate?: () => Date })?.toDate?.() ?? new Date();
 }
 
 function docToStory(id: string, d: DocumentData): Story {
@@ -125,7 +127,7 @@ export function subscribeStories(onData: (stories: Story[]) => void): Unsubscrib
   );
   return onSnapshot(q, snap => {
     onData(snap.docs.map(d => docToStory(d.id, d.data())));
-  });
+  }, err => console.error('[subscribeStories]', err.code, err.message));
 }
 
 export async function markStoryViewed(storyId: string, userId: string): Promise<void> {

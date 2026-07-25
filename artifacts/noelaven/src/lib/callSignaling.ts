@@ -120,7 +120,7 @@ export function subscribeCall(callId: string, cb: (call: CallDoc | null) => void
       answer: d.answer,
       createdAt: d.createdAt?.toDate?.() ?? new Date(),
     });
-  });
+  }, err => console.error('[subscribeCall]', err.code, err.message));
 }
 
 /** Subscribe to incoming ringing calls for a user. */
@@ -146,7 +146,7 @@ export function subscribeIncomingCalls(userId: string, cb: (call: CallDoc | null
       answer: d.answer,
       createdAt: d.createdAt?.toDate?.() ?? new Date(),
     });
-  });
+  }, err => console.error('[subscribeIncomingCalls]', err.code, err.message));
 }
 
 /** Subscribe to ICE candidates from the other side. */
@@ -160,7 +160,7 @@ export function subscribeIceCandidates(
     snap.docChanges().forEach(change => {
       if (change.type === 'added') cb(change.doc.data() as RTCIceCandidateInit);
     });
-  });
+  }, err => console.error('[subscribeIceCandidates]', err.code, err.message));
 }
 
 export const STUN_CONFIG: RTCConfiguration = {

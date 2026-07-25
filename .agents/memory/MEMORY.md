@@ -19,3 +19,4 @@
 - [Noelaven Notifications System](noelaven-notifications.md) — real-time notifs; client-side grouping; badge in header+sidebar; prefs panel; sign-out confirm; triggers in Profile/Home.
 - [Noelaven Multi-Account](noelaven-multi-account.md) — accountStore.ts (nlv_saved_accounts); addingAccount flag in AuthContext bypasses auth guard; switchToAccount pre-fills Login via nlv_switch_email; User type now has optional email field.
 - [Noelaven auth flow gotchas](noelaven-auth-flow.md) — completeProfile must call setAddingAccount(false); Signup.tsx must catch signUp errors; AppRouter guard order can trap users mid-transition.
+- [Noelaven beta sprint patterns](noelaven-beta-sprint.md) — timestamp duck-typing, onSnapshot error handlers, rules subcollection gaps, notification wiring anti-doubles, real-time ModerationDashboard, Discover suggestedCreators.

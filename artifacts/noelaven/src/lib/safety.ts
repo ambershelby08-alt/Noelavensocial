@@ -107,13 +107,17 @@ export async function unblockUser(currentUserId: string, targetUserId: string): 
 export function subscribeBlockedUsers(userId: string, cb: (ids: string[]) => void): Unsubscribe {
   if (!isFirebaseConfigured || !db) { cb(loadArr(K.blocked)); return () => {}; }
   const q = query(collection(db, 'userBlocks'), where('blockerId', '==', userId));
-  return onSnapshot(q, snap => cb(snap.docs.map(d => d.data().blockedId as string)));
+  return onSnapshot(q,
+    snap => cb(snap.docs.map(d => d.data().blockedId as string)),
+    err => console.error('[subscribeBlockedUsers]', err.code, err.message));
 }
 
 export function subscribeBlockedByUsers(userId: string, cb: (ids: string[]) => void): Unsubscribe {
   if (!isFirebaseConfigured || !db) { cb([]); return () => {}; }
   const q = query(collection(db, 'userBlocks'), where('blockedId', '==', userId));
-  return onSnapshot(q, snap => cb(snap.docs.map(d => d.data().blockerId as string)));
+  return onSnapshot(q,
+    snap => cb(snap.docs.map(d => d.data().blockerId as string)),
+    err => console.error('[subscribeBlockedByUsers]', err.code, err.message));
 }
 
 // ─── Mute ─────────────────────────────────────────────────────────────────────
@@ -141,7 +145,9 @@ export async function unmuteUser(currentUserId: string, targetUserId: string): P
 export function subscribeMutedUsers(userId: string, cb: (ids: string[]) => void): Unsubscribe {
   if (!isFirebaseConfigured || !db) { cb(loadArr(K.muted)); return () => {}; }
   const q = query(collection(db, 'userMutes'), where('muterId', '==', userId));
-  return onSnapshot(q, snap => cb(snap.docs.map(d => d.data().mutedId as string)));
+  return onSnapshot(q,
+    snap => cb(snap.docs.map(d => d.data().mutedId as string)),
+    err => console.error('[subscribeMutedUsers]', err.code, err.message));
 }
 
 // ─── Restrict ─────────────────────────────────────────────────────────────────
@@ -169,7 +175,9 @@ export async function unrestrictUser(currentUserId: string, targetUserId: string
 export function subscribeRestrictedUsers(userId: string, cb: (ids: string[]) => void): Unsubscribe {
   if (!isFirebaseConfigured || !db) { cb(loadArr(K.restricted)); return () => {}; }
   const q = query(collection(db, 'userRestrictions'), where('restrictorId', '==', userId));
-  return onSnapshot(q, snap => cb(snap.docs.map(d => d.data().restrictedId as string)));
+  return onSnapshot(q,
+    snap => cb(snap.docs.map(d => d.data().restrictedId as string)),
+    err => console.error('[subscribeRestrictedUsers]', err.code, err.message));
 }
 
 // ─── Safety settings ──────────────────────────────────────────────────────────
@@ -181,7 +189,7 @@ export function subscribeSafetySettings(userId: string, cb: (s: SafetySettings) 
   }
   return onSnapshot(doc(db, 'userSafetySettings', userId), snap => {
     cb(snap.exists() ? { ...defaultSafetySettings(), ...snap.data() } as SafetySettings : defaultSafetySettings());
-  });
+  }, err => console.error('[subscribeSafetySettings]', err.code, err.message));
 }
 
 export async function updateSafetySettings(userId: string, settings: Partial<SafetySettings>): Promise<void> {
@@ -302,7 +310,11 @@ export async function getUserReports(userId: string): Promise<Report[]> {
       const snap = await getDocs(q);
       return snap.docs
         .map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>))
-        .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+        .sort((a, b) => {
+          const bMs = (b.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
+          const aMs = (a.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+          return bMs - aMs;
+        });
     } catch (err: unknown) {
       rethrowIfIndexError(err);
       throw err;
@@ -315,6 +327,46 @@ export async function getUserReports(userId: string): Promise<Report[]> {
       .filter(r => r.reporterId === userId)
       .map(r => ({ ...r, createdAt: new Date(r.createdAt) }));
   } catch { return []; }
+}
+
+/**
+ * Real-time subscription to reports by status.
+ * Updates the ModerationDashboard whenever a report is filed or status changes.
+ */
+export function subscribeReports(
+  statusFilter: ReportStatus | 'all',
+  onData: (reports: Report[]) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
+  if (!isFirebaseConfigured || !db) {
+    // Demo mode: one-time load from localStorage
+    try {
+      const raw = localStorage.getItem('nlv_reports');
+      if (!raw) { onData([]); return () => {}; }
+      const all: Report[] = JSON.parse(raw);
+      onData((statusFilter === 'all' ? all : all.filter(r => r.status === statusFilter))
+        .map(r => ({ ...r, createdAt: new Date(r.createdAt) })));
+    } catch { onData([]); }
+    return () => {};
+  }
+
+  const q = statusFilter === 'all'
+    ? query(collection(db, 'reports'), limit(200))
+    : query(collection(db, 'reports'), where('status', '==', statusFilter), limit(200));
+
+  return onSnapshot(q, snap => {
+    const sorted = snap.docs
+      .map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>))
+      .sort((a, b) => {
+        const bMs = (b.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
+        const aMs = (a.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+        return bMs - aMs;
+      });
+    onData(sorted);
+  }, err => {
+    console.error('[subscribeReports]', err.code, err.message);
+    onError?.(err);
+  });
 }
 
 export async function getPendingReports(statusFilter: ReportStatus | 'all' = 'pending'): Promise<Report[]> {
@@ -330,7 +382,11 @@ export async function getPendingReports(statusFilter: ReportStatus | 'all' = 'pe
       const snap = await getDocs(q);
       return snap.docs
         .map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>))
-        .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+        .sort((a, b) => {
+          const bMs = (b.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
+          const aMs = (a.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
+          return bMs - aMs;
+        });
     } catch (err: unknown) {
       rethrowIfIndexError(err);
       throw err;
@@ -554,8 +610,8 @@ export async function getSuspendedUsers(): Promise<Array<{
         reason: d.data().reason,
         days: d.data().days,
         permanent: false,
-        suspendedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
-        expiresAt: d.data().expiresAt instanceof Timestamp ? d.data().expiresAt.toDate() : null,
+        suspendedAt: (d.data().suspendedAt as { toDate?: () => Date })?.toDate?.() ?? new Date(),
+        expiresAt: (d.data().expiresAt as { toDate?: () => Date })?.toDate?.() ?? null,
       }));
   } catch (err: unknown) {
     rethrowIfIndexError(err);
@@ -577,7 +633,7 @@ export async function getBannedUsers(): Promise<Array<{
       .map(d => ({
         userId: d.id,
         reason: d.data().reason,
-        bannedAt: d.data().suspendedAt instanceof Timestamp ? d.data().suspendedAt.toDate() : new Date(),
+        bannedAt: (d.data().suspendedAt as { toDate?: () => Date })?.toDate?.() ?? new Date(),
       }));
   } catch (err: unknown) {
     rethrowIfIndexError(err);
@@ -591,7 +647,7 @@ export async function getModerationLog(): Promise<ModerationLog[]> {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({
       id: d.id, ...d.data(),
-      createdAt: d.data().createdAt instanceof Timestamp ? d.data().createdAt.toDate() : new Date(),
+      createdAt: (d.data().createdAt as { toDate?: () => Date })?.toDate?.() ?? new Date(),
     })) as ModerationLog[];
   }
   try {

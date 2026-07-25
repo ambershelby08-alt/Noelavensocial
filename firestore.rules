@@ -132,16 +132,16 @@ service cloud.firestore {
           || isModerator();
       allow delete: if (isAuthenticated() && resource.data.authorId == request.auth.uid)
           || isModerator();
-    }
 
-    // ── Comments ──────────────────────────────────────────────────────────────
-    match /comments/{commentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated()
-          && request.resource.data.authorId == request.auth.uid;
-      allow update, delete:
-          if (isAuthenticated() && resource.data.authorId == request.auth.uid)
-          || isModerator();
+      // Comments are stored as a subcollection of each post
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+            && request.resource.data.authorId == request.auth.uid;
+        allow update, delete:
+            if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+            || isModerator();
+      }
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
@@ -170,6 +170,15 @@ service cloud.firestore {
           && request.resource.data.senderId == request.auth.uid;
     }
 
+    // Typing indicators — participants only
+    match /conversations/{convId}/typing/{userId} {
+      allow read: if isAuthenticated()
+          && request.auth.uid in
+             get(/databases/$(database)/documents/conversations/$(convId))
+             .data.participantIds;
+      allow write: if isOwner(userId);
+    }
+
     // ── Communities ───────────────────────────────────────────────────────────
     match /communities/{communityId} {
       allow read: if isAuthenticated();
@@ -181,6 +190,17 @@ service cloud.firestore {
     match /follows/{followId} {
       allow read:  if isAuthenticated();
       allow write: if isAuthenticated();
+    }
+
+    // ── User subcollections (saved/liked posts, joined communities) ───────────
+    match /users/{userId}/saved_posts/{postId} {
+      allow read, write: if isOwner(userId);
+    }
+    match /users/{userId}/liked_posts/{postId} {
+      allow read, write: if isOwner(userId);
+    }
+    match /users/{userId}/joined_communities/{communityId} {
+      allow read, write: if isOwner(userId);
     }
 
     // ── Following / followers subcollections ──────────────────────────────────
@@ -197,6 +217,33 @@ service cloud.firestore {
       allow read:  if isAuthenticated();
       // Written by the person doing the following (their own uid == followerId)
       allow write: if isAuthenticated() && request.auth.uid == followerId;
+    }
+
+    // ── Calls (WebRTC signaling) ───────────────────────────────────────────────
+    match /calls/{callId} {
+      allow read: if isAuthenticated()
+          && (resource.data.callerId == request.auth.uid
+              || resource.data.calleeId == request.auth.uid);
+      allow create: if isAuthenticated()
+          && request.resource.data.callerId == request.auth.uid;
+      // Both parties can update status/answer
+      allow update: if isAuthenticated()
+          && (resource.data.callerId == request.auth.uid
+              || resource.data.calleeId == request.auth.uid);
+      // Participants may clean up call docs
+      allow delete: if isAuthenticated()
+          && (resource.data.callerId == request.auth.uid
+              || resource.data.calleeId == request.auth.uid);
+
+      // ICE candidates subcollections — each side writes their own candidates
+      match /callerCandidates/{candidateId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+      }
+      match /calleeCandidates/{candidateId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+      }
     }
 
     // ── Stories ───────────────────────────────────────────────────────────────

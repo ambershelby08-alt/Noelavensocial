@@ -108,7 +108,7 @@ export function useFeed() {
 
     if (isFirebaseConfigured) {
       try {
-        await fsTogglePostReaction(postId, currentUser.id, emoji);
+        await fsTogglePostReaction(postId, currentUser.id, emoji, currentUser);
       } catch {
         // Revert on error
         setPosts(prev => prev.map(p =>

@@ -177,7 +177,7 @@ export default function PostDetail() {
     setSending(true);
     try {
       if (isFirebaseConfigured) {
-        await addComment(postId, currentUser, body);
+        await addComment(postId, currentUser, body, post?.authorId);
         // subscribeComments will update the list
       } else {
         const stub: RawComment = {

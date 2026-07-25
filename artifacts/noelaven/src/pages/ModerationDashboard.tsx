@@ -14,7 +14,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
-  getPendingReports, updateReportStatus, assignReport, updateReportPriority,
+  subscribeReports, getPendingReports, updateReportStatus, assignReport, updateReportPriority,
   suspendUser, banUser, unbanUser, sendWarning, restrictAccount,
   removeContent, restoreContent,
   getSuspendedUsers, getBannedUsers, getModerationLog, checkIsAdmin,
@@ -26,13 +26,17 @@ import { isFounderUid } from '@/lib/founder';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
-function relDate(d: Date): string {
-  if (!d) return '';
-  const diff = Date.now() - new Date(d).getTime();
+function relDate(raw: unknown): string {
+  if (!raw) return '';
+  // Normalize Firestore Timestamp / Date / string safely
+  const d: Date = (raw as { toDate?: () => Date })?.toDate?.()
+    ?? (raw instanceof Date ? raw : new Date(raw as string));
+  if (isNaN(d.getTime())) return '';
+  const diff = Date.now() - d.getTime();
   if (diff < 60000)    return 'Just now';
   if (diff < 3600000)  return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {
@@ -445,23 +449,37 @@ export default function ModerationDashboard() {
 
   const loadTab = useCallback(async (tab: TabId) => {
     if (!isAdmin) return;
-    setLoading(true);
-    try {
-      if (tab === 'pending')        setReports(await getPendingReports('pending'));
-      else if (tab === 'reviewing') setReports(await getPendingReports('reviewing'));
-      else if (tab === 'resolved')  setReports(await getPendingReports('resolved'));
-      else if (tab === 'dismissed') setReports(await getPendingReports('dismissed'));
-      else if (tab === 'suspended') setSuspended(await getSuspendedUsers());
-      else if (tab === 'banned')    setBanned(await getBannedUsers());
-      else if (tab === 'log')       setLog(await getModerationLog());
-    } catch (err: unknown) {
-      showToast(`Error loading data: ${(err as Error)?.message ?? 'unknown'}`);
-    } finally {
-      setLoading(false);
+    if (['suspended', 'banned', 'log'].includes(tab)) {
+      setLoading(true);
+      try {
+        if (tab === 'suspended') setSuspended(await getSuspendedUsers());
+        else if (tab === 'banned')  setBanned(await getBannedUsers());
+        else if (tab === 'log')     setLog(await getModerationLog());
+      } catch (err: unknown) {
+        showToast(`Error loading data: ${(err as Error)?.message ?? 'unknown'}`);
+      } finally {
+        setLoading(false);
+      }
     }
+    // Report tabs are handled by the real-time subscription below
   }, [isAdmin]);
 
-  useEffect(() => { loadTab(activeTab); }, [activeTab, loadTab]);
+  // Real-time subscription for report tabs — auto-updates when reports change
+  useEffect(() => {
+    if (!isAdmin) return;
+    const reportTabs: Array<TabId> = ['pending', 'reviewing', 'resolved', 'dismissed'];
+    if (!reportTabs.includes(activeTab)) {
+      loadTab(activeTab);
+      return;
+    }
+    setLoading(true);
+    const status = activeTab as 'pending' | 'reviewing' | 'resolved' | 'dismissed';
+    const unsub = subscribeReports(status, newReports => {
+      setReports(newReports);
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsub;
+  }, [activeTab, isAdmin, loadTab]);
 
   async function handleConfirm(reason: string, extra: { days?: number; notes?: string }) {
     if (!confirmAction || !currentUser) return;

@@ -124,7 +124,7 @@ export function useMessages(convId: string | undefined) {
       return;
     }
 
-    await fsSend(convId, currentUser.id, content, type, opts);
+    await fsSend(convId, currentUser.id, content, type, opts, currentUser);
   }, [currentUser, convId]);
 
   const editMessage = useCallback(async (msgId: string, newContent: string) => {
@@ -162,22 +162,24 @@ export function useMessages(convId: string | undefined) {
 
   const toggleReaction = useCallback(async (msgId: string, emoji: string) => {
     if (!currentUser || !convId) return;
-    if (!isFirebaseConfigured) {
-      setMessages(prev => prev.map(m => {
-        if (m.id !== msgId) return m;
-        const reactions = { ...m.reactions };
-        const users = reactions[emoji] ?? [];
-        if (users.includes(currentUser.id)) {
-          const next = users.filter(u => u !== currentUser.id);
-          if (next.length === 0) delete reactions[emoji];
-          else reactions[emoji] = next;
-        } else {
-          reactions[emoji] = [...users, currentUser.id];
-        }
-        return { ...m, reactions };
-      }));
-      return;
-    }
+
+    // Optimistic update — applied for both demo and Firebase paths so the UI
+    // feels instant. The real-time subscription will reconcile if needed.
+    setMessages(prev => prev.map(m => {
+      if (m.id !== msgId) return m;
+      const reactions = { ...m.reactions };
+      const users = reactions[emoji] ?? [];
+      if (users.includes(currentUser.id)) {
+        const next = users.filter(u => u !== currentUser.id);
+        if (next.length === 0) delete reactions[emoji];
+        else reactions[emoji] = next;
+      } else {
+        reactions[emoji] = [...users, currentUser.id];
+      }
+      return { ...m, reactions };
+    }));
+
+    if (!isFirebaseConfigured) return;
     await fsToggleReaction(convId, msgId, currentUser.id, emoji);
   }, [currentUser, convId]);
 

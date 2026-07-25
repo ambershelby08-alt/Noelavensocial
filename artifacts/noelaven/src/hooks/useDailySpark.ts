@@ -268,7 +268,22 @@ export function useDailySpark(userId?: string) {
     }
 
     schedule();
-    return () => clearTimeout(timeout);
+
+    // Fallback: check every 30 s in case the device was sleeping when
+    // the setTimeout would have fired (e.g. lid closed at 11:59 PM).
+    const poll = setInterval(() => {
+      const key = todayKeyET();
+      setToday(prev => {
+        if (prev !== key) {
+          const cached = localStorage.getItem(PROMPT_PREFIX + key);
+          setPrompt(cached ?? fallbackPrompt());
+          setLoading(!cached);
+        }
+        return prev !== key ? key : prev;
+      });
+    }, 30_000);
+
+    return () => { clearTimeout(timeout); clearInterval(poll); };
   }, []);
 
   // ── Sync answered state with Firestore (server-side enforcement) ────────────
