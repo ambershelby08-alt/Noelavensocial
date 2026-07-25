@@ -34,7 +34,7 @@ function isFromTodayET(timestamp: unknown): boolean {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(date) === todayKeyET();
 }
 
-export type CommunitySort = 'friends' | 'following' | 'everyone';
+export type CommunitySort = 'mutuals' | 'following' | 'everyone';
 
 const PAGE_SIZE = 10;
 

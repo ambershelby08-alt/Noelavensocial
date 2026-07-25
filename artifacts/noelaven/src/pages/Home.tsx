@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageCircle, Share2, Bookmark, Heart,
   Image as ImageIcon, Smile, MapPin, Send,
-  Bell, MoreHorizontal, Sparkles, X,
+  MoreHorizontal, Sparkles, X,
   Link as LinkIcon, Users, MessageSquare, Check,
   ChevronDown, Trash2, Flag, EyeOff, UserMinus,
   Edit2, MessageCircleOff, ClipboardCopy,
@@ -17,6 +17,7 @@ import type { Post, User, SparkAudience } from '@/lib/mockData';
 import { useFeed } from '@/hooks/useFeed';
 import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
 import { useSparkCommunity, type CommunitySort } from '@/hooks/useSparkCommunity';
+import { useFollowerIds } from '@/hooks/useFollowerIds';
 import { useStories } from '@/hooks/useStories';
 import { StoriesRow } from '@/components/stories/StoriesRow';
 import { StoryViewer } from '@/components/stories/StoryViewer';
@@ -440,7 +441,7 @@ function ShareSheet({ post, onClose, onShared, onSendToChats }: ShareSheetProps)
 
 const AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: React.ReactNode }[] = [
   { value: 'public',   label: 'Public',   icon: <Globe      size={11} /> },
-  { value: 'friends',  label: 'Friends',  icon: <Users      size={11} /> },
+  { value: 'friends',  label: 'Mutuals',  icon: <Users      size={11} /> },
   { value: 'private',  label: 'Private',  icon: <Lock       size={11} /> },
   { value: 'only_me',  label: 'Only Me',  icon: <UserCircle size={11} /> },
 ];
@@ -877,26 +878,27 @@ function CommunityReveal({
   }, [hasMore, loadMore]);
 
   const SORT_TABS: { key: CommunitySort; label: string }[] = [
-    { key: 'friends',   label: 'Friends'   },
+    { key: 'mutuals',   label: 'Mutuals'   },
     { key: 'following', label: 'Following' },
     { key: 'everyone',  label: 'Everyone'  },
   ];
 
-  // ── Real-time following list for the Following / Friends tabs ────────────────
-  // useFollowingIds subscribes to users/{currentUserId}/following — same
-  // subcollection that followUser() / unfollowUser() write to.
+  // ── Real-time following / follower lists for tab filtering ───────────────────
+  // followingIds — UIDs the current user follows
+  // followerIds  — UIDs who follow the current user back
+  // Mutuals = followingIds ∩ followerIds (both follow each other)
   const followingIds = useFollowingIds(currentUserId);
+  const followerIds  = useFollowerIds(currentUserId);
 
   // ── Apply tab-based filtering ────────────────────────────────────────────────
   //
-  // The Firestore subscription (useSparkCommunity) now returns ONLY public posts.
+  // The Firestore subscription (useSparkCommunity) returns ONLY public posts.
   // Here we further filter by the active sort tab:
   //
   //   Everyone  — all public spark posts from any user (except current user)
   //   Following — public posts from users the current user follows
-  //   Friends   — public posts from mutual followers (Following ∩ Followers).
-  //               Simplified here to "people I follow" since a full mutual-
-  //               follower query would require a separate Firestore read.
+  //   Mutuals   — public posts from users who follow each other with the
+  //               current user (followingIds ∩ followerIds)
   //
   // currentUserId's own post is always excluded from all tabs; it appears
   // separately as "Your response" above the community section.
@@ -905,7 +907,7 @@ function CommunityReveal({
   const community = (() => {
     if (sort === 'everyone')  return allOthers;
     if (sort === 'following') return allOthers.filter(p => followingIds.has(p.authorId));
-    if (sort === 'friends')   return allOthers.filter(p => followingIds.has(p.authorId));
+    if (sort === 'mutuals')   return allOthers.filter(p => followingIds.has(p.authorId) && followerIds.has(p.authorId));
     return allOthers;
   })();
 
@@ -1037,14 +1039,14 @@ function CommunityReveal({
               ? 'No other responses yet'
               : sort === 'following'
               ? 'No responses from people you follow'
-              : 'No responses from friends yet'}
+              : 'No responses from your mutuals yet'}
           </p>
           <p className="text-gray-400 text-[12.5px] max-w-[220px] leading-relaxed">
             {sort === 'everyone'
-              ? 'Encourage your friends — share today\'s spark!'
+              ? 'Share today\'s spark — invite your community!'
               : sort === 'following'
               ? 'Follow more people to see their sparks here.'
-              : 'People you follow and who follow you back will appear here.'}
+              : 'Mutuals are people you follow who also follow you back.'}
           </p>
         </div>
       ) : (
@@ -1792,7 +1794,7 @@ export default function Home() {
   const firstName = currentUser?.displayName.split(' ')[0] ?? 'there';
 
   const { posts, addPost, toggleReaction, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
-  const { unreadCount } = useNotifications();
+  // unreadCount is shown in the global MobileHeader bell (AppShell) — not duplicated here
   const { prompt: sparkPrompt, hasAnsweredToday, streak, memoryLane, markAnswered } = useDailySpark(currentUser?.id);
 
   // Pre-warm the community cache as soon as we have a prompt — before the user
@@ -1971,16 +1973,6 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/notifications">
-              <button className="relative w-10 h-10 rounded-full bg-white shadow-sm border border-black/[0.06] flex items-center justify-center">
-                <Bell size={18} className="text-gray-600" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-pink-500 ring-2 ring-white flex items-center justify-center text-[9px] font-bold text-white px-1">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
-            </Link>
             {currentUser && (
               <Link href={`/profile/${currentUser.id}`}>
                 <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={40} className="cursor-pointer hover:scale-105 transition-transform" />

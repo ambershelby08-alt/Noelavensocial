@@ -34,7 +34,7 @@ import { ReportSheet } from '@/components/ui/ReportSheet';
 
 const SPARK_AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: React.ReactNode }[] = [
   { value: 'public',  label: '🌍 Public',      icon: <Globe      size={11} /> },
-  { value: 'friends', label: '👥 Friends',     icon: <Users      size={11} /> },
+  { value: 'friends', label: '👥 Mutuals',     icon: <Users      size={11} /> },
   { value: 'private', label: '🔒 Private',     icon: <Lock       size={11} /> },
   { value: 'only_me', label: '🙋 Only Me',     icon: <UserCircle size={11} /> },
 ];

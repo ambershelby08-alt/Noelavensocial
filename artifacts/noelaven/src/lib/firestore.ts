@@ -271,10 +271,10 @@ export function subscribeCommunitySparkPosts(
       // Client-side: only pass through PUBLIC spark posts.
       //
       // "Everyone" tab must show public posts to any authenticated viewer.
-      // "friends"-audience posts are intentionally excluded here — they would
-      // appear to people who are not the author's friends, which violates privacy.
-      // The "Following" / "Friends" sort tabs apply additional client-side
-      // filters (by following list) on top of this public-only set.
+      // "mutuals"-audience posts are intentionally excluded here — they would
+      // appear to people who are not the author's mutuals, which violates privacy.
+      // The "Following" / "Mutuals" sort tabs apply additional client-side
+      // filters (by following/follower lists) on top of this public-only set.
       const posts = snap.docs
         .map(d => docToPost(d.id, d.data()))
         .filter(p => p.sparkAudience === 'public');

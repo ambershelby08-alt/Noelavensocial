@@ -24,7 +24,7 @@ type Audience = SafetySettings['whoCanMessage'];
 const AUDIENCE_OPTIONS: { value: Audience; label: string }[] = [
   { value: 'everyone',  label: 'Everyone' },
   { value: 'followers', label: 'Followers' },
-  { value: 'friends',   label: 'Friends only' },
+  { value: 'friends',   label: 'Mutuals only' },
   { value: 'none',      label: 'No one' },
 ];
 
