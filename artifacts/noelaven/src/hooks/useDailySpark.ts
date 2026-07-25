@@ -203,6 +203,20 @@ export function useDailySpark(userId?: string) {
   const [streak,           setStreak]           = useState<number>(0);
   const [memoryLane,       setMemoryLane]       = useState<MemoryLaneEntry | null>(null);
 
+  // ── confirmedForUserId: tracks which account the above state was last read for ─
+  //
+  // Problem: when the user switches from Account A → Account B in the same SPA
+  // session, React batches the userId prop change and the useEffect together.
+  // Between the render with the new userId and the moment the effect fires,
+  // `hasAnsweredToday` still holds Account A's value (true).  This causes
+  // CommunityReveal to mount for one render cycle with the wrong account's data
+  // — the "unlock banner on new account" symptom.
+  //
+  // Fix: expose `hasAnsweredToday` as true ONLY when `confirmedForUserId`
+  // matches the current `userId`.  The effect sets `confirmedForUserId` at the
+  // same time it updates the other per-account state, so both change atomically.
+  const [confirmedForUserId, setConfirmedForUserId] = useState<string | undefined>(undefined);
+
   // ── Critical: re-read per-account state whenever userId or today changes ─────
   //
   // This effect is the primary guard against cross-account state leakage.
@@ -219,6 +233,7 @@ export function useDailySpark(userId?: string) {
       setTodayPostId(null);
       setStreak(0);
       setMemoryLane(null);
+      setConfirmedForUserId(undefined);
       return;
     }
     if (typeof window === 'undefined') return;
@@ -229,6 +244,7 @@ export function useDailySpark(userId?: string) {
     setTodayPostId(val);
     setStreak(getStoredStreak(userId).count);
     setMemoryLane(computeMemoryLane(userId, today));
+    setConfirmedForUserId(userId); // mark that all state above is for THIS user
   }, [userId, today]);
 
   // ── Midnight ET watcher — auto-resets when the day rolls over ───────────────
@@ -312,6 +328,7 @@ export function useDailySpark(userId?: string) {
     localStorage.setItem(dk, stored);
     setHasAnsweredToday(true);
     setTodayPostId(stored);
+    setConfirmedForUserId(userId); // keep confirmedForUserId in sync after marking
 
     // Update this account's streak (UID-scoped).
     const s         = getStoredStreak(userId);
@@ -325,11 +342,17 @@ export function useDailySpark(userId?: string) {
     setStreak(newCount);
   }, [userId]);
 
+  // Only expose hasAnsweredToday as true when the confirmed user matches the
+  // current userId prop. Between a userId change and the [userId, today] effect
+  // firing, confirmedForUserId differs from userId, so we safely return false
+  // instead of leaking the previous account's answered state.
+  const safeHasAnsweredToday = confirmedForUserId === userId ? hasAnsweredToday : false;
+
   return {
     prompt,
     loading,
-    hasAnsweredToday,
-    todayPostId,
+    hasAnsweredToday: safeHasAnsweredToday,
+    todayPostId:      safeHasAnsweredToday ? todayPostId : null,
     streak,
     memoryLane,
     markAnswered,

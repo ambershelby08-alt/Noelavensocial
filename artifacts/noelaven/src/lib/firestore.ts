@@ -268,10 +268,16 @@ export function subscribeCommunitySparkPosts(
           `[Firestore] subscribeCommunitySparkPosts ✓ — ${snap.docs.length} docs, fromCache=${snap.metadata.fromCache}`
         );
       }
-      // Client-side: exclude private/only_me posts
+      // Client-side: only pass through PUBLIC spark posts.
+      //
+      // "Everyone" tab must show public posts to any authenticated viewer.
+      // "friends"-audience posts are intentionally excluded here — they would
+      // appear to people who are not the author's friends, which violates privacy.
+      // The "Following" / "Friends" sort tabs apply additional client-side
+      // filters (by following list) on top of this public-only set.
       const posts = snap.docs
         .map(d => docToPost(d.id, d.data()))
-        .filter(p => !p.sparkAudience || p.sparkAudience === 'public' || p.sparkAudience === 'friends');
+        .filter(p => p.sparkAudience === 'public');
       onData(posts);
     },
     (err) => {

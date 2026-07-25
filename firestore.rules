@@ -183,6 +183,22 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
+    // ── Following / followers subcollections ──────────────────────────────────
+    // followUser() writes to users/{uid}/following/{targetId} and
+    // users/{targetId}/followers/{uid}. Without explicit rules for subcollections
+    // the parent /users/{userId} rule does NOT cover them automatically.
+    match /users/{userId}/following/{targetId} {
+      allow read:  if isAuthenticated();
+      // Only the follower can add/remove their own follow
+      allow write: if isOwner(userId);
+    }
+
+    match /users/{userId}/followers/{followerId} {
+      allow read:  if isAuthenticated();
+      // Written by the person doing the following (their own uid == followerId)
+      allow write: if isAuthenticated() && request.auth.uid == followerId;
+    }
+
     // ── Stories ───────────────────────────────────────────────────────────────
     match /stories/{storyId} {
       allow read: if isAuthenticated();

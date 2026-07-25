@@ -1,11 +1,41 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import fs from "node:fs";
+import path from "node:path";
 
 const router = Router();
 
-// ── In-memory daily cache ─────────────────────────────────────────────────────
-// Keyed by YYYY-MM-DD so it regenerates at midnight without a restart.
-const cache: Map<string, string> = new Map();
+// ── Persistent file-based cache ───────────────────────────────────────────────
+//
+// WHY: The previous in-memory cache (Map) was cleared on every server restart.
+// In development the server restarts often, so Account A and Account B could
+// receive *different* prompts from different server instances on the same day.
+// The Firestore community query is:
+//   where('sparkPrompt', '==', prompt)
+// which requires an exact string match. A prompt mismatch produces 0 results
+// even though Account A's post is public and readable.
+//
+// FIX: Persist the cache to a JSON file. All users on the same day get the
+// identical prompt string regardless of how many times the server restarts.
+const CACHE_FILE = path.join(process.cwd(), ".spark-prompt-cache.json");
+
+let fileCache: Record<string, string> = {};
+
+// Load persisted cache on startup.
+try {
+  if (fs.existsSync(CACHE_FILE)) {
+    const raw = fs.readFileSync(CACHE_FILE, "utf8");
+    fileCache = JSON.parse(raw) as Record<string, string>;
+  }
+} catch {
+  fileCache = {};
+}
+
+function saveFileCache(): void {
+  try {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(fileCache, null, 2), "utf8");
+  } catch {}
+}
 
 const FALLBACK_PROMPTS = [
   "What made you smile today?",
@@ -19,7 +49,9 @@ const FALLBACK_PROMPTS = [
 
 /** Returns today's date as YYYY-MM-DD in America/New_York (Eastern Time). */
 function todayKey(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+  }).format(new Date());
 }
 
 async function generateSparkPrompt(): Promise<string> {
@@ -52,28 +84,39 @@ async function generateSparkPrompt(): Promise<string> {
 router.get("/spark/today", async (_req, res) => {
   const date = todayKey();
 
-  // Serve from cache when available
-  if (cache.has(date)) {
-    res.json({ prompt: cache.get(date), date });
+  // 1. Serve from file cache (survives server restarts).
+  if (fileCache[date]) {
+    res.json({ prompt: fileCache[date], date });
     return;
   }
 
   try {
     const prompt = await generateSparkPrompt();
-    cache.set(date, prompt);
-    // Evict old dates so the map never grows unbounded
-    for (const key of cache.keys()) {
-      if (key !== date) cache.delete(key);
+
+    // Evict stale dates before writing so the file never grows unbounded.
+    for (const key of Object.keys(fileCache)) {
+      if (key !== date) delete fileCache[key];
     }
+    fileCache[date] = prompt;
+    saveFileCache();
+
     res.json({ prompt, date });
   } catch (err) {
     console.error("Spark generation failed, using fallback:", err);
-    // Deterministic fallback: same prompt for everyone on the same day
+    // Deterministic fallback: same index for everyone on the same day.
     const dayOfYear = Math.floor(
       (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) /
         86_400_000
     );
     const prompt = FALLBACK_PROMPTS[dayOfYear % FALLBACK_PROMPTS.length];
+
+    // Persist the fallback too — next restart still returns the same string.
+    for (const key of Object.keys(fileCache)) {
+      if (key !== date) delete fileCache[key];
+    }
+    fileCache[date] = prompt;
+    saveFileCache();
+
     res.json({ prompt, date });
   }
 });

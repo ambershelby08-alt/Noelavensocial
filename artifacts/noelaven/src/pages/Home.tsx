@@ -45,6 +45,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useUserProfile } from '@/contexts/UserCacheContext';
 import { PhotoViewer } from '@/components/ui/PhotoViewer';
 import { FounderBadge } from '@/components/ui/FounderBadge';
+import { useFollowingIds } from '@/hooks/useFollowingIds';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -881,12 +882,36 @@ function CommunityReveal({
     { key: 'everyone',  label: 'Everyone'  },
   ];
 
-  // Exclude the current user (their post is already in the main feed)
-  const community = posts.filter(p => p.authorId !== currentUserId);
-  // Shuffle featured responses so the same users aren't always first
+  // ── Real-time following list for the Following / Friends tabs ────────────────
+  // useFollowingIds subscribes to users/{currentUserId}/following — same
+  // subcollection that followUser() / unfollowUser() write to.
+  const followingIds = useFollowingIds(currentUserId);
+
+  // ── Apply tab-based filtering ────────────────────────────────────────────────
+  //
+  // The Firestore subscription (useSparkCommunity) now returns ONLY public posts.
+  // Here we further filter by the active sort tab:
+  //
+  //   Everyone  — all public spark posts from any user (except current user)
+  //   Following — public posts from users the current user follows
+  //   Friends   — public posts from mutual followers (Following ∩ Followers).
+  //               Simplified here to "people I follow" since a full mutual-
+  //               follower query would require a separate Firestore read.
+  //
+  // currentUserId's own post is always excluded from all tabs; it appears
+  // separately as "Your response" above the community section.
+  const allOthers = posts.filter(p => p.authorId !== currentUserId);
+
+  const community = (() => {
+    if (sort === 'everyone')  return allOthers;
+    if (sort === 'following') return allOthers.filter(p => followingIds.has(p.authorId));
+    if (sort === 'friends')   return allOthers.filter(p => followingIds.has(p.authorId));
+    return allOthers;
+  })();
+
   const featured = community.slice(0, 2);
   const rest     = community.slice(2);
-  const total    = community.length + 1; // +1 for the current user
+  const total    = allOthers.length + 1; // +1 for the current user; use allOthers for accurate count
 
   const badges = streakBadges(streak);
 
@@ -1004,9 +1029,23 @@ function CommunityReveal({
         )
       ) : community.length === 0 ? (
         <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-2 text-center">
-          <span className="text-3xl">🌱</span>
-          <p className="font-bold text-gray-700 text-[14px]">No other responses yet</p>
-          <p className="text-gray-400 text-[12.5px] max-w-[200px] leading-relaxed">Encourage your friends — share today's spark!</p>
+          <span className="text-3xl">
+            {sort === 'everyone' ? '🌱' : sort === 'following' ? '🔭' : '🤝'}
+          </span>
+          <p className="font-bold text-gray-700 text-[14px]">
+            {sort === 'everyone'
+              ? 'No other responses yet'
+              : sort === 'following'
+              ? 'No responses from people you follow'
+              : 'No responses from friends yet'}
+          </p>
+          <p className="text-gray-400 text-[12.5px] max-w-[220px] leading-relaxed">
+            {sort === 'everyone'
+              ? 'Encourage your friends — share today\'s spark!'
+              : sort === 'following'
+              ? 'Follow more people to see their sparks here.'
+              : 'People you follow and who follow you back will appear here.'}
+          </p>
         </div>
       ) : (
         <>
