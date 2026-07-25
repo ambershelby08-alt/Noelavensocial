@@ -85,6 +85,12 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
+                {/* Unread notification badge */}
+                {item.path === '/' && notifUnreadCount > 0 && (
+                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full bg-purple-500 ring-[1.5px] ring-white flex items-center justify-center text-[8px] font-black text-white px-1">
+                    {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
+                  </span>
+                )}
                 <span
                   className={cn(
                     'text-[10px] font-semibold transition-colors duration-200',

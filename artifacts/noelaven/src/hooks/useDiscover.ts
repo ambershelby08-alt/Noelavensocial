@@ -117,7 +117,12 @@ export function useDiscover(activeCategory = '') {
               })
               .filter(u => u.id !== currentUser.id)
               .slice(0, 5);
-            setSuggestedCreators(creators);
+            // Fall back to mock data if Firestore returns no results yet
+            setSuggestedCreators(
+              creators.length > 0
+                ? creators
+                : mockUsers.filter(u => u.id !== currentUser.id).sort((a, b) => b.followers - a.followers).slice(0, 5)
+            );
           })
           .catch(console.error);
       });
