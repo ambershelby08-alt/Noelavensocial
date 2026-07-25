@@ -203,6 +203,13 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // ── FCM device tokens ─────────────────────────────────────────────────────
+    // Only the owner can manage their own device tokens; no other client may
+    // read them. The server (Admin SDK) bypasses these rules entirely.
+    match /users/{userId}/devices/{deviceId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // ── Following / followers subcollections ──────────────────────────────────
     // followUser() writes to users/{uid}/following/{targetId} and
     // users/{targetId}/followers/{uid}. Without explicit rules for subcollections
