@@ -56,7 +56,7 @@ interface AuthContextType {
   switchToAccount: (account: SavedAccount) => Promise<void>;
   completeProfile: (data: ProfileData) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  updateUser: (updates: Partial<User>) => void;
+  updateUser: (updates: Partial<User>) => Promise<void>;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -429,12 +429,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isDemoMode) window.location.reload();
   }, [isDemoMode, currentUser]);
 
-  const updateUser = useCallback((updates: Partial<User>) => {
+  const updateUser = useCallback(async (updates: Partial<User>): Promise<void> => {
+    // Update React state immediately so the UI reflects changes without waiting.
     setCurrentUser(prev => (prev ? { ...prev, ...updates } : prev));
-    if (!isDemoMode && currentUser) {
-      updateUserDoc(currentUser.id, updates).catch(console.error);
+    if (!isDemoMode) {
+      // Use auth.currentUser.uid — always the currently-signed-in account.
+      // Never use currentUser.id from React state here: it can be a stale
+      // closure value mid-switch and would write to the wrong Firestore doc.
+      const uid = auth?.currentUser?.uid;
+      if (!uid) throw new Error('No authenticated user');
+      await updateUserDoc(uid, updates);
     }
-  }, [isDemoMode, currentUser]);
+  // Intentionally no `currentUser` dep — we read uid from Firebase Auth directly.
+  }, [isDemoMode]);
 
   const isFounder = isFounderUid(currentUser?.id);
 

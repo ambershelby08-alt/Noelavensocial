@@ -242,7 +242,7 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
 
 interface EditDrawerProps {
   user: User;
-  onSave: (updates: Partial<User>) => void;
+  onSave: (updates: Partial<User>) => Promise<void>;
   onClose: () => void;
 }
 
@@ -252,6 +252,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
   const [bio, setBio]                 = useState(user.bio);
   const [interests, setInterests]     = useState<string[]>(user.interests);
   const [saving, setSaving]           = useState(false);
+  const [saveError, setSaveError]     = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl]     = useState(user.avatarUrl ?? '');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -264,10 +265,12 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarUploading(true);
+    setSaveError(null);
     try {
       const url = await uploadImage(file, 'avatars');
       setAvatarUrl(url);
     } catch (err) {
+      setSaveError('Photo upload failed. Please try again.');
       console.error('Avatar upload failed:', err);
     } finally {
       setAvatarUploading(false);
@@ -283,21 +286,26 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
     if (trimmedHandle && trimmedHandle.length < 2) return;
 
     setSaving(true);
-    await new Promise(r => setTimeout(r, 400));
+    setSaveError(null);
 
     // Build a partial update — only include fields that actually changed so that
     // editing the display name never silently clears a previously set @handle.
     const updates: Partial<User> = {};
-    if (trimmedName !== user.displayName) updates.displayName = trimmedName;
-    else updates.displayName = user.displayName; // always include to keep type happy
-    updates.handle     = trimmedHandle || user.handle; // fall back to existing if cleared
-    updates.bio        = bio.trim();
-    updates.interests  = interests;
+    updates.displayName = trimmedName;
+    updates.handle      = trimmedHandle || user.handle; // fall back to existing if cleared
+    updates.bio         = bio.trim();
+    updates.interests   = interests;
     if (avatarUrl !== (user.avatarUrl ?? '')) updates.avatarUrl = avatarUrl;
 
-    onSave(updates);
-    setSaving(false);
-    onClose();
+    try {
+      // Await the full Firestore write — close only after it confirms.
+      await onSave(updates);
+      onClose();
+    } catch (err) {
+      setSaveError((err as Error).message ?? 'Save failed. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -330,6 +338,13 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Check size={14} /> Save</>}
           </motion.button>
         </div>
+
+        {/* Save error banner */}
+        {saveError && (
+          <div className="mx-5 mt-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded-2xl text-[12.5px] text-red-600 font-medium flex-shrink-0">
+            {saveError}
+          </div>
+        )}
 
         {/* Scrollable content */}
         <div className="overflow-y-auto flex-1 px-5 py-5 space-y-6 pb-safe">
@@ -907,12 +922,12 @@ export default function Profile() {
     }
   }
 
-  function handleSave(updates: Partial<User>) {
-    if (isOwnProfile) updateUser(updates);
+  async function handleSave(updates: Partial<User>): Promise<void> {
+    if (isOwnProfile) await updateUser(updates);
   }
 
-  async function handleCoverSave(payload: CoverSavePayload) {
-    if (isOwnProfile) updateUser({ coverUrl: payload.coverUrl, coverPosition: payload.coverPosition });
+  async function handleCoverSave(payload: CoverSavePayload): Promise<void> {
+    if (isOwnProfile) await updateUser({ coverUrl: payload.coverUrl, coverPosition: payload.coverPosition });
   }
 
   return (

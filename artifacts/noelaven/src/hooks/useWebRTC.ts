@@ -565,8 +565,11 @@ export function useWebRTC() {
     setCall(s => ({ ...s, swapped: !s.swapped }));
   }, []);
 
-  /** Switch between front and rear camera. No-op on desktop. */
+  /** Switch between front and rear camera. No-ops safely when:
+   *  • no active call, • only one camera, • getUserMedia is denied, or
+   *  • the PC/stream becomes null during the async gap. */
   const switchCamera = useCallback(async () => {
+    // Guard 1 — must have an active call with a live peer connection and stream.
     const pc    = pcRef.current;
     const local = localRef.current;
     if (!pc || !local) return;
@@ -574,8 +577,22 @@ export function useWebRTC() {
     const videoTrack = local.getVideoTracks()[0];
     if (!videoTrack) return;
 
-    // Determine current facing mode; default to 'user' (front camera)
-    const settings     = videoTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
+    // Guard 2 — enumerate cameras; skip silently if only one is available.
+    let videoDevices: MediaDeviceInfo[] = [];
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      videoDevices = (devices ?? []).filter(d => d.kind === 'videoinput');
+    } catch {
+      // enumerateDevices not supported / permission denied — bail out gracefully.
+      console.info('[WebRTC] switchCamera: enumerateDevices unavailable');
+      return;
+    }
+    if (videoDevices.length < 2) {
+      console.info('[WebRTC] switchCamera: only one camera available, skipping');
+      return;
+    }
+
+    const settings      = videoTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
     const currentFacing = settings.facingMode ?? 'user';
     const newFacing     = currentFacing === 'user' ? 'environment' : 'user';
 
@@ -584,23 +601,35 @@ export function useWebRTC() {
         video: { facingMode: { exact: newFacing } },
         audio: false,
       });
-      const newTrack = newStream.getVideoTracks()[0];
 
-      // Replace the track in the peer connection without renegotiation
-      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+      // Guard 3 — track must exist in the new stream.
+      const newTrack = newStream.getVideoTracks()[0];
+      if (!newTrack) {
+        newStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      // Guard 4 — PC may have been replaced during the async getUserMedia gap.
+      if (!pcRef.current || !localRef.current) {
+        newTrack.stop();
+        return;
+      }
+
+      // Replace the track in the peer connection without renegotiation.
+      const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
       if (sender) await sender.replaceTrack(newTrack);
 
-      // Swap track in the local stream
-      local.removeTrack(videoTrack);
-      local.addTrack(newTrack);
+      // Swap track in the local stream.
+      localRef.current.removeTrack(videoTrack);
+      localRef.current.addTrack(newTrack);
       videoTrack.stop();
 
-      // Create a new MediaStream reference so callback refs in CallScreen re-fire
-      const updated = new MediaStream(local.getTracks());
+      // New MediaStream reference triggers callback refs in CallScreen.
+      const updated = new MediaStream(localRef.current.getTracks());
       localRef.current = updated;
       setCall(s => ({ ...s, localStream: updated }));
     } catch (err) {
-      console.warn('[WebRTC] switchCamera failed (device may not support facing mode):', err);
+      console.warn('[WebRTC] switchCamera failed:', err);
     }
   }, []);
 
