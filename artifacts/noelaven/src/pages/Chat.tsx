@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useRoute, Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -845,20 +845,22 @@ function SafetyMenuSheet({ isGroup, isDirect, onMute, onBlock, onReport, onLeave
 
 // ─── Scroll-to-bottom button ──────────────────────────────────────────────────
 
-function ScrollDownBtn({ onClick, unread }: { onClick: () => void; unread?: number }) {
+function ScrollDownBtn({ onClick, newCount }: { onClick: () => void; newCount?: number }) {
   return (
     <motion.button
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0, opacity: 0 }}
       onClick={onClick}
-      className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white shadow-lg border border-black/[0.08] flex items-center justify-center z-10"
-    >
-      {unread ? (
-        <span className="text-[11px] font-black text-purple-600">{unread}</span>
-      ) : (
-        <ChevronDown size={18} className="text-gray-600" />
+      className={cn(
+        'flex items-center gap-1.5 px-3 h-9 rounded-full shadow-lg border border-black/[0.08] z-10',
+        newCount ? 'bg-purple-500 text-white pr-3.5' : 'bg-white text-gray-600',
       )}
+    >
+      <ChevronDown size={16} />
+      {newCount ? (
+        <span className="text-[12px] font-black">{newCount} new</span>
+      ) : null}
     </motion.button>
   );
 }
@@ -1056,29 +1058,97 @@ export default function Chat() {
   const [forwardMsg, setForwardMsg]       = useState<LocalMsg | null>(null);
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [atBottom, setAtBottom]           = useState(true);
+  const [newMsgCount, setNewMsgCount]     = useState(0);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [viewingPhoto, setViewingPhoto]   = useState<string | null>(null);
 
-  const scrollRef        = useRef<HTMLDivElement>(null);
-  const bottomRef        = useRef<HTMLDivElement>(null);
-  const textareaRef      = useRef<HTMLTextAreaElement>(null);
-  const isInitialLoadRef = useRef(true);
+  const scrollRef          = useRef<HTMLDivElement>(null);
+  const bottomRef          = useRef<HTMLDivElement>(null);
+  const textareaRef        = useRef<HTMLTextAreaElement>(null);
+  const isInitialLoadRef   = useRef(true);
+  // Pagination scroll-preservation state
+  const isPaginatingRef    = useRef(false);
+  const prevScrollHeightRef = useRef(0);
+  // Track message count to detect new arrivals vs pagination prepends
+  const prevMsgCountRef    = useRef(0);
 
   // ── Hooks that must run unconditionally (before any early return) ──────────
   const [editText, setEditText] = useState('');
 
-  // Scroll to bottom when new messages or typing indicator arrives.
-  // Initial load scrolls instantly (no visible jump); subsequent arrivals
-  // scroll smoothly only when already at the bottom.
+  // ── Pagination scroll preservation (runs synchronously before paint) ────────
+  // When older messages are prepended, the scroll height grows by the height of
+  // the new content. We restore scrollTop by that delta so the user's view
+  // doesn't jump.
+  useLayoutEffect(() => {
+    if (!isPaginatingRef.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const delta = el.scrollHeight - prevScrollHeightRef.current;
+    if (delta > 0) el.scrollTop += delta;
+    // Don't reset isPaginatingRef here — let the useEffect below do it so
+    // it can skip the "new message" path for the same messages update.
+  }, [messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Auto-scroll on new messages ───────────────────────────────────────────
+  // Rules:
+  //   • First load → instant jump to bottom
+  //   • Own message sent → always smooth-scroll to bottom
+  //   • Already at bottom when message arrives → smooth-scroll
+  //   • Reading older messages → don't scroll; show "N new" badge instead
+  //
+  // atBottom is intentionally NOT in the dep array — we only want this to fire
+  // when message count or typing indicators change, not on every scroll event.
   useEffect(() => {
-    if (!messages.length) return;
+    const count = messages.length;
+    if (count === 0) return;
+
+    // ── Initial load ──────────────────────────────────────────────────────
     if (isInitialLoadRef.current) {
       isInitialLoadRef.current = false;
-      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
-    } else if (atBottom) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      prevMsgCountRef.current  = count;
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+      return;
     }
-  }, [messages, typingUserIds.length, atBottom]);
+
+    // ── Pagination prepend — scroll already restored by useLayoutEffect ───
+    if (isPaginatingRef.current) {
+      prevMsgCountRef.current = count;
+      isPaginatingRef.current = false;
+      return;
+    }
+
+    // ── New messages appended (subscription) ─────────────────────────────
+    if (count > prevMsgCountRef.current) {
+      const added     = messages.slice(prevMsgCountRef.current);
+      const fromMe    = added.some(m => m.senderId === currentUser?.id);
+      const fromOthers = added.filter(m => m.senderId !== currentUser?.id).length;
+      prevMsgCountRef.current = count;
+
+      if (atBottom || fromMe) {
+        setNewMsgCount(0);
+        requestAnimationFrame(() => {
+          const el = scrollRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      } else if (fromOthers > 0) {
+        // User is reading history — show badge, don't scroll
+        setNewMsgCount(c => c + fromOthers);
+      }
+    } else {
+      // Typing indicator change only — no new messages
+      prevMsgCountRef.current = count;
+      if (atBottom) {
+        requestAnimationFrame(() => {
+          const el = scrollRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length, typingUserIds.length]);
 
   // ── Guard: must be after all hooks ────────────────────────────────────────
   if (!currentUser) return null;
@@ -1106,16 +1176,29 @@ export default function Chat() {
 
   // ── Scroll helpers ─────────────────────────────────────────────────────────
 
-  function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
-    bottomRef.current?.scrollIntoView({ behavior });
+  function scrollToBottom() {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    setAtBottom(true);
+    setNewMsgCount(0);
   }
 
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
     const el = e.currentTarget;
+    // Dismiss any open reaction picker on any scroll — standard mobile behaviour
+    if (activePicker) setActivePicker(null);
+
     const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setAtBottom(fromBottom < 80);
-    // Load older messages when scrolling near top
+    const nowAtBottom = fromBottom < 80;
+    setAtBottom(nowAtBottom);
+    if (nowAtBottom) setNewMsgCount(0);
+
+    // Load older messages when scrolled near the top
     if (el.scrollTop < 60 && hasOlderMessages && !loadingOlder) {
+      // Record scroll height before the prepend so useLayoutEffect can restore position
+      prevScrollHeightRef.current = el.scrollHeight;
+      isPaginatingRef.current     = true;
       loadOlderMessages();
     }
   }
@@ -1143,6 +1226,7 @@ export default function Chat() {
     setEmojiOpen(false);
     setAttachOpen(false);
     stopTyping();
+    setAtBottom(true); // own message → always scroll to bottom
 
     const replyOpts = replyingTo ? {
       replyToId: replyingTo.id,
@@ -1197,6 +1281,7 @@ export default function Chat() {
 
   async function doSendMedia(file: File) {
     setUploadingMedia(true);
+    setAtBottom(true); // own message → always scroll to bottom
     const localUrl = URL.createObjectURL(file);
     const type: Message['type'] = file.type.startsWith('video') ? 'video' : 'image';
     const tempId = `pending-media-${Date.now()}`;
@@ -1223,6 +1308,7 @@ export default function Chat() {
   async function doSendVoice() {
     const recording = await voiceRecorder.stop();
     if (!recording) return;
+    setAtBottom(true); // own message → always scroll to bottom
     const tempId = `pending-voice-${Date.now()}`;
     const msg: LocalMsg = {
       id: tempId, senderId: cu.id, content: '🎤 Voice message', type: 'voice',
@@ -1422,10 +1508,19 @@ export default function Chat() {
   const hasText  = inputVal.trim().length > 0;
 
   return (
-    <div className="flex flex-col bg-[#F8F5F2]" style={{ minHeight: '100dvh' }}>
+    /*
+     * Outer container is position:fixed on mobile so it fills the exact
+     * viewport and completely escapes AppShell's pt-14 / pb-20 padding.
+     * On md+ we switch back to relative + h-dvh so it sits inside the
+     * sidebar layout without covering it.
+     */
+    <div
+      className="flex flex-col bg-[#F8F5F2] fixed inset-0 z-[60] md:relative md:inset-auto md:z-auto"
+      style={{ height: '100dvh' } as React.CSSProperties}
+    >
 
-      {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 flex items-center gap-3 px-3 py-3 bg-white/95 backdrop-blur-xl border-b border-black/[0.05] shadow-sm flex-shrink-0">
+      {/* ── Header — flex-shrink-0 keeps it pinned; no sticky needed ── */}
+      <header className="flex-shrink-0 flex items-center gap-3 px-3 py-3 bg-white/95 backdrop-blur-xl border-b border-black/[0.05] shadow-sm z-10">
         <Link href="/messages">
           <button className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors flex-shrink-0">
             <ArrowLeft size={20} className="text-gray-700" />
@@ -1486,19 +1581,35 @@ export default function Chat() {
         </div>
       </header>
 
-      {/* ── Load older indicator ─────────────────────────────────────── */}
-      {loadingOlder && (
-        <div className="flex items-center justify-center py-3 bg-transparent">
-          <Loader2 size={18} className="text-purple-400 animate-spin" />
-        </div>
-      )}
-
       {/* ── Messages area ─────────────────────────────────────────────── */}
-      {activePicker && (
-        <div className="fixed inset-0 z-10" onClick={() => setActivePicker(null)} />
-      )}
-
-      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto relative" style={{ overscrollBehavior: 'contain' }}>
+      {/*
+       * THE scroll container. Rules:
+       *  • flex:1 + min-h-0  → takes remaining height without overflowing parent
+       *  • overflow-y:auto   → only this element scrolls; nothing above or below
+       *  • -webkit-overflow-scrolling:touch → momentum scrolling on iOS
+       *  • overscroll-behavior-y:contain    → prevents pull-to-refresh while in chat
+       * The activePicker overlay (fixed inset-0) has been removed — it blocked
+       * touch events and prevented scrolling while any reaction picker was open.
+       * Dismissal is now handled by handleScroll (any scroll closes the picker)
+       * and by tapping outside a bubble in the message list.
+       */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        onClick={() => activePicker && setActivePicker(null)}
+        className="flex-1 min-h-0 overflow-y-auto relative"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorY: 'contain',
+        } as React.CSSProperties}
+      >
+        {/* Load-older spinner lives INSIDE the scroll container so it never
+            shifts the container's height or causes scroll-position jumps */}
+        {loadingOlder && (
+          <div className="flex items-center justify-center py-3">
+            <Loader2 size={18} className="text-purple-400 animate-spin" />
+          </div>
+        )}
         <div className="py-4 space-y-1">
           {slots.map((slot, si) => {
             if (slot.type === 'sep') return <DateSeparator key={`sep-${si}`} date={slot.date} />;
@@ -1562,7 +1673,7 @@ export default function Chat() {
         <AnimatePresence>
           {!atBottom && (
             <div className="sticky bottom-4 flex justify-end pr-4">
-              <ScrollDownBtn onClick={() => scrollToBottom()} />
+              <ScrollDownBtn onClick={scrollToBottom} newCount={newMsgCount} />
             </div>
           )}
         </AnimatePresence>
