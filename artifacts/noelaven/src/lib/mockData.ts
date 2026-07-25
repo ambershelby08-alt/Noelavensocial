@@ -31,6 +31,7 @@ export interface Post {
   communityId?: string;
   sparkPrompt?: string;
   sparkAudience?: SparkAudience;
+  sparkDateKey?: string; // YYYY-MM-DD in America/New_York — used to query today's responses
   likes: number;
   comments: number;
   shares: number;

@@ -66,6 +66,11 @@ function getETDayStart(): Date {
   return new Date(Date.UTC(y, m - 1, d, 5, 0, 0)); // safe fallback
 }
 
+/** Today's date as YYYY-MM-DD in America/New_York (Eastern Time). */
+function todayKeyET(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+}
+
 // ─── User documents ───────────────────────────────────────────────────────────
 
 export async function getUserDoc(uid: string): Promise<User | null> {
@@ -186,6 +191,7 @@ function docToPost(id: string, d: DocumentData): Post {
     communityId: d.communityId ?? undefined,
     sparkPrompt: d.sparkPrompt ?? undefined,
     sparkAudience: d.sparkAudience ?? undefined,
+    sparkDateKey: d.sparkDateKey ?? undefined,
     likes: d.likes ?? 0,
     comments: d.comments ?? 0,
     shares: d.shares ?? 0,
@@ -205,6 +211,11 @@ export async function createPost(
   opts: { imageUrl?: string; imagePublicId?: string; communityId?: string; mood?: string; sparkPrompt?: string; sparkAudience?: string } = {}
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
+  // sparkDateKey is set on spark posts so we can query by date instead of by
+  // prompt text. A prompt-text query requires a composite (sparkPrompt, createdAt)
+  // index that may not be deployed; a sparkDateKey equality query uses the
+  // auto-created single-field index — no deployment needed.
+  const sparkDateKey = opts.sparkPrompt != null ? todayKeyET() : null;
   const ref = await addDoc(collection(db, 'posts'), {
     authorId: author.id,
     authorName: author.displayName,
@@ -216,6 +227,7 @@ export async function createPost(
     mood: opts.mood ?? null,
     sparkPrompt: opts.sparkPrompt ?? null,
     sparkAudience: opts.sparkAudience ?? null,
+    sparkDateKey,
     commentsDisabled: false,
     likes: 0,
     comments: 0,
@@ -227,36 +239,48 @@ export async function createPost(
 }
 
 /**
- * Subscribe to community spark responses for today's prompt.
+ * Subscribe to community spark responses for today's date key.
  *
- * NOTE: We do NOT filter by createdAt here. The `sparkPrompt` field equals
- * today's AI-generated question, which changes every day. Prompt-equality
- * already scopes the query to today's posts — no date filter needed.
+ * ## Why sparkDateKey instead of sparkPrompt + orderBy
  *
- * Adding `where('createdAt', '>=', dayStart)` caused a `failed-precondition`
- * error when the required composite index was not yet deployed, which silently
- * timed out the feed because onSnapshot errors were not being caught.
+ * The previous implementation queried:
+ *   where('sparkPrompt', '==', prompt) + orderBy('createdAt', 'desc')
  *
- * Supported by the existing composite index: (sparkPrompt ASC, createdAt DESC)
+ * That compound query requires a composite index on (sparkPrompt ASC, createdAt DESC).
+ * Composite indexes must be explicitly deployed via Firebase CLI — they are NOT
+ * created automatically. Without the deployed index, Firestore throws
+ * "failed-precondition: The query requires an index" and returns zero documents,
+ * causing the community feed to appear empty for all users.
+ *
+ * ## Fix
+ *
+ * Query only by `sparkDateKey` (a single equality where clause). Firestore
+ * auto-creates a single-field index for every field, so this query works
+ * without any manual index deployment. Results are sorted client-side by
+ * createdAt descending in useSparkCommunity — acceptable because the daily
+ * post count is small (typically < 200 per day in beta).
+ *
+ * `sparkDateKey` is written on every new spark post by createPost().
  */
 export function subscribeCommunitySparkPosts(
-  prompt: string,
+  sparkDateKey: string,
   onData: (posts: Post[]) => void,
   pageSize = 10,
   onError?: (err: Error) => void
 ): Unsubscribe {
   if (!db) return () => {};
 
+  // Single equality filter — uses Firestore's automatic single-field index.
+  // No orderBy here; results are sorted client-side by useSparkCommunity.
   const q = query(
     collection(db, 'posts'),
-    where('sparkPrompt', '==', prompt),
-    orderBy('createdAt', 'desc'),
+    where('sparkDateKey', '==', sparkDateKey),
     limit(pageSize)
   );
 
   if (import.meta.env.DEV) {
     console.info(
-      `[Firestore] subscribeCommunitySparkPosts — sparkPrompt="${prompt.slice(0, 40)}" pageSize=${pageSize}`
+      `[Firestore] subscribeCommunitySparkPosts — sparkDateKey="${sparkDateKey}" pageSize=${pageSize}`
     );
   }
 
@@ -268,16 +292,10 @@ export function subscribeCommunitySparkPosts(
           `[Firestore] subscribeCommunitySparkPosts ✓ — ${snap.docs.length} docs, fromCache=${snap.metadata.fromCache}`
         );
       }
-      // Client-side: only pass through PUBLIC spark posts.
-      //
-      // "Everyone" tab must show public posts to any authenticated viewer.
-      // "mutuals"-audience posts are intentionally excluded here — they would
-      // appear to people who are not the author's mutuals, which violates privacy.
-      // The "Following" / "Mutuals" sort tabs apply additional client-side
-      // filters (by following/follower lists) on top of this public-only set.
-      const posts = snap.docs
-        .map(d => docToPost(d.id, d.data()))
-        .filter(p => p.sparkAudience === 'public');
+      // Pass ALL matched documents to the caller.
+      // Client-side visibility filtering (sparkAudience === 'public') and
+      // tab filtering (Following / Mutuals) happen in useSparkCommunity.
+      const posts = snap.docs.map(d => docToPost(d.id, d.data()));
       onData(posts);
     },
     (err) => {
@@ -290,24 +308,29 @@ export function subscribeCommunitySparkPosts(
 }
 
 /**
- * Returns the postId of a spark post the user has already submitted today
- * for the given prompt, or null if none found.
- * Used to enforce the one-response-per-day rule server-side.
+ * Returns the postId of a spark post the user has already submitted today,
+ * or null if none found. Used to enforce the one-response-per-day rule.
+ *
+ * Queries by authorId + sparkDateKey — two single-field equality filters.
+ * Firestore can evaluate this with auto-created single-field indexes (no
+ * composite index needed). The previous implementation used a 3-field query
+ * (authorId + sparkPrompt + createdAt >=) which required a composite index
+ * that was never deployed, causing silent failures.
  */
-export async function checkTodaySparkAnswer(userId: string, sparkPrompt: string): Promise<string | null> {
-  if (!db || !userId || !sparkPrompt) return null;
+export async function checkTodaySparkAnswer(userId: string, sparkDateKey: string): Promise<string | null> {
+  if (!db || !userId || !sparkDateKey) return null;
   try {
-    const dayStart = getETDayStart(); // use ET midnight, not local midnight
     const q = query(
       collection(db, 'posts'),
-      where('authorId', '==', userId),
-      where('sparkPrompt', '==', sparkPrompt),
-      where('createdAt', '>=', Timestamp.fromDate(dayStart)),
-      limit(1)
+      where('authorId',    '==', userId),
+      where('sparkDateKey','==', sparkDateKey),
+      limit(5)
     );
     const snap = await getDocs(q);
     if (snap.empty) return null;
-    return snap.docs[0].id;
+    // Take the first document that has a sparkPrompt (is a genuine spark post).
+    const doc = snap.docs.find(d => d.data().sparkPrompt) ?? snap.docs[0];
+    return doc.id;
   } catch {
     return null;
   }

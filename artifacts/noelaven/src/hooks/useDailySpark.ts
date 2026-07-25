@@ -292,7 +292,10 @@ export function useDailySpark(userId?: string) {
   useEffect(() => {
     if (!userId || !isFirebaseConfigured || hasAnsweredToday) return;
     if (!prompt) return;
-    checkTodaySparkAnswer(userId, prompt)
+    // Pass today's ET date key (not prompt text) — checkTodaySparkAnswer now
+    // queries by authorId + sparkDateKey, which uses auto-created single-field
+    // indexes and avoids the composite-index requirement.
+    checkTodaySparkAnswer(userId, todayKeyET())
       .then(postId => { if (postId) markAnswered(postId); })
       .catch(() => {});
   // markAnswered is stable (useCallback dep = userId); safe to omit here.

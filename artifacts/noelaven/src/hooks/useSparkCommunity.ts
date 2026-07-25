@@ -163,16 +163,32 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
     const t0 = performance.now();
 
     const unsub = subscribeCommunitySparkPosts(
-      prompt,
+      todayKeyET(),   // query by sparkDateKey — single equality filter, no composite index needed
       (incoming) => {
-        // Client-side ET date filter: drop posts from a previous day that share
-        // the same sparkPrompt string. Firestore's query omits the createdAt
-        // boundary to avoid a composite-index requirement, so we enforce it here.
-        const todayPosts = incoming.filter(p => isFromTodayET(p.createdAt));
+        // Client-side filters applied in order:
+        //  1. Must be from today (ET) — safety net for any clock drift or missed
+        //     sparkDateKey writes on very old posts.
+        //  2. Must match today's prompt — ensures we only show responses for the
+        //     active Daily Spark question (sparkDateKey could theoretically collide
+        //     if the day rolls over mid-session, but the prompt provides precision).
+        //  3. Must be public — private/mutuals-only posts must never surface to
+        //     arbitrary viewers.
+        //  4. Sort by createdAt descending — Firestore's single-equality query
+        //     returns docs in document-ID order; we sort client-side instead.
+        const todayPosts = incoming
+          .filter(p => isFromTodayET(p.createdAt))
+          .filter(p => !prompt || p.sparkPrompt === prompt)
+          .filter(p => p.sparkAudience === 'public')
+          .sort((a, b) => {
+            const ta = (a.createdAt instanceof Date ? a.createdAt : new Date(0)).getTime();
+            const tb = (b.createdAt instanceof Date ? b.createdAt : new Date(0)).getTime();
+            return tb - ta; // newest first
+          });
 
         if (import.meta.env.DEV) {
           console.info(
-            `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ${incoming.length} total, ${todayPosts.length} from today ET`
+            `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ` +
+            `${incoming.length} raw, ${todayPosts.length} after filters (today+prompt+public)`
           );
         }
         setPosts(todayPosts);

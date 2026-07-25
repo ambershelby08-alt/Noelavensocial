@@ -4,6 +4,22 @@
       "collectionGroup": "posts",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "sparkDateKey", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",    "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "authorId",     "order": "ASCENDING" },
+        { "fieldPath": "sparkDateKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "posts",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "sparkPrompt", "order": "ASCENDING" },
         { "fieldPath": "createdAt",   "order": "DESCENDING" }
       ]
