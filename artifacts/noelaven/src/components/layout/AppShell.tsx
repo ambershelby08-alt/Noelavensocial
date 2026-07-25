@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useCall } from '@/contexts/CallContext';
 import { CallScreen, IncomingCallBanner } from '@/components/calls/CallScreen';
+import { FloatingCallWindow } from '@/components/calls/FloatingCallWindow';
 import { useFCMToken } from '@/hooks/useFCMToken';
 import { NotificationPermissionPrompt } from '@/components/ui/NotificationPermissionPrompt';
 import {
@@ -278,7 +279,11 @@ function InAppMsgToast({ toast, onClose }: { toast: MsgToast; onClose: () => voi
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading, currentUser } = useAuth();
   const { conversations } = useConversations();
-  const { call, endCall, toggleMute, toggleCamera, toggleSpeaker, incomingCall, answerIncoming, declineIncoming } = useCall();
+  const {
+    call, endCall, toggleMute, toggleCamera, toggleSpeaker,
+    toggleMinimize, switchCamera,
+    incomingCall, answerIncoming, declineIncoming,
+  } = useCall();
   const [location] = useLocation();
   const totalUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
 
@@ -402,9 +407,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
 
-      {/* ── Active / ringing call overlay ────────────────────────────────── */}
+      {/* ── Full-screen call overlay (not minimized) ─────────────────────── */}
       <AnimatePresence>
-        {(call.callId || call.isRinging) && (
+        {(call.callId || call.isRinging) && !call.isMinimized && (
           <CallScreen
             key="call-screen"
             call={call}
@@ -412,6 +417,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onToggleMute={toggleMute}
             onToggleCamera={toggleCamera}
             onToggleSpeaker={toggleSpeaker}
+            onMinimize={toggleMinimize}
+            onSwitchCamera={switchCamera}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Minimized floating call window ───────────────────────────────── */}
+      <AnimatePresence>
+        {call.isMinimized && (call.callId || call.isRinging) && (
+          <FloatingCallWindow
+            key="floating-call"
+            call={call}
+            onEnd={endCall}
+            onToggleMute={toggleMute}
+            onRestore={toggleMinimize}
           />
         )}
       </AnimatePresence>

@@ -1,13 +1,15 @@
 /**
  * useWebRTC — manages the full lifecycle of a WebRTC peer connection.
  *
- * Key behaviours added over the original:
+ * Key behaviours:
  *  • ICE config fetched from /api/ice-config (STUN + short-lived TURN creds)
  *  • Five call phases: connecting → ringing → connected → reconnecting → failed
- *  • ICE-connection-state machine with 30 s connection timeout and 8 s
- *    reconnection grace before giving up
- *  • ICE restart attempted on 'failed' before tearing down
+ *  • ICE-connection-state machine with 30 s connection timeout and 20 s
+ *    reconnection grace before giving up (increased from 8 s)
+ *  • ICE restart attempted on 'failed' on BOTH caller and callee sides
+ *  • Callee subscribes to call doc — detects when caller hangs up immediately
  *  • Explicit track + sender cleanup on hang-up / failure
+ *  • Minimize and switchCamera controls
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
@@ -44,6 +46,7 @@ export interface CallState {
   isCameraOff: boolean;
   isRinging: boolean;
   isActive: boolean;
+  isMinimized: boolean;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
 }
@@ -52,7 +55,7 @@ const INITIAL: CallState = {
   callId: null, status: null, phase: null, type: null,
   remoteId: null, remoteName: null, remoteAvatar: null,
   duration: 0, isMuted: false, isSpeakerOn: true, isCameraOff: false,
-  isRinging: false, isActive: false,
+  isRinging: false, isActive: false, isMinimized: false,
   localStream: null, remoteStream: null,
 };
 
@@ -60,10 +63,13 @@ const INITIAL: CallState = {
 
 /** Max time from PC creation to ICE 'connected'. */
 const ICE_CONNECT_TIMEOUT_MS  = 30_000;
-/** Grace period in ICE 'disconnected' before giving up. */
-const ICE_RECONNECT_GRACE_MS  = 8_000;
+/**
+ * Grace period in ICE 'disconnected' before giving up.
+ * 20 s (was 8 s) — mobile/Wi-Fi networks can take longer to self-heal.
+ */
+const ICE_RECONNECT_GRACE_MS  = 20_000;
 /** How long to wait for an ICE restart to succeed. */
-const ICE_RESTART_TIMEOUT_MS  = 10_000;
+const ICE_RESTART_TIMEOUT_MS  = 15_000;
 /** Ring timeout before marking as missed. */
 const RING_TIMEOUT_MS         = 45_000;
 
@@ -73,10 +79,10 @@ export function useWebRTC() {
   const { currentUser } = useAuth();
   const [call, setCall]  = useState<CallState>(INITIAL);
 
-  const pcRef    = useRef<RTCPeerConnection | null>(null);
-  const localRef = useRef<MediaStream | null>(null);
+  const pcRef     = useRef<RTCPeerConnection | null>(null);
+  const localRef  = useRef<MediaStream | null>(null);
   const remoteRef = useRef<MediaStream | null>(null);
-  const timers   = useRef<{
+  const timers    = useRef<{
     interval:   ReturnType<typeof setInterval>  | null;
     demo:       ReturnType<typeof setTimeout>   | null;
     ring:       ReturnType<typeof setTimeout>   | null;
@@ -84,7 +90,7 @@ export function useWebRTC() {
     reconnect:  ReturnType<typeof setTimeout>   | null;
     iceRestart: ReturnType<typeof setTimeout>   | null;
   }>({ interval: null, demo: null, ring: null, iceConnect: null, reconnect: null, iceRestart: null });
-  const unsubs   = useRef<Array<() => void>>([]);
+  const unsubs    = useRef<Array<() => void>>([]);
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
 
@@ -135,15 +141,22 @@ export function useWebRTC() {
       timers.current.iceConnect = null;
       const state = pcRef.current?.iceConnectionState;
       if (state && !['connected', 'completed', 'closed'].includes(state)) {
-        console.warn('[WebRTC] ICE connection timeout');
+        console.warn('[WebRTC] ICE connection timeout after 30 s — state:', state);
         setCall(s => ({ ...s, phase: 'failed' }));
         cleanup();
       }
     }, ICE_CONNECT_TIMEOUT_MS);
 
     function handleIceState() {
-      const state = pc.iceConnectionState;
-      console.debug('[WebRTC] iceConnectionState →', state);
+      const state      = pc.iceConnectionState;
+      const connState  = pc.connectionState;
+      const sigState   = pc.signalingState;
+      const localTks   = localRef.current?.getTracks().length ?? 0;
+      const remoteTks  = remoteRef.current?.getTracks().length ?? 0;
+      console.debug(
+        `[WebRTC] iceState=${state} connState=${connState} sigState=${sigState}`,
+        `localTracks=${localTks} remoteTracks=${remoteTks}`,
+      );
 
       if (state === 'checking') {
         setCall(s => ({ ...s, phase: 'connecting' }));
@@ -161,12 +174,13 @@ export function useWebRTC() {
       } else if (state === 'disconnected') {
         setCall(s => ({ ...s, phase: 'reconnecting' }));
 
-        // Give the browser a grace period to self-heal before we tear down
+        // Give the browser a 20 s grace period to self-heal before we tear down.
+        // (Was 8 s — too aggressive for mobile/Wi-Fi packet loss.)
         if (!timers.current.reconnect) {
           timers.current.reconnect = setTimeout(() => {
             timers.current.reconnect = null;
             if (pcRef.current?.iceConnectionState === 'disconnected') {
-              console.warn('[WebRTC] ICE reconnect grace expired');
+              console.warn('[WebRTC] ICE reconnect grace (20 s) expired — hanging up');
               setCall(s => ({ ...s, phase: 'failed' }));
               cleanup();
             }
@@ -176,21 +190,28 @@ export function useWebRTC() {
       } else if (state === 'failed') {
         if (timers.current.reconnect) { clearTimeout(timers.current.reconnect); timers.current.reconnect = null; }
 
-        // Attempt ICE restart (works when we are the offer side)
-        if (pc.restartIce && pc.signalingState === 'stable') {
-          console.info('[WebRTC] ICE failed — attempting restart');
-          pc.restartIce();
-          setCall(s => ({ ...s, phase: 'reconnecting' }));
+        // Attempt ICE restart — works on both caller AND callee sides per the
+        // W3C spec (pc.restartIce() is not gated on being the offerer).
+        if (pc.restartIce) {
+          console.info('[WebRTC] ICE failed — attempting restartIce()');
+          try {
+            pc.restartIce();
+            setCall(s => ({ ...s, phase: 'reconnecting' }));
 
-          timers.current.iceRestart = setTimeout(() => {
-            timers.current.iceRestart = null;
-            if (pcRef.current?.iceConnectionState !== 'connected' &&
-                pcRef.current?.iceConnectionState !== 'completed') {
-              console.warn('[WebRTC] ICE restart failed');
-              setCall(s => ({ ...s, phase: 'failed' }));
-              cleanup();
-            }
-          }, ICE_RESTART_TIMEOUT_MS);
+            timers.current.iceRestart = setTimeout(() => {
+              timers.current.iceRestart = null;
+              const s = pcRef.current?.iceConnectionState;
+              if (s !== 'connected' && s !== 'completed') {
+                console.warn('[WebRTC] ICE restart failed after 15 s — hanging up');
+                setCall(prev => ({ ...prev, phase: 'failed' }));
+                cleanup();
+              }
+            }, ICE_RESTART_TIMEOUT_MS);
+          } catch (err) {
+            console.error('[WebRTC] restartIce() threw:', err, '— hanging up');
+            setCall(s => ({ ...s, phase: 'failed' }));
+            cleanup();
+          }
         } else {
           setCall(s => ({ ...s, phase: 'failed' }));
           cleanup();
@@ -204,19 +225,41 @@ export function useWebRTC() {
     pc.oniceconnectionstatechange = handleIceState;
   }, [cleanup, startTimer]);
 
-  // ── Build RTCPeerConnection (callee path) ─────────────────────────────────
+  // ── Build RTCPeerConnection (shared helper — used by callee path) ─────────
 
+  // NOTE: declared as a regular function (not useCallback) because it is only
+  // called from inside useCallback bodies that already have stable refs.
   function buildPc(callId: string, side: 'caller' | 'callee', config: RTCConfiguration) {
     const pc = new RTCPeerConnection(config);
     pcRef.current = pc;
 
+    // ── Remote stream — dedicated MediaStream, never shared with local ──────
     const remote = new MediaStream();
     remoteRef.current = remote;
     setCall(s => ({ ...s, remoteStream: remote }));
 
     pc.ontrack = e => {
-      e.streams[0].getTracks().forEach(t => remote.addTrack(t));
-      setCall(s => ({ ...s, remoteStream: remote }));
+      const localTks  = localRef.current?.getTracks().length ?? 0;
+      const remoteTks = remote.getTracks().length;
+      console.debug(
+        `[WebRTC] ontrack side=${side} kind=${e.track.kind}`,
+        `streams=${e.streams.length} existingRemoteTracks=${remoteTks} localTracks=${localTks}`,
+      );
+
+      // Prefer the stream associated with the track; fall back to bare track.
+      const srcStream = e.streams[0];
+      if (srcStream) {
+        srcStream.getTracks().forEach(t => {
+          if (!remote.getTracks().find(x => x.id === t.id)) remote.addTrack(t);
+        });
+      } else {
+        if (!remote.getTracks().find(x => x.id === e.track.id)) remote.addTrack(e.track);
+      }
+
+      // Force a new object reference so callback refs in CallScreen re-fire.
+      const updated = new MediaStream(remote.getTracks());
+      remoteRef.current = updated;
+      setCall(s => ({ ...s, remoteStream: updated }));
     };
 
     pc.onicecandidate = async ({ candidate }) => {
@@ -226,13 +269,27 @@ export function useWebRTC() {
     };
 
     if (isFirebaseConfigured) {
+      // Subscribe to the other side's ICE candidates.
       const otherSide = side === 'caller' ? 'callee' : 'caller';
-      const u = subscribeIceCandidates(callId, otherSide, async c => {
+      const u1 = subscribeIceCandidates(callId, otherSide, async c => {
         try {
           if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(c));
-        } catch { /* ignore */ }
+        } catch { /* ignore stale / duplicate candidates */ }
       });
-      unsubs.current.push(u);
+      unsubs.current.push(u1);
+
+      // Callee subscribes to the call doc so it detects when the caller hangs
+      // up immediately — without waiting for ICE to time out.
+      if (side === 'callee') {
+        const u2 = subscribeCall(callId, async remoteDoc => {
+          if (!remoteDoc) return;
+          if (remoteDoc.status === 'ended' || remoteDoc.status === 'declined') {
+            console.log('[WebRTC] Caller ended/declined call — cleaning up callee');
+            cleanup();
+          }
+        });
+        unsubs.current.push(u2);
+      }
     }
 
     attachIceHandlers(pc);
@@ -297,18 +354,42 @@ export function useWebRTC() {
 
       // Fetch ICE config (STUN + TURN) — falls back to STUN on failure
       const iceConfig = await getIceConfig();
+      const hasTurn = iceConfig.iceServers?.some(
+        srv => (Array.isArray(srv.urls) ? srv.urls : [srv.urls]).some(
+          (u: string) => u.startsWith('turn:') || u.startsWith('turns:'),
+        ),
+      );
+      console.debug('[WebRTC] caller ICE servers:', iceConfig.iceServers?.length, '— TURN present:', hasTurn);
 
       const callIdRef = { current: '' };
+
+      // ── Build peer connection (caller inline — mirrors buildPc for callee) ─
       const pc = new RTCPeerConnection(iceConfig);
       pcRef.current = pc;
 
+      // Dedicated remote stream — NEVER assign localStream here
       const remote = new MediaStream();
       remoteRef.current = remote;
       setCall(s => ({ ...s, remoteStream: remote }));
 
       pc.ontrack = e => {
-        e.streams[0].getTracks().forEach(t => remote.addTrack(t));
-        setCall(s => ({ ...s, remoteStream: remote }));
+        const remoteTks = remote.getTracks().length;
+        console.debug(
+          `[WebRTC] caller ontrack kind=${e.track.kind}`,
+          `streams=${e.streams.length} existingRemoteTracks=${remoteTks}`,
+        );
+        const srcStream = e.streams[0];
+        if (srcStream) {
+          srcStream.getTracks().forEach(t => {
+            if (!remote.getTracks().find(x => x.id === t.id)) remote.addTrack(t);
+          });
+        } else {
+          if (!remote.getTracks().find(x => x.id === e.track.id)) remote.addTrack(e.track);
+        }
+        // New object reference → callback refs in CallScreen re-fire
+        const updated = new MediaStream(remote.getTracks());
+        remoteRef.current = updated;
+        setCall(s => ({ ...s, remoteStream: updated }));
       };
 
       // Queue candidates until callId is available
@@ -341,7 +422,7 @@ export function useWebRTC() {
         await addIceCandidate(callId, 'caller', c).catch(() => {});
       }
 
-      // Subscribe to callee's candidates
+      // Subscribe to callee's ICE candidates
       const u1 = subscribeIceCandidates(callId, 'callee', async c => {
         try {
           if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(c));
@@ -350,16 +431,17 @@ export function useWebRTC() {
       unsubs.current.push(u1);
 
       // Watch for answer / status changes
-      const u2 = subscribeCall(callId, async remote => {
-        if (!remote) return;
-        if (remote.status === 'declined' || remote.status === 'ended' || remote.status === 'missed') {
+      const u2 = subscribeCall(callId, async remoteDoc => {
+        if (!remoteDoc) return;
+        if (remoteDoc.status === 'declined' || remoteDoc.status === 'ended' || remoteDoc.status === 'missed') {
+          console.log('[WebRTC] Call status →', remoteDoc.status, '— cleaning up caller');
           cleanup(); return;
         }
-        if (remote.answer && pc.signalingState !== 'stable') {
+        if (remoteDoc.answer && pc.signalingState !== 'stable') {
           try {
-            await pc.setRemoteDescription(new RTCSessionDescription(remote.answer));
+            await pc.setRemoteDescription(new RTCSessionDescription(remoteDoc.answer));
             setCall(s => ({ ...s, isRinging: false }));
-          } catch { /* ignore */ }
+          } catch (err) { console.error('[WebRTC] setRemoteDescription failed:', err); }
         }
       });
       unsubs.current.push(u2);
@@ -371,7 +453,8 @@ export function useWebRTC() {
         cleanup();
       }, RING_TIMEOUT_MS);
 
-    } catch {
+    } catch (err) {
+      console.error('[WebRTC] startCall error:', err);
       cleanup();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,14 +487,22 @@ export function useWebRTC() {
     try {
       const stream    = await getMedia(incoming.type);
       const iceConfig = await getIceConfig();
-      const pc        = buildPc(incoming.callId, 'callee', iceConfig);
+      const hasTurn   = iceConfig.iceServers?.some(
+        srv => (Array.isArray(srv.urls) ? srv.urls : [srv.urls]).some(
+          (u: string) => u.startsWith('turn:') || u.startsWith('turns:'),
+        ),
+      );
+      console.debug('[WebRTC] callee ICE servers:', iceConfig.iceServers?.length, '— TURN present:', hasTurn);
+
+      const pc = buildPc(incoming.callId, 'callee', iceConfig);
 
       stream.getTracks().forEach(t => pc.addTrack(t, stream));
       await pc.setRemoteDescription(new RTCSessionDescription(incoming.offer!));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await answerCall(incoming.callId, answer);
-    } catch {
+    } catch (err) {
+      console.error('[WebRTC] answerIncomingCall error:', err);
       cleanup();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -428,6 +519,7 @@ export function useWebRTC() {
 
   const endCall = useCallback(async () => {
     const id = call.callId;
+    console.log('[WebRTC] endCall — user hung up callId:', id);
     cleanup(); // dismiss UI immediately
     if (id && id !== 'demo-call' && isFirebaseConfigured) {
       updateCallStatus(id, 'ended').catch(() => {});
@@ -452,6 +544,50 @@ export function useWebRTC() {
     setCall(s => ({ ...s, isSpeakerOn: !s.isSpeakerOn }));
   }, []);
 
+  const toggleMinimize = useCallback(() => {
+    setCall(s => ({ ...s, isMinimized: !s.isMinimized }));
+  }, []);
+
+  /** Switch between front and rear camera. No-op on desktop. */
+  const switchCamera = useCallback(async () => {
+    const pc    = pcRef.current;
+    const local = localRef.current;
+    if (!pc || !local) return;
+
+    const videoTrack = local.getVideoTracks()[0];
+    if (!videoTrack) return;
+
+    // Determine current facing mode; default to 'user' (front camera)
+    const settings     = videoTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
+    const currentFacing = settings.facingMode ?? 'user';
+    const newFacing     = currentFacing === 'user' ? 'environment' : 'user';
+
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: newFacing } },
+        audio: false,
+      });
+      const newTrack = newStream.getVideoTracks()[0];
+
+      // Replace the track in the peer connection without renegotiation
+      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) await sender.replaceTrack(newTrack);
+
+      // Swap track in the local stream
+      local.removeTrack(videoTrack);
+      local.addTrack(newTrack);
+      videoTrack.stop();
+
+      // Create a new MediaStream reference so callback refs in CallScreen re-fire
+      const updated = new MediaStream(local.getTracks());
+      localRef.current = updated;
+      setCall(s => ({ ...s, localStream: updated }));
+    } catch (err) {
+      console.warn('[WebRTC] switchCamera failed (device may not support facing mode):', err);
+    }
+  }, []);
+
+  // Cleanup on unmount
   useEffect(() => () => cleanup(), [cleanup]);
 
   return {
@@ -463,5 +599,7 @@ export function useWebRTC() {
     toggleMute,
     toggleCamera,
     toggleSpeaker,
+    toggleMinimize,
+    switchCamera,
   };
 }

@@ -1,6 +1,6 @@
 /**
  * Global call context — a single useWebRTC instance shared across the app.
- * AppShell renders CallScreen / IncomingCallBanner.
+ * AppShell renders CallScreen / FloatingCallWindow / IncomingCallBanner.
  * Chat.tsx calls startCall().
  */
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -59,6 +59,8 @@ interface CallContextValue {
   toggleMute: () => void;
   toggleCamera: () => void;
   toggleSpeaker: () => void;
+  toggleMinimize: () => void;
+  switchCamera: () => Promise<void>;
   /** Present when an incoming call is ringing (before answering). */
   incomingCall: CallDoc | null;
   answerIncoming: () => Promise<void>;
@@ -96,7 +98,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!currentUser || !isFirebaseConfigured) return;
     const unsub = subscribeIncomingCalls(currentUser.id, incoming => {
-      // Only show if we don't already have an active call
       setIncomingCall(prev => {
         // Don't interrupt an active call
         if (rtc.call.callId) return prev;
@@ -128,6 +129,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       toggleMute: rtc.toggleMute,
       toggleCamera: rtc.toggleCamera,
       toggleSpeaker: rtc.toggleSpeaker,
+      toggleMinimize: rtc.toggleMinimize,
+      switchCamera: rtc.switchCamera,
       incomingCall,
       answerIncoming,
       declineIncoming,

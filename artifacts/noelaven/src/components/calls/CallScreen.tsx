@@ -1,19 +1,26 @@
 /**
- * Full-screen video/voice call overlay — Facebook Messenger-style layout.
+ * Full-screen video/voice call overlay.
  *
- * Video call:
- *   • Ringing  → local camera fills the whole screen; remote avatar floats top-centre
- *   • Active   → remote video fills the whole screen; local camera is a corner PiP
+ * Video call layout:
+ *   • Ringing  → local camera fills the whole screen
+ *   • Active   → large panel (remote by default) + PiP panel (local by default)
+ *   • Tap PiP or the swap button to swap which is large / small
  *
- * Voice call: dark-gradient background with avatar + animated rings when ringing.
+ * Stream binding uses callback refs so the correct srcObject is applied at
+ * element mount time regardless of whether the stream reference changed.
+ * This fixes the "both panels show local video" bug that occurred because
+ * the prior useEffect approach didn't re-fire when video elements remounted
+ * after the ringing→active layout transition.
  *
- * Controls auto-hide after 4 s of inactivity; tap anywhere to reveal them.
+ * Voice call: dark-gradient background with avatar + animated rings.
+ *
+ * Controls auto-hide after 4 s of inactivity; tap anywhere to reveal.
  */
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   PhoneOff, Mic, MicOff, Video, VideoOff, Volume2, VolumeX, Phone,
-  CameraOff,
+  CameraOff, Minimize2, Maximize2, SwitchCamera, ArrowLeftRight,
 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
@@ -32,37 +39,69 @@ interface Props {
   onToggleMute: () => void;
   onToggleCamera: () => void;
   onToggleSpeaker: () => void;
+  onMinimize: () => void;
+  onSwitchCamera: () => void;
 }
 
-export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggleSpeaker }: Props) {
-  const localVideoRef  = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const hideTimer      = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function CallScreen({
+  call, onEnd, onToggleMute, onToggleCamera, onToggleSpeaker, onMinimize, onSwitchCamera,
+}: Props) {
+  const screenRef  = useRef<HTMLDivElement>(null);
+  const hideTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [swapped, setSwapped]                 = useState(false);
+  const [isFullscreen, setIsFullscreen]       = useState(false);
 
   const isVideo       = call.type === 'video';
   const hasRemote     = isVideo && !!call.remoteStream && call.isActive;
-  const showLocalFull = isVideo && !hasRemote; // ringing: local cam fills screen
+  // During ringing for a video call: local cam fills the whole screen.
+  const showLocalFull = isVideo && !hasRemote;
 
-  // ── Wire video elements to streams ─────────────────────────────────────────
-  useEffect(() => {
-    if (localVideoRef.current && call.localStream) {
-      localVideoRef.current.srcObject = call.localStream;
-    }
+  // ── Compute which stream goes in which panel ────────────────────────────────
+  // When swapped: local is large, remote is PiP.
+  // When not swapped (default): remote is large, local is PiP.
+  const largeStream  = hasRemote ? (swapped ? call.localStream  : call.remoteStream) : null;
+  const pipStream    = hasRemote ? (swapped ? call.remoteStream : call.localStream)  : null;
+  const largeMirrored = hasRemote && swapped;   // mirror when local cam is large
+  const pipMirrored   = hasRemote && !swapped;  // mirror when local cam is PiP
+
+  // ── Callback refs — applied at mount time, re-applied when stream changes ──
+  // React calls a callback ref with null when the old ref function changes, then
+  // calls the new function with the element. This guarantees srcObject is set
+  // even when the DOM element mounts into an already-resolved stream.
+
+  const setRingVideo = useCallback((el: HTMLVideoElement | null) => {
+    if (el) el.srcObject = call.localStream ?? null;
   }, [call.localStream]);
 
+  const setLargeVideo = useCallback((el: HTMLVideoElement | null) => {
+    if (el) el.srcObject = largeStream ?? null;
+  }, [largeStream]);
+
+  const setPipVideo = useCallback((el: HTMLVideoElement | null) => {
+    if (el) el.srcObject = pipStream ?? null;
+  }, [pipStream]);
+
+  // ── Fullscreen ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (remoteVideoRef.current && call.remoteStream) {
-      remoteVideoRef.current.srcObject = call.remoteStream;
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const handleFullScreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      screenRef.current?.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.().catch(() => {});
     }
-  }, [call.remoteStream]);
+  }, []);
 
   // ── Auto-hide controls ─────────────────────────────────────────────────────
   const resetHideTimer = useCallback(() => {
     setControlsVisible(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    // Only auto-hide during an active video call
     if (hasRemote) {
       hideTimer.current = setTimeout(() => setControlsVisible(false), 4000);
     }
@@ -73,11 +112,11 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
     return () => { if (hideTimer.current) clearTimeout(hideTimer.current); };
   }, [resetHideTimer]);
 
-  // Reveal controls when active call starts
   useEffect(() => { if (call.isActive) resetHideTimer(); }, [call.isActive, resetHideTimer]);
 
   return (
     <motion.div
+      ref={screenRef}
       key="call-screen"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -87,19 +126,22 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
       onClick={resetHideTimer}
     >
 
-      {/* ── LAYER 1: fullscreen background ──────────────────────────────── */}
+      {/* ── LAYER 1: fullscreen background ──────────────────────────────────── */}
 
       {hasRemote ? (
-        /* Active video call — remote fills screen */
+        /* Active video call — large panel (remote or local depending on swap) */
         <video
-          ref={remoteVideoRef}
-          autoPlay playsInline muted={false}
-          className="absolute inset-0 w-full h-full object-cover"
+          ref={setLargeVideo}
+          autoPlay playsInline muted={!largeMirrored /* mute local cam audio in large panel */}
+          className={cn(
+            'absolute inset-0 w-full h-full object-cover',
+            largeMirrored && 'scale-x-[-1]',
+          )}
         />
       ) : showLocalFull ? (
-        /* Ringing video call — local camera fills screen (see yourself) */
+        /* Ringing video call — local camera fills screen so you see yourself */
         <video
-          ref={localVideoRef}
+          ref={setRingVideo}
           autoPlay playsInline muted
           className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
         />
@@ -116,7 +158,7 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
         style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%)' }}
       />
 
-      {/* ── LAYER 2: top bar (avatar / status) ──────────────────────────── */}
+      {/* ── LAYER 2: top bar (avatar / status / top-right controls) ─────────── */}
       <AnimatePresence>
         {controlsVisible && (
           <motion.div
@@ -129,10 +171,26 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
               background: 'linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 100%)',
             }}
           >
-            {/* Show avatar only for voice calls or when remote video isn't live yet */}
+            {/* Minimize + Fullscreen — top-right corner */}
+            <div className="absolute top-14 right-4 flex gap-2">
+              <button
+                onClick={e => { e.stopPropagation(); onMinimize(); }}
+                className="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+              >
+                <Minimize2 size={14} className="text-white" />
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); handleFullScreen(); }}
+                className="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+              >
+                <Maximize2 size={14} className="text-white" />
+              </button>
+            </div>
+
+            {/* Avatar — shown for voice calls or before remote video is live */}
             {!hasRemote && (
               <div className="relative mb-4">
-                {/* Ringing rings (voice) */}
+                {/* Ringing rings (voice calls only) */}
                 {call.isRinging && !isVideo && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     {[1, 2, 3].map(i => (
@@ -199,42 +257,49 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
         )}
       </AnimatePresence>
 
-      {/* ── LAYER 3: local camera PiP (active video call only) ──────────── */}
+      {/* ── LAYER 3: PiP panel (active video call only) ──────────────────────── */}
       <AnimatePresence>
-        {hasRemote && !call.isCameraOff && (
+        {hasRemote && (
           <motion.div
             key="pip"
             initial={{ opacity: 0, scale: 0.75 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.75 }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="absolute top-16 right-4 z-20 rounded-[18px] overflow-hidden shadow-2xl"
+            className="absolute top-16 right-4 z-20 rounded-[18px] overflow-hidden shadow-2xl cursor-pointer"
             style={{
               width: 110,
               height: 160,
               boxShadow: '0 0 0 2px rgba(255,255,255,0.25), 0 8px 32px rgba(0,0,0,0.6)',
             }}
+            onClick={e => { e.stopPropagation(); setSwapped(s => !s); }}
           >
-            {/* local camera always mirrors (scale-x-[-1]) so it feels natural */}
-            <video
-              ref={localVideoRef}
-              autoPlay playsInline muted
-              className="w-full h-full object-cover scale-x-[-1]"
-            />
+            {(!swapped && call.isCameraOff) ? (
+              /* Local cam is in PiP and camera is off */
+              <div className="w-full h-full bg-gray-900 flex flex-col items-center justify-center gap-1">
+                <CameraOff size={22} className="text-white/50" />
+                <span className="text-[9px] text-white/40 font-medium">Camera off</span>
+              </div>
+            ) : (
+              <video
+                ref={setPipVideo}
+                autoPlay playsInline muted={pipMirrored /* mute own mic echo in PiP */}
+                className={cn(
+                  'w-full h-full object-cover',
+                  pipMirrored && 'scale-x-[-1]',
+                )}
+              />
+            )}
+
+            {/* Swap hint overlay */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/30 rounded-[18px]">
+              <ArrowLeftRight size={20} className="text-white drop-shadow" />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Camera-off badge when active video call + camera disabled */}
-      {hasRemote && call.isCameraOff && (
-        <div className="absolute top-16 right-4 z-20 w-[110px] h-[160px] rounded-[18px] bg-gray-900 flex flex-col items-center justify-center gap-1 shadow-2xl"
-          style={{ boxShadow: '0 0 0 2px rgba(255,255,255,0.15)' }}>
-          <CameraOff size={24} className="text-white/50" />
-          <span className="text-[10px] text-white/40 font-medium">Camera off</span>
-        </div>
-      )}
-
-      {/* ── LAYER 4: bottom controls ─────────────────────────────────────── */}
+      {/* ── LAYER 4: bottom controls ──────────────────────────────────────────── */}
       <AnimatePresence>
         {controlsVisible && (
           <motion.div
@@ -248,27 +313,43 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
               paddingBottom: 'max(env(safe-area-inset-bottom, 0px) + 28px, 48px)',
             }}
           >
-            {/* Secondary row */}
-            <div className="flex justify-center gap-7 mb-8">
+            {/* Secondary controls row */}
+            <div className="flex justify-center gap-5 mb-8 flex-wrap">
               <ControlBtn
-                icon={call.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
+                icon={call.isMuted ? <MicOff size={20} /> : <Mic size={20} />}
                 label={call.isMuted ? 'Unmute' : 'Mute'}
                 active={call.isMuted}
                 onClick={onToggleMute}
               />
               <ControlBtn
-                icon={call.isSpeakerOn ? <Volume2 size={22} /> : <VolumeX size={22} />}
+                icon={call.isSpeakerOn ? <Volume2 size={20} /> : <VolumeX size={20} />}
                 label="Speaker"
                 active={!call.isSpeakerOn}
                 onClick={onToggleSpeaker}
               />
               {isVideo && (
-                <ControlBtn
-                  icon={call.isCameraOff ? <VideoOff size={22} /> : <Video size={22} />}
-                  label={call.isCameraOff ? 'Show' : 'Camera'}
-                  active={call.isCameraOff}
-                  onClick={onToggleCamera}
-                />
+                <>
+                  <ControlBtn
+                    icon={call.isCameraOff ? <VideoOff size={20} /> : <Video size={20} />}
+                    label={call.isCameraOff ? 'Show' : 'Camera'}
+                    active={call.isCameraOff}
+                    onClick={onToggleCamera}
+                  />
+                  <ControlBtn
+                    icon={<SwitchCamera size={20} />}
+                    label="Flip"
+                    active={false}
+                    onClick={onSwitchCamera}
+                  />
+                  {hasRemote && (
+                    <ControlBtn
+                      icon={<ArrowLeftRight size={20} />}
+                      label="Swap"
+                      active={swapped}
+                      onClick={() => setSwapped(s => !s)}
+                    />
+                  )}
+                </>
               )}
             </div>
 
@@ -288,7 +369,7 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
   );
 }
 
-// ── Control button ────────────────────────────────────────────────────────────
+// ── Control button ─────────────────────────────────────────────────────────────
 
 function ControlBtn({
   icon, label, active, onClick,
@@ -305,7 +386,7 @@ function ControlBtn({
       className="flex flex-col items-center gap-2"
     >
       <div className={cn(
-        'w-[58px] h-[58px] rounded-full flex items-center justify-center transition-colors backdrop-blur-sm',
+        'w-[54px] h-[54px] rounded-full flex items-center justify-center transition-colors backdrop-blur-sm',
         active ? 'bg-white/15' : 'bg-white/25'
       )}>
         {icon}
