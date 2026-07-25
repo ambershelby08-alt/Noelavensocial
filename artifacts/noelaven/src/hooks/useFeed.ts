@@ -38,7 +38,10 @@ export function useFeed() {
 
   const addPost = useCallback(async (
     content: string,
-    opts?: { imageUrl?: string; mood?: string; communityId?: string; sparkPrompt?: string; sparkAudience?: string }
+    opts?: {
+      imageUrl?: string; mood?: string; communityId?: string;
+      sparkPrompt?: string; sparkAudience?: string; postAudience?: string;
+    }
   ): Promise<string | undefined> => {
     if (!currentUser) return undefined;
     if (!isFirebaseConfigured) {
@@ -56,6 +59,7 @@ export function useFeed() {
         communityId: opts?.communityId,
         sparkPrompt: opts?.sparkPrompt,
         sparkAudience: opts?.sparkAudience as Post['sparkAudience'],
+        postAudience: (opts?.postAudience ?? 'public') as Post['postAudience'],
         createdAt: new Date(),
       };
       setPosts(prev => [newPost, ...prev]);

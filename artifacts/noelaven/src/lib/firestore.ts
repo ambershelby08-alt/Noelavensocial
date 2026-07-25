@@ -12,7 +12,7 @@ import {
   type DocumentData, type Unsubscribe, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { User, Post, Community, Message, Conversation, Notification, NotificationType } from './mockData';
+import type { User, Post, Community, Message, Conversation, Notification, NotificationType, SparkAudience } from './mockData';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -173,6 +173,24 @@ export async function getAllUsers(pageSize = 50): Promise<User[]> {
 
 // ─── Posts ────────────────────────────────────────────────────────────────────
 
+/**
+ * Normalise legacy Firestore audience values to canonical SparkAudience.
+ * Old writes used 'friends', 'only_me', 'everyone'; new writes use
+ * 'mutuals', 'onlyMe', 'public'.  Both old and new are valid on read.
+ */
+function normalizeAudience(raw: unknown): SparkAudience {
+  switch (raw) {
+    case 'public':
+    case 'everyone':  return 'public';
+    case 'mutuals':
+    case 'friends':   return 'mutuals';
+    case 'private':   return 'private';
+    case 'onlyMe':
+    case 'only_me':   return 'onlyMe';
+    default:          return 'public';
+  }
+}
+
 function docToPost(id: string, d: DocumentData): Post {
   return {
     id,
@@ -190,8 +208,9 @@ function docToPost(id: string, d: DocumentData): Post {
     imagePublicId: d.imagePublicId ?? undefined,
     communityId: d.communityId ?? undefined,
     sparkPrompt: d.sparkPrompt ?? undefined,
-    sparkAudience: d.sparkAudience ?? undefined,
+    sparkAudience: d.sparkAudience != null ? normalizeAudience(d.sparkAudience) : undefined,
     sparkDateKey: d.sparkDateKey ?? undefined,
+    postAudience: normalizeAudience(d.postAudience ?? 'public'),
     likes: d.likes ?? 0,
     comments: d.comments ?? 0,
     shares: d.shares ?? 0,
@@ -208,7 +227,11 @@ function docToPost(id: string, d: DocumentData): Post {
 export async function createPost(
   author: User,
   content: string,
-  opts: { imageUrl?: string; imagePublicId?: string; communityId?: string; mood?: string; sparkPrompt?: string; sparkAudience?: string } = {}
+  opts: {
+    imageUrl?: string; imagePublicId?: string; communityId?: string;
+    mood?: string; sparkPrompt?: string; sparkAudience?: string;
+    postAudience?: string;
+  } = {}
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
   // sparkDateKey is set on spark posts so we can query by date instead of by
@@ -226,7 +249,9 @@ export async function createPost(
     communityId: opts.communityId ?? null,
     mood: opts.mood ?? null,
     sparkPrompt: opts.sparkPrompt ?? null,
+    // Store canonical audience values (normalizeAudience maps on read for old docs)
     sparkAudience: opts.sparkAudience ?? null,
+    postAudience: opts.postAudience ?? 'public',
     sparkDateKey,
     commentsDisabled: false,
     likes: 0,
@@ -547,6 +572,108 @@ export function subscribeUserPosts(userId: string, onData: (posts: Post[]) => vo
   }, err => console.error('[subscribeUserPosts]', err.code, err.message));
 }
 
+/**
+ * Real-time subscription to a user's liked posts.
+ *
+ * Reads the users/{userId}/liked_posts index (written by togglePostReaction)
+ * then batch-fetches the actual post documents.  This is the correct way to
+ * get liked posts because:
+ *  - Firestore cannot query "posts where any reactions.* array contains userId"
+ *  - subscribeUserPosts only returns posts *authored* by the user
+ */
+export function subscribeLikedPosts(
+  userId: string,
+  currentUserId: string,
+  onData: (posts: Post[]) => void
+): Unsubscribe {
+  if (!db || !userId) return () => {};
+
+  const q = query(
+    collection(db, 'users', userId, 'liked_posts'),
+    orderBy('likedAt', 'desc'),
+    limit(50)
+  );
+
+  return onSnapshot(q, async snap => {
+    if (snap.empty) { onData([]); return; }
+
+    const postIds = snap.docs.map(d => d.id);
+
+    // Batch-fetch post documents and saved-state in parallel
+    const [postDocs, savedSnap] = await Promise.all([
+      Promise.all(postIds.map(id => getDoc(doc(db!, 'posts', id)))),
+      currentUserId
+        ? getDocs(collection(db!, 'users', currentUserId, 'saved_posts')).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+    const savedIds = new Set(savedSnap?.docs.map(d => d.id) ?? []);
+
+    const posts: Post[] = [];
+    for (const postDoc of postDocs) {
+      if (!postDoc.exists()) continue;
+      const post = docToPost(postDoc.id, postDoc.data());
+
+      let myReaction: string | null = null;
+      for (const [emoji, users] of Object.entries(post.reactions ?? {})) {
+        if ((users as string[]).includes(currentUserId)) { myReaction = emoji; break; }
+      }
+      post.myReaction = myReaction;
+      post.liked = true; // by definition: it's in the liked_posts index
+      post.saved = savedIds.has(post.id);
+      posts.push(post);
+    }
+
+    onData(posts);
+  }, err => console.error('[subscribeLikedPosts]', err.code, err.message));
+}
+
+/**
+ * Real-time subscription to a user's saved posts.
+ *
+ * Reads users/{userId}/saved_posts (written by togglePostSave) then
+ * batch-fetches the actual post documents.
+ */
+export function subscribeSavedPosts(
+  userId: string,
+  currentUserId: string,
+  onData: (posts: Post[]) => void
+): Unsubscribe {
+  if (!db || !userId) return () => {};
+
+  const q = query(
+    collection(db, 'users', userId, 'saved_posts'),
+    orderBy('savedAt', 'desc'),
+    limit(50)
+  );
+
+  return onSnapshot(q, async snap => {
+    if (snap.empty) { onData([]); return; }
+
+    const postIds = snap.docs.map(d => d.id);
+
+    const postDocs = await Promise.all(
+      postIds.map(id => getDoc(doc(db!, 'posts', id)))
+    );
+
+    const posts: Post[] = [];
+    for (const postDoc of postDocs) {
+      if (!postDoc.exists()) continue;
+      const post = docToPost(postDoc.id, postDoc.data());
+
+      let myReaction: string | null = null;
+      for (const [emoji, users] of Object.entries(post.reactions ?? {})) {
+        if ((users as string[]).includes(currentUserId)) { myReaction = emoji; break; }
+      }
+      post.myReaction = myReaction;
+      post.liked = myReaction !== null;
+      post.saved = true; // by definition: it's in the saved_posts index
+      posts.push(post);
+    }
+
+    onData(posts);
+  }, err => console.error('[subscribeSavedPosts]', err.code, err.message));
+}
+
 export async function togglePostLike(postId: string, userId: string, currentlyLiked: boolean): Promise<void> {
   if (!db) return;
   const postRef = doc(db, 'posts', postId);
@@ -614,6 +741,16 @@ export async function togglePostReaction(
     }
 
     tx.update(postRef, updates);
+
+    // Keep users/{userId}/liked_posts/{postId} in sync so the Profile "Liked"
+    // tab can subscribe to this subcollection as a real-time index.
+    const likeRef = doc(db!, 'users', userId, 'liked_posts', postId);
+    if (toggledOff) {
+      tx.delete(likeRef);
+    } else {
+      // Adding a new reaction OR switching emoji — user still has a reaction.
+      tx.set(likeRef, { postId, likedAt: serverTimestamp() }, { merge: true });
+    }
   });
 
   // Notify the post's author of a new reaction (fire-and-forget; no-op if self)

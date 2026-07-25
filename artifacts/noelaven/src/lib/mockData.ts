@@ -19,7 +19,12 @@ export interface User {
   joinedAt: Date;
 }
 
-export type SparkAudience = 'public' | 'friends' | 'only_me' | 'private';
+/**
+ * Canonical audience values (written to Firestore from this version onward).
+ * Old values stored in Firestore ('friends', 'only_me', 'everyone') are
+ * normalised to these at read time via normalizeAudience() in firestore.ts.
+ */
+export type SparkAudience = 'public' | 'mutuals' | 'private' | 'onlyMe';
 
 export interface Post {
   id: string;
@@ -32,6 +37,8 @@ export interface Post {
   sparkPrompt?: string;
   sparkAudience?: SparkAudience;
   sparkDateKey?: string; // YYYY-MM-DD in America/New_York — used to query today's responses
+  /** Audience for regular (non-Spark) posts. Defaults to 'public' if absent. */
+  postAudience?: SparkAudience;
   likes: number;
   comments: number;
   shares: number;

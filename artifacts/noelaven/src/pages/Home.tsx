@@ -441,10 +441,10 @@ function ShareSheet({ post, onClose, onShared, onSendToChats }: ShareSheetProps)
 // ─── Audience options ─────────────────────────────────────────────────────────
 
 const AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: React.ReactNode }[] = [
-  { value: 'public',   label: 'Public',   icon: <Globe      size={11} /> },
-  { value: 'friends',  label: 'Mutuals',  icon: <Users      size={11} /> },
-  { value: 'private',  label: 'Private',  icon: <Lock       size={11} /> },
-  { value: 'only_me',  label: 'Only Me',  icon: <UserCircle size={11} /> },
+  { value: 'public',  label: 'Public',   icon: <Globe      size={11} /> },
+  { value: 'mutuals', label: 'Mutuals',  icon: <Users      size={11} /> },
+  { value: 'private', label: 'Private',  icon: <Lock       size={11} /> },
+  { value: 'onlyMe',  label: 'Only Me',  icon: <UserCircle size={11} /> },
 ];
 
 interface SparkModalProps {
@@ -1107,7 +1107,7 @@ function CommunityReveal({
 // ─── Post Composer ────────────────────────────────────────────────────────────
 
 interface PostComposerProps {
-  onPost: (content: string, imageUrl?: string) => void;
+  onPost: (content: string, imageUrl?: string, audience?: SparkAudience) => void;
 }
 
 export function PostComposer({ onPost }: PostComposerProps) {
@@ -1116,15 +1116,19 @@ export function PostComposer({ onPost }: PostComposerProps) {
   const [content, setContent] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
+  const [postAudience, setPostAudience] = useState<SparkAudience>('public');
+  const [showAudiencePicker, setShowAudiencePicker] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const canPost = content.trim().length > 0 || imageUrl.length > 0;
 
   function handlePost() {
     if (!canPost) return;
-    onPost(content.trim(), imageUrl || undefined);
+    onPost(content.trim(), imageUrl || undefined, postAudience);
     setContent('');
     setImageUrl('');
+    setPostAudience('public');
+    setShowAudiencePicker(false);
     setIsExpanded(false);
   }
 
@@ -1225,6 +1229,43 @@ export function PostComposer({ onPost }: PostComposerProps) {
                 <button className="p-2 hover:bg-gray-50 rounded-full transition-colors" title="Add location">
                   <MapPin size={18} className="text-pink-400" />
                 </button>
+                {/* Audience picker */}
+                <div className="relative ml-1.5">
+                  <button
+                    onClick={() => setShowAudiencePicker(v => !v)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold border border-purple-200 text-purple-600 bg-purple-50/60 hover:bg-purple-100 transition-colors"
+                  >
+                    {AUDIENCE_OPTIONS.find(o => o.value === postAudience)?.icon}
+                    <span className="ml-0.5">{AUDIENCE_OPTIONS.find(o => o.value === postAudience)?.label}</span>
+                    <ChevronDown size={10} className={cn('ml-0.5 transition-transform duration-150', showAudiencePicker && 'rotate-180')} />
+                  </button>
+                  <AnimatePresence>
+                    {showAudiencePicker && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 4 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute bottom-full left-0 mb-1.5 bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 z-50 min-w-[130px]"
+                      >
+                        {AUDIENCE_OPTIONS.map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => { setPostAudience(opt.value); setShowAudiencePicker(false); }}
+                            className={cn(
+                              'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold transition-colors',
+                              postAudience === opt.value ? 'bg-purple-50 text-purple-600' : 'text-gray-700 hover:bg-gray-50'
+                            )}
+                          >
+                            {opt.icon}
+                            <span>{opt.label}</span>
+                            {postAudience === opt.value && <Check size={12} className="ml-auto text-purple-500" />}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1952,9 +1993,9 @@ export default function Home() {
     showToast('Post updated! ✨');
   }
 
-  function handleNewPost(content: string, imageUrl?: string) {
+  function handleNewPost(content: string, imageUrl?: string, audience?: SparkAudience) {
     if (!currentUser) return;
-    addPost(content, imageUrl ? { imageUrl } : undefined).catch(console.error);
+    addPost(content, { ...(imageUrl ? { imageUrl } : {}), postAudience: audience ?? 'public' }).catch(console.error);
     showToast('Post shared! ✨');
   }
 

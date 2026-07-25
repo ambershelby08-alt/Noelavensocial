@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { getUserDoc, subscribeUserPosts } from '@/lib/firestore';
+import { getUserDoc, subscribeUserPosts, subscribeLikedPosts, subscribeSavedPosts } from '@/lib/firestore';
 import { mockUsers, mockPosts } from '@/lib/mockData';
 import type { User, Post } from '@/lib/mockData';
 
@@ -10,6 +10,8 @@ export function useProfile(userId: string | undefined) {
 
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [likedPosts, setLikedPosts] = useState<Post[]>([]);
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const isOwn = !!userId && !!currentUser && currentUser.id === userId;
@@ -22,6 +24,8 @@ export function useProfile(userId: string | undefined) {
       const found = mockUsers.find(u => u.id === userId) ?? mockUsers[0];
       setUser(isOwn && currentUser ? currentUser : found);
       setPosts(mockPosts.filter(p => p.authorId === (isOwn ? currentUser?.id : found.id)));
+      setLikedPosts(isOwn ? mockPosts.filter(p => p.liked) : []);
+      setSavedPosts(isOwn ? mockPosts.filter(p => p.saved) : []);
       setIsLoading(false);
       return;
     }
@@ -51,5 +55,21 @@ export function useProfile(userId: string | undefined) {
     if (isOwn && currentUser) setUser(currentUser);
   }, [currentUser, isOwn]);
 
-  return { user, posts, isLoading };
+  // ── Liked & Saved posts — own profile only ────────────────────────────────
+  // These read from user-private Firestore subcollections, not from the
+  // posts feed. Subscriptions start only for the current user's own profile
+  // so we never expose another account's liked/saved data.
+  useEffect(() => {
+    if (!isOwn || !userId || !currentUser || !isFirebaseConfigured) {
+      setLikedPosts([]);
+      setSavedPosts([]);
+      return;
+    }
+
+    const unsubLiked = subscribeLikedPosts(userId, currentUser.id, setLikedPosts);
+    const unsubSaved = subscribeSavedPosts(userId, currentUser.id, setSavedPosts);
+    return () => { unsubLiked(); unsubSaved(); };
+  }, [userId, currentUser?.id, isOwn]);
+
+  return { user, posts, likedPosts, savedPosts, isLoading };
 }

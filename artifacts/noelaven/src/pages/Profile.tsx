@@ -34,10 +34,10 @@ import { ReportSheet } from '@/components/ui/ReportSheet';
 // ─── Audience helpers ─────────────────────────────────────────────────────────
 
 const SPARK_AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: React.ReactNode }[] = [
-  { value: 'public',  label: '🌍 Public',      icon: <Globe      size={11} /> },
-  { value: 'friends', label: '👥 Mutuals',     icon: <Users      size={11} /> },
-  { value: 'private', label: '🔒 Private',     icon: <Lock       size={11} /> },
-  { value: 'only_me', label: '🙋 Only Me',     icon: <UserCircle size={11} /> },
+  { value: 'public',  label: '🌍 Public',   icon: <Globe      size={11} /> },
+  { value: 'mutuals', label: '👥 Mutuals',  icon: <Users      size={11} /> },
+  { value: 'private', label: '🔒 Private',  icon: <Lock       size={11} /> },
+  { value: 'onlyMe',  label: '🙋 Only Me',  icon: <UserCircle size={11} /> },
 ];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -783,7 +783,7 @@ export default function Profile() {
   const userId = params?.userId;
 
   // Resolve displayed user via hook (handles Firebase + demo mode)
-  const { user: hookUser, posts: hookPosts } = useProfile(userId);
+  const { user: hookUser, posts: hookPosts, likedPosts, savedPosts } = useProfile(userId);
   const isOwnProfile = currentUser?.id === userId;
   const user: User = hookUser ?? (isOwnProfile && currentUser ? currentUser : mockUsers[0]);
 
@@ -838,9 +838,9 @@ export default function Profile() {
   };
 
   // Data for each tab
-  const userPosts    = hookPosts;
-  const likedPosts   = hookPosts.filter(p => p.liked);
-  const savedPosts   = hookPosts.filter(p => p.saved);
+  // likedPosts and savedPosts come directly from useProfile, which subscribes
+  // to the users/{uid}/liked_posts and users/{uid}/saved_posts Firestore indexes.
+  const userPosts = hookPosts;
   const userCircles  = communities.filter(c => c.isJoined || c.moderatorIds.includes(user.id));
   const sparks: SparkItem[] = userPosts
     .filter(p => p.sparkPrompt)
