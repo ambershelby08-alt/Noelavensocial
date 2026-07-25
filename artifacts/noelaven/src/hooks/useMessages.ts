@@ -125,6 +125,12 @@ export function useMessages(convId: string | undefined) {
     }
 
     await fsSend(convId, currentUser.id, content, type, opts, currentUser);
+    // Push notification stub — wired for future FCM integration
+    const recipientIds = opts.forwardedFrom
+      ? [] // forwarded — conversations handle their own participants
+      : [];
+    void recipientIds; // placeholder; FCM hook goes here
+    console.debug('[push-stub] schedulePushNotification', { convId, type, contentPreview: content.slice(0, 60) });
   }, [currentUser, convId]);
 
   const editMessage = useCallback(async (msgId: string, newContent: string) => {

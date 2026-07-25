@@ -6,7 +6,7 @@ import {
   Smile, Mic, Send, X, Camera, ChevronDown, Check, CheckCheck,
   Reply, Edit2, Trash2, Copy, Forward, Flag,
   Bell, BellOff, Ban, LogOut, Play, Pause,
-  CornerUpLeft, Loader2,
+  CornerUpLeft, Loader2, AlertCircle, GalleryHorizontal, RefreshCw,
 } from 'lucide-react';
 import { mockMessages } from '@/lib/mockData';
 import type { Message, User, Conversation } from '@/lib/mockData';
@@ -55,6 +55,8 @@ function getCannedReply(convId: string): string {
 interface LocalMsg extends Message {
   /** Optimistic sending state */
   pending?: boolean;
+  /** Send failed — show retry button */
+  failed?: boolean;
   /** Local blob URL for preview while uploading */
   localMediaUrl?: string;
 }
@@ -377,9 +379,10 @@ interface BubbleProps {
   onLongPress: () => void;
   onReact: (emoji: string) => void;
   onOpenPhoto: (url: string) => void;
+  onRetry?: () => void;
 }
 
-function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, currentUserId, showPicker, onActivate, onLongPress, onReact, onOpenPhoto }: BubbleProps) {
+function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, currentUserId, showPicker, onActivate, onLongPress, onReact, onOpenPhoto, onRetry }: BubbleProps) {
   const readByOthers = msg.readBy.filter(id => id !== currentUserId);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -484,10 +487,15 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
           <span className={cn('text-[10.5px] ml-1', isMe ? 'text-white/60' : 'text-gray-400')}>(edited)</span>
         )}
 
-        {/* Pending spinner */}
-        {msg.pending && (
+        {/* Pending spinner / failed indicator */}
+        {msg.pending && !msg.failed && (
           <div className="absolute -bottom-1 -right-1">
             <Loader2 size={12} className="text-gray-400 animate-spin" />
+          </div>
+        )}
+        {msg.failed && (
+          <div className="absolute -bottom-1 -right-1">
+            <AlertCircle size={14} className="text-red-400" />
           </div>
         )}
       </motion.div>
@@ -506,8 +514,20 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
         </div>
       )}
       {isMe && isLast && !readByOthers.length && (
-        <div className="flex items-center justify-end mt-0.5">
-          {msg.pending ? <span className="text-[10px] text-gray-400">Sending…</span> : <CheckCheck size={12} className="text-purple-400" />}
+        <div className="flex items-center justify-end mt-0.5 gap-1">
+          {msg.failed ? (
+            <button
+              onClick={e => { e.stopPropagation(); onRetry?.(); }}
+              className="flex items-center gap-1 text-[10px] text-red-400 font-semibold hover:text-red-600 transition-colors"
+            >
+              <RefreshCw size={10} />
+              Tap to retry
+            </button>
+          ) : msg.pending ? (
+            <span className="text-[10px] text-gray-400">Sending…</span>
+          ) : (
+            <CheckCheck size={12} className="text-purple-400" />
+          )}
         </div>
       )}
     </div>
@@ -516,7 +536,7 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
 
 // ─── Bubble action sheet ──────────────────────────────────────────────────────
 
-function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCopy, onDeleteForMe, onDeleteForEveryone, onForward }: {
+function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCopy, onDeleteForMe, onDeleteForEveryone, onForward, onReact }: {
   msg: LocalMsg;
   isMe: boolean;
   isGroup: boolean;
@@ -527,6 +547,7 @@ function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCop
   onDeleteForMe: () => void;
   onDeleteForEveryone: () => void;
   onForward: () => void;
+  onReact: (emoji: string) => void;
 }) {
   const canEdit    = isMe && !msg.deletedForEveryone && canEditOrDeleteForEveryone(msg, msg.senderId) && msg.type === 'text';
   const canDelAll  = isMe && canEditOrDeleteForEveryone(msg, msg.senderId);
@@ -564,14 +585,17 @@ function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCop
         </div>
         {/* Quick reactions at top */}
         <div className="flex justify-center gap-2 px-5 pb-4 border-b border-black/[0.05]">
-          {QUICK_REACTIONS.map(emoji => (
-            <motion.button key={emoji} whileTap={{ scale: 0.85 }} whileHover={{ scale: 1.2, y: -3 }}
-              onClick={() => { /* handled outside via onReact */ onClose(); }}
-              className="w-11 h-11 rounded-full flex items-center justify-center text-[22px] hover:bg-purple-50 transition-colors"
-            >
-              {emoji}
-            </motion.button>
-          ))}
+          {QUICK_REACTIONS.map(emoji => {
+            const active = msg.reactions?.[emoji]?.includes(msg.senderId);
+            return (
+              <motion.button key={emoji} whileTap={{ scale: 0.85 }} whileHover={{ scale: 1.2, y: -3 }}
+                onClick={() => { onReact(emoji); onClose(); }}
+                className={cn('w-11 h-11 rounded-full flex items-center justify-center text-[22px] transition-colors', active ? 'bg-purple-100' : 'hover:bg-gray-100')}
+              >
+                {emoji}
+              </motion.button>
+            );
+          })}
         </div>
         <div className="px-5 pt-2 space-y-1">
           {actions.map(a => (
@@ -999,6 +1023,7 @@ export default function Chat() {
   // call overlay is managed globally by CallContext / AppShell
   const [safetySheet, setSafetySheet]     = useState(false);
   const [forwardMsg, setForwardMsg]       = useState<LocalMsg | null>(null);
+  const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [atBottom, setAtBottom]           = useState(true);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [viewingPhoto, setViewingPhoto]   = useState<string | null>(null);
@@ -1107,7 +1132,15 @@ export default function Chat() {
         ...replyOpts,
       };
       setMessages(prev => [...prev, msg]);
-      await hookSend(text, 'text', replyOpts);
+      try {
+        await hookSend(text, 'text', replyOpts);
+        // Real message arrives via subscription; remove optimistic copy
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      } catch {
+        setMessages(prev => prev.map(m =>
+          m.id === tempId ? { ...m, pending: false, failed: true } : m
+        ));
+      }
     } else {
       const msg: LocalMsg = {
         id: `live-${Date.now()}`, senderId: cu.id, content: text, type: 'text',
@@ -1148,7 +1181,9 @@ export default function Chat() {
       }
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, mediaUrl: url, localMediaUrl: undefined, pending: false } : m));
     } catch {
-      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setMessages(prev => prev.map(m =>
+        m.id === tempId ? { ...m, pending: false, failed: true } : m
+      ));
     } finally {
       setUploadingMedia(false);
     }
@@ -1175,7 +1210,9 @@ export default function Chat() {
       }
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, mediaUrl: url, pending: false } : m));
     } catch {
-      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setMessages(prev => prev.map(m =>
+        m.id === tempId ? { ...m, pending: false, failed: true } : m
+      ));
     }
   }
 
@@ -1278,6 +1315,21 @@ export default function Chat() {
   async function handleLeave() {
     if (isFirebaseConfigured) await fsLeave(convId, cu.id);
     setLocation('/messages');
+  }
+
+  async function handleRetry(msg: LocalMsg) {
+    if (!isFirebaseConfigured) return;
+    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, pending: true, failed: false } : m));
+    try {
+      await hookSend(msg.content, msg.type ?? 'text', {
+        replyToId: msg.replyToId,
+        replyToPreview: msg.replyToPreview,
+        ...(msg.mediaUrl ? { mediaUrl: msg.mediaUrl, mediaType: msg.mediaType } : {}),
+      });
+      setMessages(prev => prev.filter(m => m.id !== msg.id));
+    } catch {
+      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, pending: false, failed: true } : m));
+    }
   }
 
   async function handleForwardSend(convIds: string[]) {
@@ -1387,6 +1439,12 @@ export default function Chat() {
               </button>
             </>
           )}
+          <button
+            onClick={() => setMediaGalleryOpen(true)}
+            title="Media gallery"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+            <GalleryHorizontal size={18} />
+          </button>
           <button onClick={() => setSafetySheet(true)}
             className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
             <MoreHorizontal size={20} />
@@ -1442,6 +1500,7 @@ export default function Chat() {
                         onLongPress={() => { setActionMsg(msg); setActivePicker(null); }}
                         onReact={emoji => handleReact(msg.id, emoji)}
                         onOpenPhoto={url => setViewingPhoto(url)}
+                        onRetry={() => handleRetry(msg)}
                       />
                       <ReactionDisplay
                         reactions={msg.reactions}
@@ -1587,6 +1646,7 @@ export default function Chat() {
             onDeleteForMe={() => handleDeleteForMe(actionMsg)}
             onDeleteForEveryone={() => handleDeleteForEveryone(actionMsg)}
             onForward={() => { setForwardMsg(actionMsg); }}
+            onReact={emoji => { handleReact(actionMsg.id, emoji); }}
           />
         )}
         {/* Call overlay managed globally by AppShell via CallContext */}
@@ -1612,6 +1672,75 @@ export default function Chat() {
             onSend={handleForwardSend}
             onClose={() => setForwardMsg(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Media gallery overlay ────────────────────────────────────── */}
+      <AnimatePresence>
+        {mediaGalleryOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80]"
+              onClick={() => setMediaGalleryOpen(false)} />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 z-[85] bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col"
+              style={{ maxHeight: '80vh' }}
+            >
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                <div className="w-10 h-1 rounded-full bg-gray-300" />
+              </div>
+              <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
+                <button onClick={() => setMediaGalleryOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
+                  <X size={18} className="text-gray-500" />
+                </button>
+                <span className="font-black text-[16px] text-gray-900">Media</span>
+                <div className="w-8" />
+              </div>
+              {(() => {
+                const mediaMessages = messages.filter(m =>
+                  (m.type === 'image' || m.type === 'video') &&
+                  (m.mediaUrl || m.localMediaUrl) &&
+                  !m.deletedForEveryone
+                );
+                if (mediaMessages.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center flex-1 py-16 text-center px-6">
+                      <GalleryHorizontal size={40} className="text-gray-200 mb-4" />
+                      <p className="font-bold text-[15px] text-gray-500 mb-1">No media yet</p>
+                      <p className="text-[13px] text-gray-400">Photos and videos shared in this conversation will appear here.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="overflow-y-auto flex-1 p-3">
+                    <div className="grid grid-cols-3 gap-1">
+                      {[...mediaMessages].reverse().map(m => {
+                        const url = m.mediaUrl ?? m.localMediaUrl ?? '';
+                        return (
+                          <motion.button
+                            key={m.id}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => { setViewingPhoto(url); setMediaGalleryOpen(false); }}
+                            className="relative aspect-square rounded-[12px] overflow-hidden bg-gray-100"
+                          >
+                            {m.type === 'video' ? (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-900">
+                                <Play size={24} className="text-white" />
+                              </div>
+                            ) : (
+                              <img src={url} alt="" className="w-full h-full object-cover" />
+                            )}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

@@ -61,3 +61,10 @@ Added `uploadMedia(fileOrBlob, folder, resourceType)` — handles image/video/au
 ## Home.tsx ShareSheet
 - "Send via Chats" opens ConvPickerSheet (multi-select conversations).
 - Sends `post_share` message via `fsSendMessage` with `sharedPost` payload.
+
+## Task #3 production upgrade (done)
+- **LocalMsg.failed** — added to Chat.tsx LocalMsg interface; doSendText/doSendMedia/doSendVoice now catch errors and set `failed:true` instead of silently discarding
+- **Retry button** — MessageBubble accepts optional `onRetry`; renders "Tap to retry" on failed messages; `handleRetry` in Chat.tsx re-attempts send
+- **BubbleActionSheet reactions were broken** — buttons called `onClose()` but never fired reaction. Fixed: added `onReact` prop; buttons now call `onReact(emoji); onClose()`
+- **Media gallery** — GalleryHorizontal icon in chat header opens slide-up 3-column grid of all image/video messages; tap opens photo viewer
+- **Push notification stub** — useMessages.sendMessage logs schedulePushNotification after Firestore write (placeholder for FCM)
