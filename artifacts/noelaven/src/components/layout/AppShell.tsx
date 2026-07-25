@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useCall } from '@/contexts/CallContext';
 import { CallScreen, IncomingCallBanner } from '@/components/calls/CallScreen';
+import { useFCMToken } from '@/hooks/useFCMToken';
+import { NotificationPermissionPrompt } from '@/components/ui/NotificationPermissionPrompt';
 import {
   Home,
   Compass,
@@ -293,6 +295,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setNotifUnreadCount(demoUnread + mockUnread);
     return undefined;
   }, [currentUser?.id]);
+  // FCM push notifications — token registration + foreground suppression
+  useFCMToken({
+    onForegroundMessage: () => {
+      // App is in foreground: Firestore real-time listeners already show the
+      // update, so we intentionally suppress the duplicate OS notification.
+    },
+  });
+
   const [msgToast, setMsgToast] = useState<MsgToast | null>(null);
   const prevConvsRef = useRef<typeof conversations>([]);
 
@@ -405,6 +415,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Push notification permission prompt ──────────────────────────── */}
+      <NotificationPermissionPrompt />
     </div>
   );
 }

@@ -1239,6 +1239,50 @@ export async function writeNotification(
     read: false,
     createdAt: serverTimestamp(),
   });
+
+  // ── Push notification (fire-and-forget) ──────────────────────────────────
+  // Delivered by the api-server using Firebase Admin SDK so no private key
+  // ever touches client code.
+  const pushTitle = buildPushTitle(type, actor);
+  if (pushTitle) {
+    fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipientId: userId,
+        senderId:    actor.id,
+        type,
+        title:       pushTitle,
+        body:        opts.message,
+        data: {
+          ...(opts.postId      ? { postId:      opts.postId      } : {}),
+          ...(opts.commentId   ? { commentId:   opts.commentId   } : {}),
+          ...(opts.storyId     ? { storyId:     opts.storyId     } : {}),
+          ...(opts.convId      ? { convId:      opts.convId      } : {}),
+          ...(opts.communityId ? { communityId: opts.communityId } : {}),
+          actorId:   actor.id,
+          actorName: actor.displayName,
+        },
+      }),
+    }).catch(() => {}); // never throw — notification failure must not break the action
+  }
+}
+
+function buildPushTitle(type: NotificationType, actor: User): string | null {
+  const name = actor.displayName || 'Someone';
+  const titles: Partial<Record<NotificationType, string>> = {
+    follow:         `${name} followed you`,
+    like:           `${name} liked your post`,
+    reaction:       `${name} reacted to your post`,
+    comment:        `${name} commented on your post`,
+    reply:          `${name} replied to your comment`,
+    message:        `${name} sent you a message`,
+    mention:        `${name} mentioned you`,
+    story_reply:    `${name} replied to your story`,
+    story_reaction: `${name} reacted to your story`,
+    spark_reaction: `${name} reacted to your Spark`,
+  };
+  return titles[type] ?? null;
 }
 
 // ─── Seed initial communities ─────────────────────────────────────────────────
