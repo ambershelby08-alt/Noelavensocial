@@ -7,7 +7,9 @@ import {
   Reply, Edit2, Trash2, Copy, Forward, Flag,
   Bell, BellOff, Ban, LogOut, Play, Pause,
   CornerUpLeft, Loader2, AlertCircle, GalleryHorizontal, RefreshCw,
+  Download, CheckCircle, Share2,
 } from 'lucide-react';
+import { downloadImage } from '@/lib/downloadMedia';
 import { mockMessages } from '@/lib/mockData';
 import type { Message, User, Conversation } from '@/lib/mockData';
 import { useMessages } from '@/hooks/useMessages';
@@ -536,7 +538,7 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
 
 // ─── Bubble action sheet ──────────────────────────────────────────────────────
 
-function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCopy, onDeleteForMe, onDeleteForEveryone, onForward, onReact }: {
+function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCopy, onDeleteForMe, onDeleteForEveryone, onForward, onReact, onDownload }: {
   msg: LocalMsg;
   isMe: boolean;
   isGroup: boolean;
@@ -548,25 +550,29 @@ function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCop
   onDeleteForEveryone: () => void;
   onForward: () => void;
   onReact: (emoji: string) => void;
+  onDownload?: () => void;
 }) {
   const canEdit    = isMe && !msg.deletedForEveryone && canEditOrDeleteForEveryone(msg, msg.senderId) && msg.type === 'text';
   const canDelAll  = isMe && canEditOrDeleteForEveryone(msg, msg.senderId);
+  const isPhoto    = (msg.type === 'image') && !!(msg.mediaUrl ?? msg.localMediaUrl);
 
   const actions = [
-    { id: 'reply',     icon: <Reply size={18} />,  label: 'Reply',               always: true },
-    { id: 'forward',   icon: <Forward size={18} />, label: 'Forward',             always: true },
-    { id: 'copy',      icon: <Copy size={18} />,    label: 'Copy',                always: msg.type === 'text' },
-    { id: 'edit',      icon: <Edit2 size={18} />,   label: 'Edit',                always: canEdit },
-    { id: 'deleteMe',  icon: <Trash2 size={18} />,  label: 'Delete for me',       always: true,  danger: true },
-    { id: 'deleteAll', icon: <Trash2 size={18} />,  label: 'Delete for everyone', always: canDelAll, danger: true },
+    { id: 'reply',    icon: <Reply size={18} />,    label: 'Reply',               always: true },
+    { id: 'forward',  icon: <Forward size={18} />,  label: 'Forward',             always: true },
+    { id: 'download', icon: <Download size={18} />, label: 'Download photo',      always: isPhoto && !!onDownload },
+    { id: 'copy',     icon: <Copy size={18} />,     label: 'Copy',                always: msg.type === 'text' },
+    { id: 'edit',     icon: <Edit2 size={18} />,    label: 'Edit',                always: canEdit },
+    { id: 'deleteMe', icon: <Trash2 size={18} />,   label: 'Delete for me',       always: true,  danger: true },
+    { id: 'deleteAll',icon: <Trash2 size={18} />,   label: 'Delete for everyone', always: canDelAll, danger: true },
   ].filter(a => a.always);
 
   function handle(id: string) {
-    if (id === 'reply')     onReply();
-    if (id === 'forward')   onForward();
-    if (id === 'copy')      onCopy();
-    if (id === 'edit')      onEdit();
-    if (id === 'deleteMe')  onDeleteForMe();
+    if (id === 'reply')    onReply();
+    if (id === 'forward')  onForward();
+    if (id === 'download') onDownload?.();
+    if (id === 'copy')     onCopy();
+    if (id === 'edit')     onEdit();
+    if (id === 'deleteMe') onDeleteForMe();
     if (id === 'deleteAll') onDeleteForEveryone();
     onClose();
   }
@@ -1061,6 +1067,7 @@ export default function Chat() {
   const [newMsgCount, setNewMsgCount]     = useState(0);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [viewingPhoto, setViewingPhoto]   = useState<string | null>(null);
+  const [dlState, setDlState]             = useState<'idle'|'loading'|'done'|'error'>('idle');
 
   const scrollRef          = useRef<HTMLDivElement>(null);
   const bottomRef          = useRef<HTMLDivElement>(null);
@@ -1150,6 +1157,9 @@ export default function Chat() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, typingUserIds.length]);
 
+  // Reset download state whenever the viewer opens a different photo
+  useEffect(() => { setDlState('idle'); }, [viewingPhoto]);
+
   // ── Guard: must be after all hooks ────────────────────────────────────────
   if (!currentUser) return null;
   // Non-null alias so closures below don't require TypeScript re-narrowing
@@ -1175,6 +1185,19 @@ export default function Chat() {
     .filter((u): u is User => !!u);
 
   // ── Scroll helpers ─────────────────────────────────────────────────────────
+
+  // ── Photo download ─────────────────────────────────────────────────────────
+  async function handleDownloadPhoto(url: string) {
+    setDlState('loading');
+    try {
+      await downloadImage(url);
+      setDlState('done');
+      setTimeout(() => setDlState('idle'), 2500);
+    } catch {
+      // URL intentionally omitted — may contain Firebase auth tokens
+      setDlState('error');
+    }
+  }
 
   function scrollToBottom() {
     const el = scrollRef.current;
@@ -1792,6 +1815,11 @@ export default function Chat() {
             onDeleteForEveryone={() => handleDeleteForEveryone(actionMsg)}
             onForward={() => { setForwardMsg(actionMsg); }}
             onReact={emoji => { handleReact(actionMsg.id, emoji); }}
+            onDownload={
+              (actionMsg.type === 'image' && (actionMsg.mediaUrl ?? actionMsg.localMediaUrl))
+                ? () => handleDownloadPhoto(actionMsg.mediaUrl ?? actionMsg.localMediaUrl ?? '')
+                : undefined
+            }
           />
         )}
         {/* Call overlay managed globally by AppShell via CallContext */}
@@ -1895,28 +1923,96 @@ export default function Chat() {
           className="fixed inset-0 z-[120] bg-black/95 flex items-center justify-center"
           onClick={() => setViewingPhoto(null)}
         >
+          {/* Close */}
           <button
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
             onClick={() => setViewingPhoto(null)}
           >
             ✕
           </button>
+
+          {/* Image */}
           <img
             src={viewingPhoto}
             alt=""
             className="max-w-full max-h-full object-contain rounded-lg"
             onClick={e => e.stopPropagation()}
           />
-          <a
-            href={viewingPhoto}
-            download
-            target="_blank"
-            rel="noreferrer"
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 px-5 py-2.5 bg-white/15 text-white text-[13px] font-semibold rounded-full hover:bg-white/25 transition-colors"
+
+          {/* Download button — bottom centre */}
+          <div
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
             onClick={e => e.stopPropagation()}
           >
-            Download
-          </a>
+            <AnimatePresence mode="wait">
+              {dlState === 'done' ? (
+                <motion.div
+                  key="done"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-green-500 text-white text-[13px] font-semibold rounded-full shadow-lg"
+                >
+                  <CheckCircle size={15} />
+                  Photo saved
+                </motion.div>
+              ) : dlState === 'error' ? (
+                <motion.div
+                  key="error"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <span className="text-[12px] text-red-400 font-semibold">Download failed</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleDownloadPhoto(viewingPhoto)}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-white/15 text-white text-[13px] font-semibold rounded-full hover:bg-white/25 transition-colors"
+                    >
+                      <RefreshCw size={14} />
+                      Retry
+                    </button>
+                    {typeof navigator.share === 'function' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(viewingPhoto, { mode: 'cors', cache: 'no-store' });
+                            const blob = await res.blob();
+                            const file = new File([blob], 'noelaven-photo.jpg', { type: blob.type });
+                            if (navigator.canShare?.({ files: [file] })) {
+                              await navigator.share({ files: [file] });
+                            }
+                          } catch { /* ignore */ }
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-white/15 text-white text-[13px] font-semibold rounded-full hover:bg-white/25 transition-colors"
+                      >
+                        <Share2 size={14} />
+                        Share
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="download"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => handleDownloadPhoto(viewingPhoto)}
+                  disabled={dlState === 'loading'}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white/15 text-white text-[13px] font-semibold rounded-full hover:bg-white/25 active:scale-95 transition-all disabled:opacity-60"
+                >
+                  {dlState === 'loading' ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Download size={15} />
+                  )}
+                  {dlState === 'loading' ? 'Saving…' : 'Download'}
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       )}
     </div>
