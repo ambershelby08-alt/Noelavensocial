@@ -312,26 +312,50 @@ export function subscribeCommunitySparkPosts(
  * Used to enforce the one-response-per-day rule and restore answered state after
  * a page refresh or sign-in on a new device.
  *
- * Uses the (authorId ASC, createdAt DESC) composite index — the same one that
- * subscribeUserPosts uses and which is confirmed deployed (that function works).
- * Range + orderBy on the same field (createdAt) combined with an equality on
- * authorId uses that composite index.
+ * ## Why NO range filter on createdAt
+ *
+ * The intuitive query:
+ *   where('authorId', '==', uid) + where('createdAt', '>=', T) + orderBy('createdAt', 'desc')
+ *
+ * …requires a composite index (authorId ASC, createdAt ASC/__name__ ASC) that
+ * is NOT deployed in the live Firebase project (confirmed via Admin SDK:
+ * FAILED_PRECONDITION on 2026-07-25). Adding a range filter on the same field
+ * as orderBy apparently requires a DIFFERENT composite index entry than
+ * the equality+orderBy index that subscribeUserPosts uses.
+ *
+ * ## Safe approach
+ *
+ * Only use: where('authorId', '==', uid) + orderBy('createdAt', 'desc') + limit(10)
+ * This uses the already-deployed (authorId ASC, createdAt DESC) composite index.
+ * Then filter client-side: post must have sparkPrompt AND createdAt >= ET day start.
+ * Ten posts is more than enough — a user can only post one spark per day.
  */
 export async function checkTodaySparkAnswer(userId: string): Promise<string | null> {
   if (!db || !userId) return null;
   try {
-    const dayStart = getETDayStart();
     const q = query(
       collection(db, 'posts'),
       where('authorId', '==', userId),
-      where('createdAt', '>=', Timestamp.fromDate(dayStart)),
       orderBy('createdAt', 'desc'),
-      limit(5)
+      limit(10)
     );
     const snap = await getDocs(q);
     if (snap.empty) return null;
-    // First document that has a sparkPrompt = a genuine spark post from today.
-    const sparkDoc = snap.docs.find(d => d.data().sparkPrompt);
+    const dayStart = getETDayStart();
+    // Client-side: find first post that is a spark post from today (ET).
+    const sparkDoc = snap.docs.find(d => {
+      const data = d.data();
+      if (!data.sparkPrompt) return false;
+      // Duck-type the Firestore Timestamp (toDate()) vs plain Date/number.
+      const raw = data.createdAt as { toDate?: () => Date } | Date | number | null;
+      const createdDate: Date =
+        raw && typeof (raw as { toDate?: unknown }).toDate === 'function'
+          ? (raw as { toDate: () => Date }).toDate()
+          : raw instanceof Date
+          ? raw
+          : new Date(raw as number ?? 0);
+      return createdDate >= dayStart;
+    });
     return sparkDoc?.id ?? null;
   } catch (err) {
     console.error('[checkTodaySparkAnswer]', err);

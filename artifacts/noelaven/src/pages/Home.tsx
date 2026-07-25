@@ -841,6 +841,7 @@ interface CommunityRevealProps {
   streak: number;
   memoryLane: import('@/hooks/useDailySpark').MemoryLaneEntry | null;
   currentUserId?: string;
+  hasAnsweredToday: boolean;
   // Passed from parent (pre-warmed before user even answers)
   posts: Post[];
   loading: boolean;
@@ -857,7 +858,7 @@ interface CommunityRevealProps {
 }
 
 function CommunityReveal({
-  prompt, streak, memoryLane, currentUserId,
+  prompt, streak, memoryLane, currentUserId, hasAnsweredToday,
   posts, loading, hasMore, loadMore, timedOut, error, retry,
   onOpenComments, onOpenShare, onReact, onOpenMenu, onOpenPhoto,
 }: CommunityRevealProps) {
@@ -913,7 +914,9 @@ function CommunityReveal({
 
   const featured = community.slice(0, 2);
   const rest     = community.slice(2);
-  const total    = allOthers.length + 1; // +1 for the current user; use allOthers for accurate count
+  // +1 for the current user only when they have actually answered today.
+  // Before answering, their own post is not in Firestore yet, so do not inflate the count.
+  const total    = allOthers.length + (hasAnsweredToday ? 1 : 0);
 
   const badges = streakBadges(streak);
 
@@ -2029,12 +2032,18 @@ export default function Home() {
         />
       </AnimatePresence>
 
-      {hasAnsweredToday && (
+      {/* Community feed — shown as soon as we have a prompt (not gated behind answering).
+          Everyone tab must display all public spark responses for today regardless of
+          whether the current viewer has answered. The gate was previously `hasAnsweredToday`
+          which meant Account B (who follows Account A) could never see Account A's public
+          response until Account B also answered — confirmed root cause 2026-07-25. */}
+      {!!sparkPrompt && (
         <CommunityReveal
           prompt={sparkPrompt}
           streak={streak}
           memoryLane={memoryLane}
           currentUserId={currentUser?.id}
+          hasAnsweredToday={hasAnsweredToday}
           posts={communityPosts}
           loading={communityLoading}
           hasMore={communityHasMore}

@@ -1,63 +1,82 @@
 ---
 name: Noelaven Spark Community Feed
-description: Architecture of the Daily Spark community responses feed — prompt persistence, audience filtering, sort tabs, and account isolation guard.
+description: Architecture of the Daily Spark community responses feed — prompt persistence, audience filtering, sort tabs, account isolation guard, and confirmed production bugs.
 ---
 
-## The core rule: prompt string must be identical across all accounts
+## Current query (correct — confirmed via Admin SDK 2026-07-25)
 
-The Firestore community query is `where('sparkPrompt', '==', prompt)`. This requires an
-**exact string match**. If Account A and Account B receive even slightly different prompt
-strings (e.g., server restarted between requests), Account B's query returns 0 results and
-"No other responses yet" shows even though Account A has a public post.
+`subscribeCommunitySparkPosts` uses:
+```
+where('createdAt', '>=', Timestamp.fromDate(etDayStart))
+orderBy('createdAt', 'desc')
+limit(pageSize)
+```
+This uses Firestore's auto-deployed single-field index on `createdAt` — no composite index
+needed. Client-side filter: `p.sparkPrompt && p.sparkAudience === 'public'`.
 
-**Fix:** The API server (`artifacts/api-server/src/routes/spark.ts`) now persists the daily
-prompt to `.spark-prompt-cache.json`. The file cache is loaded on startup so server restarts
-return the same prompt. All clients on the same ET day get the identical string.
+**Why NOT sparkDateKey:** Existing posts don't have the `sparkDateKey` field (written only by
+new code); an equality query on it returns 0 results for older posts. Confirmed via Admin SDK.
 
-**Why:** The previous `new Map()` in-memory cache was cleared on every server restart. In
-development (hot-reload, workflow restart) this happened constantly, silently causing a
-prompt mismatch that looked like a Firestore query returning empty.
+**Why NOT sparkPrompt equality:** The API server generated 3 different prompt strings on
+2026-07-25 across server restarts. Exact-match filtering silently drops valid responses.
+
+## CommunityReveal gate — was a confirmed bug, now fixed
+
+**Old code (buggy):** `{hasAnsweredToday && <CommunityReveal ...>}`
+**New code (fixed):** `{!!sparkPrompt && <CommunityReveal ...>}`
+
+**Root cause confirmed 2026-07-25:** Account B (who follows Account A) could never see
+Account A's public response because CommunityReveal was only rendered after Account B also
+answered. Account B had 0 posts in Firestore today, so `hasAnsweredToday = false` always.
+The Firestore query and client filters were correct — the gate was the blocker.
+
+`CommunityReveal` now accepts `hasAnsweredToday: boolean` prop and uses it only for the
+`total` count (`allOthers.length + (hasAnsweredToday ? 1 : 0)`).
+
+## checkTodaySparkAnswer — composite index NOT deployed (confirmed bug)
+
+**Old query (broken):**
+```
+where('authorId', '==', uid)
+where('createdAt', '>=', Timestamp.fromDate(dayStart))   ← requires missing index
+orderBy('createdAt', 'desc')
+```
+Admin SDK threw `FAILED_PRECONDITION` on 2026-07-25: the composite index
+`(authorId ASC, createdAt ASC, __name__ ASC)` does not exist in the live project.
+The browser client silently catches this and returns `null` — cross-device answered-state
+restoration never works.
+
+**New query (fixed):**
+```
+where('authorId', '==', uid)
+orderBy('createdAt', 'desc')   ← uses existing (authorId, createdAt DESC) composite index
+limit(10)
+```
+Then client-side: find first doc where `sparkPrompt` truthy AND `createdAt >= etDayStart`.
+Ten posts is more than enough — one spark per day is enforced.
 
 ## Audience filtering: only 'public' posts enter the community subscription
 
-`subscribeCommunitySparkPosts` in `firestore.ts` now filters to `p.sparkAudience === 'public'` only.
-
-**Why:** The old filter also passed `'friends'`-audience posts through, meaning private
-responses appeared in the Everyone tab for all viewers regardless of relationship.
+`subscribeCommunitySparkPosts` client-side filter: `p.sparkAudience === 'public'`.
+Firestore document field is `sparkAudience`, value is the string `'public'` (not 'everyone').
 
 ## Sort tabs: useFollowingIds + IIFE filter
 
-`CommunityReveal` in `Home.tsx` calls `useFollowingIds(currentUserId)` (from
-`src/hooks/useFollowingIds.ts`), which subscribes to `users/{uid}/following` subcollection
-and returns a `Set<string>` of followed UIDs.
-
-Sort filtering is applied as an IIFE after computing `allOthers`:
-- `everyone` → all public posts (no extra filter)
+`CommunityReveal` calls `useFollowingIds(currentUserId)` and `useFollowerIds(currentUserId)`.
+- `everyone`  → `allOthers` (all public posts, no relationship filter)
 - `following` → `followingIds.has(p.authorId)`
-- `friends` → same as following (simplified; full mutual-follower check skipped to avoid
-  a separate subcollection query per post)
+- `mutuals`   → `followingIds.has(p.authorId) && followerIds.has(p.authorId)`
+
+`allOthers = posts.filter(p => p.authorId !== currentUserId)` — current user's own post
+excluded from all tabs (displayed separately above the community section).
 
 ## Account isolation: confirmedForUserId guard in useDailySpark
 
-Between a userId prop change and the `useEffect([userId, today])` firing, `hasAnsweredToday`
-retains the previous account's value. This causes a flash of the unlock banner on account
-switch.
-
-**Fix:** `useDailySpark` maintains a `confirmedForUserId` state. The return value exposes
-`hasAnsweredToday: confirmedForUserId === userId ? hasAnsweredToday : false`. Only returns
-true once the effect has confirmed the value for the current account.
-
-`markAnswered` also sets `confirmedForUserId` so in-session answers don't get masked.
+`useDailySpark` maintains `confirmedForUserId`. Returns `hasAnsweredToday: true` only when
+`confirmedForUserId === userId`. Prevents cross-account flash on account switch.
+`markAnswered` also sets `confirmedForUserId` so in-session answers aren't masked.
 
 ## Firestore rules: subcollection coverage
 
-`users/{userId}/following` and `users/{userId}/followers` subcollections are NOT covered by
-the parent `/users/{userId}` rule. Explicit rules added to `firestore.rules`:
-- following: read = any authenticated user; write = owner only
-- followers: read = any authenticated user; write = the person doing the following (auth.uid == followerId)
-
-## Firestore index: checkTodaySparkAnswer
-
-`checkTodaySparkAnswer` queries `(authorId, sparkPrompt, createdAt)`. Added composite index
-to `firestore.indexes.json`. Without it, the query throws `failed-precondition` (silently
-caught), so the cross-device "already answered" check never works.
+`users/{userId}/following` and `users/{userId}/followers` subcollections need EXPLICIT rules —
+parent `/users/{userId}` rule does NOT cover them. Rules are in `firestore.rules`.
