@@ -21,7 +21,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { updatePostSparkAudience, followUser as fsFollow, unfollowUser as fsUnfollow, getUserDoc, getOrCreateDirectConversation } from '@/lib/firestore';
+import { updatePostSparkAudience, followUser as fsFollow, unfollowUser as fsUnfollow, subscribeIsFollowing, getUserDoc, getOrCreateDirectConversation } from '@/lib/firestore';
 import { notifyFollow } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { FounderBadge } from '@/components/ui/FounderBadge';
@@ -780,6 +780,28 @@ export default function Profile() {
   const [followingOpen, setFollowingOpen] = useState(false);
   const [isFollowing, setIsFollowing]   = useState(false);
   const [followerCount, setFollowerCount] = useState(user.followers);
+
+  // ── Real-time follow status ─────────────────────────────────────────────────
+  // Profile.tsx previously hardcoded isFollowing = false and never read Firestore,
+  // causing the Follow button to reset to "Follow" on every navigation.
+  // We now subscribe to users/{currentUser.id}/following/{userId} so the button
+  // always reflects the true Firestore state, across navigations and account switches.
+  useEffect(() => {
+    if (!currentUser || isOwnProfile || !isFirebaseConfigured) {
+      setIsFollowing(false);
+      return;
+    }
+    const unsub = subscribeIsFollowing(currentUser.id, userId!, (following) => {
+      setIsFollowing(following);
+    });
+    return unsub;
+  }, [currentUser?.id, userId, isOwnProfile]);
+
+  // Keep followerCount in sync with Firestore (user.followers updates when
+  // followUser/unfollowUser increments the counter on the target's user doc).
+  useEffect(() => {
+    setFollowerCount(user.followers ?? 0);
+  }, [user.followers]);
   const [photoViewer, setPhotoViewer] = useState<{ src: string } | null>(null);
   const [safetySheetOpen, setSafetySheetOpen] = useState(false);
   const [profileReportOpen, setProfileReportOpen] = useState(false);
@@ -860,19 +882,27 @@ export default function Profile() {
   async function handleFollow() {
     if (!currentUser || followLoading) return;
     setFollowLoading(true);
+
+    // Optimistic update — button responds instantly.
+    // The subscribeIsFollowing listener will confirm the real state once
+    // the Firestore write propagates (typically < 200 ms on good connectivity).
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+    setFollowerCount(n => wasFollowing ? Math.max(0, n - 1) : n + 1);
+
     try {
-      if (isFollowing) {
+      if (wasFollowing) {
         if (isFirebaseConfigured) await fsUnfollow(currentUser.id, user.id);
-        setIsFollowing(false);
-        setFollowerCount(n => Math.max(0, n - 1));
       } else {
         if (isFirebaseConfigured) await fsFollow(currentUser.id, user.id);
-        setIsFollowing(true);
-        setFollowerCount(n => n + 1);
-        // Fire follow notification (works in both Firebase and demo mode)
         notifyFollow(user.id, currentUser).catch(console.error);
       }
-    } catch { /* ignore */ } finally {
+    } catch {
+      // Revert optimistic update on failure — the subscription will also
+      // correct the state, but reverting immediately avoids a stale button.
+      setIsFollowing(wasFollowing);
+      setFollowerCount(n => wasFollowing ? n + 1 : Math.max(0, n - 1));
+    } finally {
       setFollowLoading(false);
     }
   }

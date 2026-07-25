@@ -402,6 +402,35 @@ export async function unfollowUser(currentUserId: string, targetUserId: string):
   ]);
 }
 
+/**
+ * Real-time subscription to whether `currentUserId` follows `targetUserId`.
+ *
+ * Listens to the single document users/{currentUserId}/following/{targetUserId}.
+ * If the document exists the user is following; if absent they are not.
+ *
+ * This replaces the previous pattern where Profile.tsx initialised
+ * `isFollowing = false` and never corrected it from Firestore, causing the
+ * Follow button to reset to "Follow" on every navigation.
+ *
+ * Returns an unsubscribe function. Call it in the useEffect cleanup.
+ */
+export function subscribeIsFollowing(
+  currentUserId: string,
+  targetUserId: string,
+  onChange: (isFollowing: boolean) => void
+): Unsubscribe {
+  if (!db || !currentUserId || !targetUserId || currentUserId === targetUserId) {
+    onChange(false);
+    return () => {};
+  }
+  const followDocRef = doc(db, 'users', currentUserId, 'following', targetUserId);
+  return onSnapshot(
+    followDocRef,
+    (snap) => onChange(snap.exists()),
+    () => onChange(false) // on permission error — safe default
+  );
+}
+
 export function subscribeFeed(
   onData: (posts: Post[]) => void,
   currentUserId?: string,
