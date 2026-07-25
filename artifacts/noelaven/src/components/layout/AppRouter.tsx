@@ -21,15 +21,13 @@ import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import ForgotPassword from '@/pages/ForgotPassword';
 import CreateProfile from '@/pages/CreateProfile';
-import { CallProvider } from '@/contexts/CallContext';
-import { SafetyProvider } from '@/contexts/SafetyContext';
-
 // ─── Authenticated shell ──────────────────────────────────────────────────────
+// SafetyProvider and CallProvider are now mounted in App.tsx above AppRouter so
+// they are unconditionally available. AppShell can safely call useCall() and
+// useSafety() regardless of when it first renders.
 
 function AuthenticatedApp() {
   return (
-    <SafetyProvider>
-    <CallProvider>
     <AppShell>
       <Switch>
         <Route path="/"                   component={Home} />
@@ -63,8 +61,6 @@ function AuthenticatedApp() {
         </Route>
       </Switch>
     </AppShell>
-    </CallProvider>
-    </SafetyProvider>
   );
 }
 

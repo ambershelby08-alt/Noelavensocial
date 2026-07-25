@@ -3,7 +3,7 @@
  * and safety settings for the current user.
  */
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   subscribeBlockedUsers, subscribeBlockedByUsers,
   subscribeMutedUsers, subscribeRestrictedUsers,
