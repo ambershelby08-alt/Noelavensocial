@@ -19,20 +19,7 @@ import { isFirebaseConfigured } from '@/lib/firebase';
 import { subscribeCommunitySparkPosts } from '@/lib/firestore';
 import { mockUsers } from '@/lib/mockData';
 import { todayKeyET } from '@/hooks/useDailySpark';
-import { normalizeDate } from '@/lib/timestamp';
 import type { Post } from '@/lib/mockData';
-
-// ── ET date filter ────────────────────────────────────────────────────────────
-// Firestore omits the createdAt filter on the community query (to avoid a
-// composite-index requirement). Posts from a previous day that happened to
-// share the same sparkPrompt text would otherwise slip through. We enforce the
-// date boundary client-side using the same Eastern-Time date key that controls
-// the Daily Spark prompt rotation.
-function isFromTodayET(timestamp: unknown): boolean {
-  const date = normalizeDate(timestamp);
-  if (!date) return false;
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(date) === todayKeyET();
-}
 
 export type CommunitySort = 'mutuals' | 'following' | 'everyone';
 
@@ -163,52 +150,38 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
     const t0 = performance.now();
 
     const unsub = subscribeCommunitySparkPosts(
-      todayKeyET(),   // query by sparkDateKey — single equality filter, no composite index needed
       (incoming) => {
-        // Client-side filters applied in order:
-        //  1. Must be from today (ET) — safety net for any clock drift or missed
-        //     sparkDateKey writes on very old posts.
-        //  2. Must match today's prompt — ensures we only show responses for the
-        //     active Daily Spark question (sparkDateKey could theoretically collide
-        //     if the day rolls over mid-session, but the prompt provides precision).
-        //  3. Must be public — private/mutuals-only posts must never surface to
-        //     arbitrary viewers.
-        //  4. Sort by createdAt descending — Firestore's single-equality query
-        //     returns docs in document-ID order; we sort client-side instead.
-        const todayPosts = incoming
-          .filter(p => isFromTodayET(p.createdAt))
-          .filter(p => !prompt || p.sparkPrompt === prompt)
-          .filter(p => p.sparkAudience === 'public')
-          .sort((a, b) => {
-            const ta = (a.createdAt instanceof Date ? a.createdAt : new Date(0)).getTime();
-            const tb = (b.createdAt instanceof Date ? b.createdAt : new Date(0)).getTime();
-            return tb - ta; // newest first
-          });
+        // Firestore has already filtered to posts created on or after today's
+        // ET midnight. Client-side: keep only public Daily Spark responses.
+        //
+        // NOTE: we intentionally do NOT filter by p.sparkPrompt === prompt.
+        // The API server generated different prompt strings across server restarts
+        // on the same day (confirmed via Admin SDK on 2026-07-25: 3 different
+        // prompts). Exact-match filtering would drop valid responses from other
+        // accounts who answered a slightly different prompt text.
+        const sparkPosts = incoming
+          .filter(p => !!p.sparkPrompt)             // must be a Daily Spark post
+          .filter(p => p.sparkAudience === 'public'); // Everyone tab: public only
 
-        if (import.meta.env.DEV) {
-          console.info(
-            `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ` +
-            `${incoming.length} raw, ${todayPosts.length} after filters (today+prompt+public)`
-          );
-        }
-        setPosts(todayPosts);
+        console.info(
+          `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ` +
+          `${incoming.length} raw today, ${sparkPosts.length} public spark posts`
+        );
+        setPosts(sparkPosts);
         setLoading(false);
         setTimedOut(false);
         setError(null);
-        setHasMore(todayPosts.length >= pageSize);
-        memCache.set(prompt, todayPosts);
-        writeLs(prompt, todayPosts);
+        setHasMore(sparkPosts.length >= pageSize);
+        memCache.set(prompt, sparkPosts);
+        writeLs(prompt, sparkPosts);
       },
       pageSize,
       (err) => {
-        // Surface the real error so it can be shown and retried.
-        // FirestoreError extends Error and adds a `code` string field.
         const code = (err as unknown as { code?: string }).code ?? 'unknown';
         console.error('[useSparkCommunity] Firestore error:', code, err.message);
         setError(`${code}: ${err.message}`);
         setLoading(false);
         setTimedOut(false);
-        // If we had cached data it stays visible; otherwise posts is empty.
         if (!initialRef.current?.length && !memCache.get(prompt)?.length) {
           setPosts([]);
         }

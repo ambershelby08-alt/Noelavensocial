@@ -239,64 +239,64 @@ export async function createPost(
 }
 
 /**
- * Subscribe to community spark responses for today's date key.
+ * Subscribe to today's public Daily Spark responses (community feed).
  *
- * ## Why sparkDateKey instead of sparkPrompt + orderBy
+ * ## Why createdAt range instead of sparkPrompt equality or sparkDateKey
  *
- * The previous implementation queried:
- *   where('sparkPrompt', '==', prompt) + orderBy('createdAt', 'desc')
+ * Three approaches were tried and failed:
  *
- * That compound query requires a composite index on (sparkPrompt ASC, createdAt DESC).
- * Composite indexes must be explicitly deployed via Firebase CLI — they are NOT
- * created automatically. Without the deployed index, Firestore throws
- * "failed-precondition: The query requires an index" and returns zero documents,
- * causing the community feed to appear empty for all users.
+ * 1. `where('sparkPrompt', '==', prompt) + orderBy('createdAt', 'desc')`
+ *    Required a composite index never deployed. Also failed because the API
+ *    server generated different prompt strings across restarts on the same day
+ *    (confirmed via Admin SDK: 3 different prompts on 2026-07-25), so equality
+ *    matching silently drops other users' valid responses.
  *
- * ## Fix
+ * 2. `where('sparkDateKey', '==', today)`
+ *    No existing posts have the sparkDateKey field — it was only added to NEW
+ *    posts by a code change that landed after the posts were created. Admin SDK
+ *    confirmed: query returns 0 documents for all existing content.
  *
- * Query only by `sparkDateKey` (a single equality where clause). Firestore
- * auto-creates a single-field index for every field, so this query works
- * without any manual index deployment. Results are sorted client-side by
- * createdAt descending in useSparkCommunity — acceptable because the daily
- * post count is small (typically < 200 per day in beta).
+ * ## Correct approach
  *
- * `sparkDateKey` is written on every new spark post by createPost().
+ * `where('createdAt', '>=', etDayStart) + orderBy('createdAt', 'desc')`
+ *
+ * Range filter + orderBy on the SAME field uses Firestore's auto-created
+ * single-field index on `createdAt` — no composite index deployment needed.
+ * Works with every existing post in the database, regardless of which fields
+ * they have. Client-side filters then keep only public Daily Spark posts.
+ *
+ * The (authorId ASC, createdAt DESC) composite index already deployed
+ * (subscribeUserPosts uses it and works) is NOT needed here — this is a
+ * collection-wide range scan, not an equality+orderBy on different fields.
  */
 export function subscribeCommunitySparkPosts(
-  sparkDateKey: string,
   onData: (posts: Post[]) => void,
-  pageSize = 10,
+  pageSize = 50,
   onError?: (err: Error) => void
 ): Unsubscribe {
   if (!db) return () => {};
 
-  // Single equality filter — uses Firestore's automatic single-field index.
-  // No orderBy here; results are sorted client-side by useSparkCommunity.
+  const dayStart = getETDayStart(); // today midnight ET, expressed in UTC
   const q = query(
     collection(db, 'posts'),
-    where('sparkDateKey', '==', sparkDateKey),
+    where('createdAt', '>=', Timestamp.fromDate(dayStart)),
+    orderBy('createdAt', 'desc'),
     limit(pageSize)
   );
 
-  if (import.meta.env.DEV) {
-    console.info(
-      `[Firestore] subscribeCommunitySparkPosts — sparkDateKey="${sparkDateKey}" pageSize=${pageSize}`
-    );
-  }
+  // Always log so we can verify the query is firing in production.
+  console.info(
+    `[Firestore] subscribeCommunitySparkPosts — dayStart=${dayStart.toISOString()} pageSize=${pageSize}`
+  );
 
   return onSnapshot(
     q,
     (snap) => {
-      if (import.meta.env.DEV) {
-        console.info(
-          `[Firestore] subscribeCommunitySparkPosts ✓ — ${snap.docs.length} docs, fromCache=${snap.metadata.fromCache}`
-        );
-      }
-      // Pass ALL matched documents to the caller.
-      // Client-side visibility filtering (sparkAudience === 'public') and
-      // tab filtering (Following / Mutuals) happen in useSparkCommunity.
-      const posts = snap.docs.map(d => docToPost(d.id, d.data()));
-      onData(posts);
+      const all = snap.docs.map(d => docToPost(d.id, d.data()));
+      console.info(
+        `[Firestore] subscribeCommunitySparkPosts ✓ — ${all.length} posts today from Firestore, fromCache=${snap.metadata.fromCache}`
+      );
+      onData(all);
     },
     (err) => {
       console.error(
@@ -308,30 +308,33 @@ export function subscribeCommunitySparkPosts(
 }
 
 /**
- * Returns the postId of a spark post the user has already submitted today,
- * or null if none found. Used to enforce the one-response-per-day rule.
+ * Returns the postId of a Daily Spark post this user submitted today (ET), or null.
+ * Used to enforce the one-response-per-day rule and restore answered state after
+ * a page refresh or sign-in on a new device.
  *
- * Queries by authorId + sparkDateKey — two single-field equality filters.
- * Firestore can evaluate this with auto-created single-field indexes (no
- * composite index needed). The previous implementation used a 3-field query
- * (authorId + sparkPrompt + createdAt >=) which required a composite index
- * that was never deployed, causing silent failures.
+ * Uses the (authorId ASC, createdAt DESC) composite index — the same one that
+ * subscribeUserPosts uses and which is confirmed deployed (that function works).
+ * Range + orderBy on the same field (createdAt) combined with an equality on
+ * authorId uses that composite index.
  */
-export async function checkTodaySparkAnswer(userId: string, sparkDateKey: string): Promise<string | null> {
-  if (!db || !userId || !sparkDateKey) return null;
+export async function checkTodaySparkAnswer(userId: string): Promise<string | null> {
+  if (!db || !userId) return null;
   try {
+    const dayStart = getETDayStart();
     const q = query(
       collection(db, 'posts'),
-      where('authorId',    '==', userId),
-      where('sparkDateKey','==', sparkDateKey),
+      where('authorId', '==', userId),
+      where('createdAt', '>=', Timestamp.fromDate(dayStart)),
+      orderBy('createdAt', 'desc'),
       limit(5)
     );
     const snap = await getDocs(q);
     if (snap.empty) return null;
-    // Take the first document that has a sparkPrompt (is a genuine spark post).
-    const doc = snap.docs.find(d => d.data().sparkPrompt) ?? snap.docs[0];
-    return doc.id;
-  } catch {
+    // First document that has a sparkPrompt = a genuine spark post from today.
+    const sparkDoc = snap.docs.find(d => d.data().sparkPrompt);
+    return sparkDoc?.id ?? null;
+  } catch (err) {
+    console.error('[checkTodaySparkAnswer]', err);
     return null;
   }
 }
@@ -424,10 +427,17 @@ export function subscribeIsFollowing(
     return () => {};
   }
   const followDocRef = doc(db, 'users', currentUserId, 'following', targetUserId);
+  console.info(`[subscribeIsFollowing] subscribing: ${currentUserId} → ${targetUserId}`);
   return onSnapshot(
     followDocRef,
-    (snap) => onChange(snap.exists()),
-    () => onChange(false) // on permission error — safe default
+    (snap) => {
+      console.info(`[subscribeIsFollowing] ${currentUserId} → ${targetUserId}: ${snap.exists() ? 'FOLLOWING ✓' : 'not following'}`);
+      onChange(snap.exists());
+    },
+    (err) => {
+      console.error(`[subscribeIsFollowing] error for ${currentUserId} → ${targetUserId}:`, err.code, err.message);
+      onChange(false);
+    }
   );
 }
 
