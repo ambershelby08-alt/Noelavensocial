@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { UserCacheProvider, CurrentUserSeed } from '@/contexts/UserCacheContext';
+import { DailySparkProvider } from '@/contexts/DailySparkContext';
 import AppRouter from '@/components/layout/AppRouter';
 import { Router as WouterRouter } from 'wouter';
 
@@ -16,12 +17,17 @@ function App() {
             can read currentUser and immediately warm the cache for it. */}
         <UserCacheProvider>
           <CurrentUserSeed />
-          <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-              <AppRouter />
-            </WouterRouter>
-            <Toaster />
-          </TooltipProvider>
+          {/* DailySparkProvider lives here so all pages share ONE useDailySpark
+              instance.  Moving it above the router means the hook is mounted
+              once at app start and never resets on page navigation. */}
+          <DailySparkProvider>
+            <TooltipProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+                <AppRouter />
+              </WouterRouter>
+              <Toaster />
+            </TooltipProvider>
+          </DailySparkProvider>
         </UserCacheProvider>
       </AuthProvider>
     </QueryClientProvider>

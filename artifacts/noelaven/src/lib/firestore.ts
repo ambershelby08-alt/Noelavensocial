@@ -330,9 +330,50 @@ export function subscribeCommunitySparkPosts(
  * Then filter client-side: post must have sparkPrompt AND createdAt >= ET day start.
  * Ten posts is more than enough — a user can only post one spark per day.
  */
+/**
+ * Write a deterministic gate document to enforce one Spark answer per user
+ * per Eastern-Time date.
+ *
+ * Document path: `dailySparkResponses/{uid}_{dateKey}`
+ * (e.g. "abc123_2026-07-25")
+ *
+ * Uses a Firestore transaction so two simultaneous submissions from different
+ * devices are handled atomically.  If the document already exists the
+ * transaction throws `new Error('already_answered')`.
+ *
+ * @param uid      The authenticated user's UID.
+ * @param dateKey  YYYY-MM-DD in America/New_York (use `todayKeyET()`).
+ * @param postId   The post ID of the answer, or 'pending' when called before
+ *                 the post is created.
+ */
+export async function recordSparkAnswer(uid: string, dateKey: string, postId: string): Promise<void> {
+  if (!db) return;
+  const gateRef = doc(db, 'dailySparkResponses', `${uid}_${dateKey}`);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(gateRef);
+    if (snap.exists()) throw new Error('already_answered');
+    tx.set(gateRef, {
+      uid,
+      sparkDateKey: dateKey,
+      postId,
+      createdAt: serverTimestamp(),
+    });
+  });
+}
+
 export async function checkTodaySparkAnswer(userId: string): Promise<string | null> {
   if (!db || !userId) return null;
   try {
+    // Fast path: O(1) point-read on the deterministic gate document.
+    const dateKey = todayKeyET();
+    const gateSnap = await getDoc(doc(db, 'dailySparkResponses', `${userId}_${dateKey}`));
+    if (gateSnap.exists()) {
+      const pid = gateSnap.data().postId as string | undefined;
+      return (pid && pid !== 'pending') ? pid : 'done';
+    }
+
+    // Slow path: query posts collection (handles answers that pre-date the
+    // dailySparkResponses collection — preserves backward compatibility).
     const q = query(
       collection(db, 'posts'),
       where('authorId', '==', userId),

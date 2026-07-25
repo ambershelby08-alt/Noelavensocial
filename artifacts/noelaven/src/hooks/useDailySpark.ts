@@ -371,5 +371,13 @@ export function useDailySpark(userId?: string) {
     streak,
     memoryLane,
     markAnswered,
+    /**
+     * `statusConfirmed` becomes `true` once the [userId, today] effect has
+     * finished reading localStorage for the current userId.  Components that
+     * open UI (e.g. the composer) MUST wait for this to be true before
+     * checking `hasAnsweredToday`, otherwise they see the initial `false`
+     * value before the storage read completes.
+     */
+    statusConfirmed: confirmedForUserId === userId,
   };
 }

@@ -19,7 +19,8 @@ import { PhotoViewer } from '@/components/ui/PhotoViewer';
 import { GradientAvatar, getGradientPair } from '@/components/ui/GradientAvatar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
+import { streakBadges } from '@/hooks/useDailySpark';
+import { useDailySparkStatus } from '@/contexts/DailySparkContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { updatePostSparkAudience, followUser as fsFollow, unfollowUser as fsUnfollow, subscribeIsFollowing, getUserDoc, getOrCreateDirectConversation } from '@/lib/firestore';
 import { notifyFollow } from '@/lib/notifications';
@@ -690,7 +691,7 @@ function SparkTabContent({
   isOwn: boolean;
   onOpenPhoto?: (src: string) => void;
 }) {
-  const { streak } = useDailySpark();
+  const { streak } = useDailySparkStatus();
   const badges = streakBadges(streak);
 
   if (sparks.length === 0) {

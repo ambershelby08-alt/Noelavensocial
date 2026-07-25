@@ -15,7 +15,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { dailySparks, mockUsers } from '@/lib/mockData';
 import type { Post, User, SparkAudience } from '@/lib/mockData';
 import { useFeed } from '@/hooks/useFeed';
-import { useDailySpark, streakBadges } from '@/hooks/useDailySpark';
+import { useDailySpark, streakBadges, todayKeyET } from '@/hooks/useDailySpark';
+import { useDailySparkStatus } from '@/contexts/DailySparkContext';
 import { useSparkCommunity, type CommunitySort } from '@/hooks/useSparkCommunity';
 import { useFollowerIds } from '@/hooks/useFollowerIds';
 import { useStories } from '@/hooks/useStories';
@@ -33,6 +34,7 @@ import {
   addReply as fsAddReply,
   writeNotification as fsWriteNotification,
   sendMessage as fsSendMessage,
+  recordSparkAnswer,
 } from '@/lib/firestore';
 import { useConversations } from '@/hooks/useConversations';
 import { isFirebaseConfigured } from '@/lib/firebase';
@@ -1797,7 +1799,17 @@ export default function Home() {
 
   const { posts, addPost, toggleReaction, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   // unreadCount is shown in the global MobileHeader bell (AppShell) — not duplicated here
-  const { prompt: sparkPrompt, hasAnsweredToday, streak, memoryLane, markAnswered } = useDailySpark(currentUser?.id);
+  // Single shared source of truth — reads from DailySparkContext which is
+  // mounted once at app level.  Never calls useDailySpark directly here so
+  // navigating away and back doesn't reset the answered state.
+  const {
+    prompt: sparkPrompt,
+    hasAnsweredToday,
+    statusConfirmed: sparkStatusConfirmed,
+    streak,
+    memoryLane,
+    markAnswered,
+  } = useDailySparkStatus();
 
   // Pre-warm the community cache as soon as we have a prompt — before the user
   // even answers today's spark.  When CommunityReveal mounts, the data is already
@@ -1844,14 +1856,31 @@ export default function Home() {
   const [toastVariant, setToastVariant] = useState<ToastVariant>('success');
   const [toastVisible, setToastVisible] = useState(false);
 
-  // Auto-open SparkModal when navigated here with ?spark=1 (only if not yet answered)
+  // Auto-open SparkModal when navigated here with ?spark=1
+  //
+  // Race-condition fix: we MUST wait for `sparkStatusConfirmed` before reading
+  // `hasAnsweredToday`.  Without this guard the empty-deps effect fires on
+  // mount when `hasAnsweredToday` is still the initial `false` (the shared
+  // context's localStorage read hasn't completed yet), opening the composer
+  // even though the user already answered.
+  //
+  // `handledSparkParamRef` prevents firing more than once per mount even as
+  // `sparkStatusConfirmed` changes on the first render cycle.
+  const handledSparkParamRef = useRef(false);
+
   useEffect(() => {
-    if (window.location.search.includes('spark=1')) {
-      window.history.replaceState({}, '', '/');
-      if (!hasAnsweredToday) setSparkOpen(true);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (handledSparkParamRef.current) return;               // already handled this mount
+    if (!window.location.search.includes('spark=1')) return; // no trigger param in URL
+    if (!sparkStatusConfirmed) return;                       // wait until localStorage read completes
+
+    handledSparkParamRef.current = true;
+    window.history.replaceState({}, '', '/');
+    if (!hasAnsweredToday) setSparkOpen(true);
+    // If hasAnsweredToday is true, we intentionally do nothing — the Spark button
+    // in AppShell already shows the "Already Answered" sheet before navigating,
+    // so reaching here with hasAnsweredToday=true means the URL was typed manually
+    // or the sheet was bypassed. Either way: do not open a blank composer.
+  }, [sparkStatusConfirmed, hasAnsweredToday]);
 
   // After publishing, open StoryViewer for the user's own group.
   // We watch storyGroups reactively because the Firestore subscription may not
@@ -1931,8 +1960,29 @@ export default function Home() {
 
   async function handleSparkPost(content: string, imageUrl?: string, audience?: SparkAudience) {
     if (!currentUser) return;
-    // Client guard — prevent double submission
+    // Client guard — the shared context is the primary protection.
     if (hasAnsweredToday) return;
+
+    // Backend gate — write the deterministic gate doc BEFORE creating the post.
+    // The Firestore transaction rejects duplicates server-side; Firestore rules
+    // additionally enforce `create`-only (no overwrite).
+    if (isFirebaseConfigured) {
+      try {
+        await recordSparkAnswer(currentUser.id, todayKeyET(), 'pending');
+      } catch (gateErr) {
+        const msg = String((gateErr as Error).message ?? '');
+        if (msg === 'already_answered') {
+          // Another device submitted simultaneously — sync local state and bail.
+          markAnswered('done');
+          showToast("You've already shared today's Spark! ✨");
+          setSparkOpen(false);
+          return;
+        }
+        // Network or other transient error — log but don't block the happy path.
+        console.warn('[Spark] gate write non-fatal, proceeding:', gateErr);
+      }
+    }
+
     try {
       const postId = await addPost(content, {
         imageUrl,

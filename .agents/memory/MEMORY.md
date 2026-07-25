@@ -21,3 +21,4 @@
 - [Noelaven auth flow gotchas](noelaven-auth-flow.md) — completeProfile must call setAddingAccount(false); Signup.tsx must catch signUp errors; AppRouter guard order can trap users mid-transition.
 - [Noelaven beta sprint patterns](noelaven-beta-sprint.md) — timestamp duck-typing, onSnapshot error handlers, rules subcollection gaps, notification wiring anti-doubles, real-time ModerationDashboard, Discover suggestedCreators.
 - [Noelaven Spark community query](spark-query-architecture.md) — query by sparkDateKey (single where, no composite index needed); never use sparkPrompt+orderBy (composite index never deployed → empty feed).
+- [Noelaven Daily Spark status architecture](spark-status-architecture.md) — use `useDailySparkStatus()` from DailySparkContext everywhere; gate composer open on `statusConfirmed`; `recordSparkAnswer` is the backend gate.

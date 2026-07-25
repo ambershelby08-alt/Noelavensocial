@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDailySparkStatus } from '@/contexts/DailySparkContext';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
@@ -28,10 +29,74 @@ import { subscribeUnreadNotificationCount } from '@/lib/firestore';
 import { demoGetUserNotifs } from '@/lib/notifications';
 import { mockNotifications } from '@/lib/mockData';
 
+// ─── Already-Answered Sheet ───────────────────────────────────────────────────
+// Shown when the user taps the Spark button after already answering today.
+
+function AlreadyAnsweredSheet({ prompt, onClose }: { prompt: string; onClose: () => void }) {
+  const [, setLocation] = useLocation();
+  return (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[59] bg-black/40"
+        onClick={onClose}
+      />
+      {/* Bottom sheet */}
+      <motion.div
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl"
+      >
+        <div className="flex flex-col items-center px-6 py-8 text-center">
+          <div className="w-10 h-1 rounded-full bg-gray-200 mb-5" />
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+          >
+            <Sparkles size={26} className="text-white" />
+          </div>
+          <h2 className="font-black text-[20px] text-gray-900 mb-2">
+            Already Sparked Today! ✨
+          </h2>
+          {prompt && (
+            <p className="text-[13px] text-purple-600 font-semibold mb-3 leading-relaxed max-w-xs italic">
+              "{prompt}"
+            </p>
+          )}
+          <p className="text-[13.5px] text-gray-500 mb-7 leading-relaxed">
+            You've shared your Daily Spark.<br />Come back tomorrow for a fresh prompt!
+          </p>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={() => { setLocation('/'); onClose(); }}
+            className="w-full py-3.5 rounded-2xl text-white font-bold text-[15px] mb-3"
+            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 4px 18px rgba(107,115,255,0.3)' }}
+          >
+            View Community Sparks
+          </motion.button>
+          <button
+            onClick={onClose}
+            className="text-[14px] text-gray-500 font-semibold py-2"
+          >
+            Come back tomorrow
+          </button>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
 // ─── Floating Bottom Nav ──────────────────────────────────────────────────────
 
 export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread?: number; notifUnreadCount?: number }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const { hasAnsweredToday, prompt: sparkPrompt } = useDailySparkStatus();
+  const [showAnsweredSheet, setShowAnsweredSheet] = useState(false);
 
   const navItems = [
     { icon: Home,          path: '/',            label: 'Home'     },
@@ -42,6 +107,7 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
   ];
 
   return (
+    <>
     <nav className="fixed bottom-4 left-3 right-3 z-50 md:hidden">
       <div
         className="flex justify-around items-center h-[64px] px-2 bg-white/95 backdrop-blur-2xl rounded-[32px] border border-white"
@@ -52,19 +118,23 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
 
           if (item.special) {
             return (
-              <Link key={item.path} href={item.path}>
-                <motion.div
-                  whileTap={{ scale: 0.88 }}
-                  className="flex flex-col items-center justify-center w-12 h-12 rounded-[18px] text-white shadow-md cursor-pointer"
-                  style={{
-                    background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)',
-                    boxShadow: '0 4px 18px rgba(107,115,255,0.45)',
-                  }}
-                >
-                  <item.icon size={20} strokeWidth={2.5} />
-                  <span className="text-[8px] font-black uppercase tracking-wide mt-0.5 opacity-90">{item.label}</span>
-                </motion.div>
-              </Link>
+              <motion.button
+                key={item.path}
+                whileTap={{ scale: 0.88 }}
+                onClick={() =>
+                  hasAnsweredToday
+                    ? setShowAnsweredSheet(true)
+                    : setLocation('/?spark=1')
+                }
+                className="flex flex-col items-center justify-center w-12 h-12 rounded-[18px] text-white shadow-md cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)',
+                  boxShadow: '0 4px 18px rgba(107,115,255,0.45)',
+                }}
+              >
+                <item.icon size={20} strokeWidth={2.5} />
+                <span className="text-[8px] font-black uppercase tracking-wide mt-0.5 opacity-90">{item.label}</span>
+              </motion.button>
             );
           }
 
@@ -113,6 +183,15 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
         })}
       </div>
     </nav>
+    <AnimatePresence>
+      {showAnsweredSheet && (
+        <AlreadyAnsweredSheet
+          prompt={sparkPrompt}
+          onClose={() => setShowAnsweredSheet(false)}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
 
@@ -121,6 +200,8 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
 export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread?: number; notifUnreadCount?: number }) {
   const [location, setLocation] = useLocation();
   const { currentUser, isDemoMode } = useAuth();
+  const { hasAnsweredToday, prompt: sparkPrompt } = useDailySparkStatus();
+  const [showAnsweredSheet, setShowAnsweredSheet] = useState(false);
 
   const navItems = [
     { icon: Home,          path: '/',                                              label: 'Home'          },
@@ -133,6 +214,7 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
   ];
 
   return (
+    <>
     <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-black/[0.06] bg-white/80 backdrop-blur-xl pt-8 pb-6 px-4 z-40">
       <div className="flex items-center px-3 mb-10">
         <NoelavenLogo variant="full" size="md" />
@@ -188,7 +270,11 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
       </nav>
 
       <button
-        onClick={() => setLocation('/?spark=1')}
+        onClick={() =>
+          hasAnsweredToday
+            ? setShowAnsweredSheet(true)
+            : setLocation('/?spark=1')
+        }
         className="mt-auto w-full text-white font-bold py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition-opacity active:scale-95 duration-200 flex items-center justify-center gap-2"
         style={{
           background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)',
@@ -196,7 +282,7 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
         }}
       >
         <Sparkles size={18} />
-        <span>New Spark</span>
+        <span>{hasAnsweredToday ? 'Sparked Today ✨' : 'New Spark'}</span>
       </button>
 
       {currentUser && (
@@ -209,6 +295,15 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
         </Link>
       )}
     </aside>
+    <AnimatePresence>
+      {showAnsweredSheet && (
+        <AlreadyAnsweredSheet
+          prompt={sparkPrompt}
+          onClose={() => setShowAnsweredSheet(false)}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
 
