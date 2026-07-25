@@ -879,6 +879,7 @@ function ForwardPickerSheet({
   onClose: () => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [query, setQuery]       = useState('');
 
   function toggle(id: string) {
     setSelected(prev => {
@@ -894,6 +895,16 @@ function ForwardPickerSheet({
     : msg.type === 'voice'   ? '🎤 Voice message'
     : msg.type === 'post_share' ? '📌 Shared post'
     : (msg.editedContent ?? msg.content).slice(0, 80);
+
+  const filtered = query.trim()
+    ? conversations.filter(conv => {
+        const other = conv.participants.find(p => p.id !== currentUserId) ?? conv.participants[0];
+        const name  = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
+        const handle = (other as any).handle ?? '';
+        const q = query.toLowerCase();
+        return name.toLowerCase().includes(q) || handle.toLowerCase().includes(q);
+      })
+    : conversations;
 
   return (
     <>
@@ -929,7 +940,7 @@ function ForwardPickerSheet({
         </div>
 
         {/* Preview of the message being forwarded */}
-        <div className="mx-5 mt-3 mb-1 flex-shrink-0 px-4 py-2.5 bg-purple-50 rounded-2xl border border-purple-100">
+        <div className="mx-5 mt-3 mb-2 flex-shrink-0 px-4 py-2.5 bg-purple-50 rounded-2xl border border-purple-100">
           <div className="flex items-center gap-2 mb-0.5">
             <Forward size={13} className="text-purple-400" />
             <span className="text-[11px] font-bold text-purple-500">Forwarding</span>
@@ -937,11 +948,31 @@ function ForwardPickerSheet({
           <p className="text-[12.5px] text-gray-600 truncate">{preview}</p>
         </div>
 
+        {/* Search bar */}
+        <div className="mx-5 mb-2 flex-shrink-0">
+          <div className="flex items-center gap-2 bg-gray-100 rounded-2xl px-4 py-2.5 focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-200 transition-all border border-transparent focus-within:border-purple-200">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="text-gray-400 flex-shrink-0"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/><path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search conversations…"
+              className="flex-1 bg-transparent text-[14px] text-gray-900 placeholder:text-gray-400 outline-none"
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Conversation list */}
-        <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
-          {conversations.length === 0 ? (
-            <p className="text-center text-gray-400 text-[14px] py-10">No conversations yet</p>
-          ) : conversations.map(conv => {
+        <div className="overflow-y-auto flex-1 px-4 pb-3 space-y-2">
+          {filtered.length === 0 ? (
+            <p className="text-center text-gray-400 text-[14px] py-10">
+              {query ? 'No matches found' : 'No conversations yet'}
+            </p>
+          ) : filtered.map(conv => {
             const other = conv.participants.find(p => p.id !== currentUserId) ?? conv.participants[0];
             const name  = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
             const sel   = selected.has(conv.id);
@@ -1343,7 +1374,10 @@ export default function Chat() {
     if (isFirebaseConfigured) {
       await Promise.all(convIds.map(cid =>
         fsSendMessage(cid, cu.id, content, forwardMsg.type ?? 'text', {
-          forwardedFrom: { senderId: forwardMsg.senderId, senderName: forwardMsg.senderId },
+          forwardedFrom: {
+            senderId: forwardMsg.senderId,
+            senderName: conversation?.participants.find(p => p.id === forwardMsg.senderId)?.displayName ?? forwardMsg.senderId,
+          },
           ...(forwardMsg.mediaUrl ? { mediaUrl: forwardMsg.mediaUrl, mediaType: forwardMsg.mediaType } : {}),
           ...(forwardMsg.sharedPost ? { sharedPost: forwardMsg.sharedPost } : {}),
         })
