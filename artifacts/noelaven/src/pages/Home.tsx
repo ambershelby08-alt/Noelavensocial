@@ -9,8 +9,8 @@ import {
   Edit2, MessageCircleOff, ClipboardCopy,
   Globe, Lock, UserCircle, Flame, VolumeX, UserX,
 } from 'lucide-react';
-import { ReactionButton } from '@/components/ui/ReactionButton';
-import { reactionPhrase } from '@/lib/reactions';
+import { ReactionButton, CommentReactionButton } from '@/components/ui/ReactionButton';
+import { reactionPhrase, myReactionEmoji } from '@/lib/reactions';
 import { useAuth } from '@/contexts/AuthContext';
 import { dailySparks, mockUsers } from '@/lib/mockData';
 import type { Post, User, SparkAudience } from '@/lib/mockData';
@@ -29,7 +29,7 @@ import {
   reportPost as fsReportPost, unfollowUser as fsUnfollowUser,
   subscribeComments as subscribePostComments,
   addComment as fsAddComment,
-  toggleCommentLike as fsToggleCommentLike,
+  toggleCommentReaction as fsToggleCommentReaction,
   addReply as fsAddReply,
   writeNotification as fsWriteNotification,
   sendMessage as fsSendMessage,
@@ -60,16 +60,15 @@ type CommentData = {
   authorId: string;
   author: User;
   text: string;
-  likes: number;
-  liked: boolean;
+  reactions: Record<string, string[]>;
   replyCount: number;
   createdAt: Date;
 };
 
 const DEMO_COMMENTS: CommentData[] = [
-  { id: 'c1', authorId: mockUsers[1].id, author: mockUsers[1], text: 'This is amazing! 🔥 Love the vibes.', likes: 3, liked: false, replyCount: 1, createdAt: new Date(Date.now() - 1800000) },
-  { id: 'c2', authorId: mockUsers[3].id, author: mockUsers[3], text: 'Totally agree, so well done!', likes: 1, liked: false, replyCount: 0, createdAt: new Date(Date.now() - 3600000) },
-  { id: 'c3', authorId: mockUsers[4].id, author: mockUsers[4], text: 'Wow, you always inspire me ✨', likes: 5, liked: false, replyCount: 2, createdAt: new Date(Date.now() - 7200000) },
+  { id: 'c1', authorId: mockUsers[1].id, author: mockUsers[1], text: 'This is amazing! 🔥 Love the vibes.', reactions: { '🌊': [mockUsers[2].id, mockUsers[3].id], '🔥': [mockUsers[4].id] }, replyCount: 1, createdAt: new Date(Date.now() - 1800000) },
+  { id: 'c2', authorId: mockUsers[3].id, author: mockUsers[3], text: 'Totally agree, so well done!', reactions: { '💜': [mockUsers[1].id] }, replyCount: 0, createdAt: new Date(Date.now() - 3600000) },
+  { id: 'c3', authorId: mockUsers[4].id, author: mockUsers[4], text: 'Wow, you always inspire me ✨', reactions: {}, replyCount: 2, createdAt: new Date(Date.now() - 7200000) },
 ];
 
 // ─── Overlay backdrop ─────────────────────────────────────────────────────────
@@ -111,9 +110,7 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
     }
     setLoading(true);
     const unsub = subscribePostComments(post.id, raw => {
-      setComments(prev =>
-        raw.map(c => ({ ...c, liked: prev.find(p => p.id === c.id)?.liked ?? false }))
-      );
+      setComments(raw);
       setLoading(false);
     });
     return unsub;
@@ -133,6 +130,7 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
     if (target) {
       // ── Reply ──────────────────────────────────────────────────────────
       setComments(prev => prev.map(c => c.id === target.id ? { ...c, replyCount: c.replyCount + 1 } : c));
+      onCommentAdded(post.id); // replies also count toward the post total
       if (isFirebaseConfigured) {
         fsAddReply(post.id, target.id, currentUser as unknown as User, body).catch(console.error);
         if (target.authorId !== currentUser.id) {
@@ -146,7 +144,7 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
           id: `r-${Date.now()}`, authorId: currentUser.id,
           author: currentUser as unknown as User,
           text: `@${target.author.handle} ${body}`,
-          likes: 0, liked: false, replyCount: 0, createdAt: new Date(),
+          reactions: {}, replyCount: 0, createdAt: new Date(),
         }]);
       }
     } else {
@@ -164,26 +162,34 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
         setComments(prev => [...prev, {
           id: `c-${Date.now()}`, authorId: currentUser.id,
           author: currentUser as unknown as User,
-          text: body, likes: 0, liked: false, replyCount: 0, createdAt: new Date(),
+          text: body, reactions: {}, replyCount: 0, createdAt: new Date(),
         }]);
       }
     }
   }
 
-  function handleLikeComment(commentId: string) {
+  function handleReactComment(commentId: string, emoji: string) {
     if (!currentUser) return;
     const comment = comments.find(c => c.id === commentId);
     if (!comment) return;
-    const wasLiked = comment.liked;
-    setComments(prev => prev.map(c =>
-      c.id === commentId ? { ...c, liked: !wasLiked, likes: wasLiked ? c.likes - 1 : c.likes + 1 } : c
-    ));
+    const current = comment.reactions ?? {};
+    const hadThis = (current[emoji] ?? []).includes(currentUser.id);
+    // Optimistic — rebuild reactions map
+    const updated: Record<string, string[]> = {};
+    for (const [e, users] of Object.entries(current)) {
+      const filtered = users.filter(id => id !== currentUser.id);
+      if (filtered.length > 0) updated[e] = filtered;
+    }
+    if (!hadThis) updated[emoji] = [...(updated[emoji] ?? []), currentUser.id];
+    setComments(prev => prev.map(c => c.id === commentId ? { ...c, reactions: updated } : c));
     if (isFirebaseConfigured) {
-      fsToggleCommentLike(post.id, commentId, currentUser.id, wasLiked).catch(console.error);
-      if (!wasLiked && comment.authorId !== currentUser.id) {
-        fsWriteNotification(comment.authorId, 'like_comment', currentUser as unknown as User, {
+      fsToggleCommentReaction(post.id, commentId, currentUser.id, emoji).catch(console.error);
+      if (!hadThis && comment.authorId !== currentUser.id) {
+        fsWriteNotification(comment.authorId, 'reaction', currentUser as unknown as User, {
           postId: post.id,
-          message: `${currentUser.displayName} liked your comment`,
+          commentId,
+          emoji,
+          message: `${currentUser.displayName} reacted ${emoji} to your comment`,
         }).catch(console.error);
       }
     }
@@ -253,18 +259,11 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 px-1">
                     <span className="text-[11px] text-gray-400">{formatRelativeTime(c.createdAt)}</span>
-                    <motion.button
-                      whileTap={{ scale: 0.85 }}
-                      onClick={() => handleLikeComment(c.id)}
-                      className={cn(
-                        'flex items-center gap-1 text-[11px] font-semibold transition-colors',
-                        c.liked ? 'text-pink-500' : 'text-gray-400 hover:text-pink-400'
-                      )}
-                    >
-                      <Heart size={11} className={cn(c.liked && 'fill-pink-500')} />
-                      {c.likes > 0 && <span>{c.likes}</span>}
-                      <span>Like</span>
-                    </motion.button>
+                    <CommentReactionButton
+                      reactions={c.reactions ?? {}}
+                      myReaction={myReactionEmoji(c.reactions ?? {}, currentUser?.id ?? '')}
+                      onReact={emoji => handleReactComment(c.id, emoji)}
+                    />
                     <button
                       onClick={() => { setReplyingTo(c); setTimeout(() => inputRef.current?.focus(), 100); }}
                       className="text-[11px] text-gray-400 font-semibold hover:text-purple-500 transition-colors"

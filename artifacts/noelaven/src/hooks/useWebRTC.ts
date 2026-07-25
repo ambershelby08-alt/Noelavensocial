@@ -47,6 +47,8 @@ export interface CallState {
   isRinging: boolean;
   isActive: boolean;
   isMinimized: boolean;
+  /** Whether local/remote feeds are swapped. Lifted here so it survives remounts. */
+  swapped: boolean;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
 }
@@ -55,7 +57,7 @@ const INITIAL: CallState = {
   callId: null, status: null, phase: null, type: null,
   remoteId: null, remoteName: null, remoteAvatar: null,
   duration: 0, isMuted: false, isSpeakerOn: true, isCameraOff: false,
-  isRinging: false, isActive: false, isMinimized: false,
+  isRinging: false, isActive: false, isMinimized: false, swapped: false,
   localStream: null, remoteStream: null,
 };
 
@@ -91,6 +93,9 @@ export function useWebRTC() {
     iceRestart: ReturnType<typeof setTimeout>   | null;
   }>({ interval: null, demo: null, ring: null, iceConnect: null, reconnect: null, iceRestart: null });
   const unsubs    = useRef<Array<() => void>>([]);
+  /** Monotonic counter bumped each time a new RTCPeerConnection is created.
+   *  Guards stale reconnect timers from tearing down a healthy replacement PC. */
+  const pcGenRef  = useRef(0);
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
 
@@ -177,9 +182,15 @@ export function useWebRTC() {
         // Give the browser a 20 s grace period to self-heal before we tear down.
         // (Was 8 s — too aggressive for mobile/Wi-Fi packet loss.)
         if (!timers.current.reconnect) {
+          // Capture PC generation so the timer doesn't fire cleanup if a new
+          // peer connection was already created (ICE restart / re-dial).
+          const genAtSchedule = pcGenRef.current;
           timers.current.reconnect = setTimeout(() => {
             timers.current.reconnect = null;
-            if (pcRef.current?.iceConnectionState === 'disconnected') {
+            if (
+              genAtSchedule === pcGenRef.current &&
+              pcRef.current?.iceConnectionState === 'disconnected'
+            ) {
               console.warn('[WebRTC] ICE reconnect grace (20 s) expired — hanging up');
               setCall(s => ({ ...s, phase: 'failed' }));
               cleanup();
@@ -232,6 +243,8 @@ export function useWebRTC() {
   function buildPc(callId: string, side: 'caller' | 'callee', config: RTCConfiguration) {
     const pc = new RTCPeerConnection(config);
     pcRef.current = pc;
+    // Bump generation so any in-flight reconnect timer knows a new PC exists.
+    pcGenRef.current += 1;
 
     // ── Remote stream — dedicated MediaStream, never shared with local ──────
     const remote = new MediaStream();
@@ -548,6 +561,10 @@ export function useWebRTC() {
     setCall(s => ({ ...s, isMinimized: !s.isMinimized }));
   }, []);
 
+  const toggleSwapped = useCallback(() => {
+    setCall(s => ({ ...s, swapped: !s.swapped }));
+  }, []);
+
   /** Switch between front and rear camera. No-op on desktop. */
   const switchCamera = useCallback(async () => {
     const pc    = pcRef.current;
@@ -600,6 +617,7 @@ export function useWebRTC() {
     toggleCamera,
     toggleSpeaker,
     toggleMinimize,
+    toggleSwapped,
     switchCamera,
   };
 }

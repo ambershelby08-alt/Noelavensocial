@@ -1176,7 +1176,8 @@ export type RawComment = {
   authorId: string;
   author: User;
   text: string;
-  likes: number;
+  /** Emoji-keyed reaction map e.g. { '🔥': ['uid1', 'uid2'] } */
+  reactions: Record<string, string[]>;
   replyCount: number;
   createdAt: Date;
 };
@@ -1207,7 +1208,7 @@ export function subscribeComments(
             postCount: 0, badges: [], joinedAt: new Date(),
           },
           text: data.text ?? '',
-          likes: data.likes ?? 0,
+          reactions: (data.reactions ?? {}) as Record<string, string[]>,
           replyCount: data.replyCount ?? 0,
           createdAt: ts(data.createdAt),
         } satisfies RawComment;
@@ -1229,7 +1230,7 @@ export async function addComment(
     authorHandle: author.handle,
     authorAvatar: author.avatarUrl ?? '',
     text,
-    likes: 0,
+    reactions: {},
     replyCount: 0,
     createdAt: serverTimestamp(),
   });
@@ -1246,20 +1247,52 @@ export async function addComment(
   return ref.id;
 }
 
-export async function toggleCommentLike(
+export async function toggleCommentReaction(
   postId: string,
   commentId: string,
   userId: string,
-  currentlyLiked: boolean
+  emoji: string
 ): Promise<void> {
   if (!db) return;
   const commentRef = doc(db, 'posts', postId, 'comments', commentId);
-  const likeRef    = doc(db, 'users', userId, 'liked_comments', commentId);
-  if (currentlyLiked) {
-    await Promise.all([updateDoc(commentRef, { likes: increment(-1) }), deleteDoc(likeRef)]);
-  } else {
-    await Promise.all([updateDoc(commentRef, { likes: increment(1) }), setDoc(likeRef, { likedAt: serverTimestamp() })]);
-  }
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(commentRef);
+    if (!snap.exists()) return;
+    const current: Record<string, string[]> = snap.data().reactions ?? {};
+    // Rebuild map without this user, then add to chosen emoji if it's a new pick
+    const updated: Record<string, string[]> = {};
+    for (const [e, users] of Object.entries(current)) {
+      const filtered = (users as string[]).filter(id => id !== userId);
+      if (filtered.length > 0) updated[e] = filtered;
+    }
+    const hadThis = (current[emoji] ?? []).includes(userId);
+    if (!hadThis) updated[emoji] = [...(updated[emoji] ?? []), userId];
+    tx.update(commentRef, { reactions: updated });
+  });
+}
+
+export async function toggleReplyReaction(
+  postId: string,
+  commentId: string,
+  replyId: string,
+  userId: string,
+  emoji: string
+): Promise<void> {
+  if (!db) return;
+  const replyRef = doc(db, 'posts', postId, 'comments', commentId, 'replies', replyId);
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(replyRef);
+    if (!snap.exists()) return;
+    const current: Record<string, string[]> = snap.data().reactions ?? {};
+    const updated: Record<string, string[]> = {};
+    for (const [e, users] of Object.entries(current)) {
+      const filtered = (users as string[]).filter(id => id !== userId);
+      if (filtered.length > 0) updated[e] = filtered;
+    }
+    const hadThis = (current[emoji] ?? []).includes(userId);
+    if (!hadThis) updated[emoji] = [...(updated[emoji] ?? []), userId];
+    tx.update(replyRef, { reactions: updated });
+  });
 }
 
 export async function addReply(
@@ -1277,12 +1310,40 @@ export async function addReply(
       authorHandle: author.handle,
       authorAvatar: author.avatarUrl ?? '',
       text,
-      likes: 0,
+      reactions: {},
       createdAt: serverTimestamp(),
     }
   );
-  await updateDoc(doc(db, 'posts', postId, 'comments', commentId), { replyCount: increment(1) });
+  // Reply counts toward both the comment's replyCount AND the post's comments total
+  await Promise.all([
+    updateDoc(doc(db, 'posts', postId, 'comments', commentId), { replyCount: increment(1) }),
+    updateDoc(doc(db, 'posts', postId), { comments: increment(1) }),
+  ]);
   return ref.id;
+}
+
+export async function deleteComment(postId: string, commentId: string): Promise<void> {
+  if (!db) return;
+  const commentRef = doc(db, 'posts', postId, 'comments', commentId);
+  const snap = await getDoc(commentRef);
+  const replyCount = snap.exists() ? (snap.data().replyCount ?? 0) : 0;
+  await Promise.all([
+    deleteDoc(commentRef),
+    updateDoc(doc(db, 'posts', postId), { comments: increment(-(1 + replyCount)) }),
+  ]);
+}
+
+export async function deleteReply(
+  postId: string,
+  commentId: string,
+  replyId: string
+): Promise<void> {
+  if (!db) return;
+  await Promise.all([
+    deleteDoc(doc(db, 'posts', postId, 'comments', commentId, 'replies', replyId)),
+    updateDoc(doc(db, 'posts', postId, 'comments', commentId), { replyCount: increment(-1) }),
+    updateDoc(doc(db, 'posts', postId), { comments: increment(-1) }),
+  ]);
 }
 
 // ─── Notifications (write) ────────────────────────────────────────────────────

@@ -287,7 +287,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { conversations } = useConversations();
   const {
     call, endCall, toggleMute, toggleCamera, toggleSpeaker,
-    toggleMinimize, switchCamera,
+    toggleMinimize, toggleSwapped, switchCamera,
     incomingCall, answerIncoming, declineIncoming,
   } = useCall();
   const [location] = useLocation();
@@ -425,6 +425,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onToggleSpeaker={toggleSpeaker}
             onMinimize={toggleMinimize}
             onSwitchCamera={switchCamera}
+            onToggleSwap={toggleSwapped}
           />
         )}
       </AnimatePresence>

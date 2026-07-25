@@ -401,33 +401,22 @@ function TrayItem({ reaction, delay, myReaction, onSelect, compact }: TrayItemPr
 // ─── Compact reaction button (for comments / replies) ─────────────────────────
 
 interface CommentReactionButtonProps {
-  likes: number;
-  liked: boolean;
-  onToggle: () => void;
+  reactions: Record<string, string[]>;
+  myReaction: string | null;
+  onReact: (emoji: string) => void;
 }
 
 /**
- * Lightweight version for comments — just toggles 🌊 Vibe with a count.
- * No tray, no modal.
+ * Thin wrapper around ReactionButton in compact mode — shows the full emoji
+ * tray on long-press, counts and face-emoji from the reactions map.
  */
-export function CommentReactionButton({ likes, liked, onToggle }: CommentReactionButtonProps) {
+export function CommentReactionButton({ reactions, myReaction, onReact }: CommentReactionButtonProps) {
   return (
-    <motion.button
-      whileTap={{ scale: 0.85 }}
-      onClick={onToggle}
-      className={cn(
-        'flex items-center gap-1 text-[11.5px] font-bold transition-colors',
-        liked ? 'text-purple-500' : 'text-gray-400 hover:text-purple-400'
-      )}
-    >
-      <motion.span
-        animate={liked ? { scale: [1, 1.4, 1] } : { scale: 1 }}
-        transition={{ duration: 0.22 }}
-        className="text-[13px] leading-none"
-      >
-        {liked ? '🌊' : '🌊'}
-      </motion.span>
-      {likes > 0 && <span>{likes}</span>}
-    </motion.button>
+    <ReactionButton
+      reactions={reactions}
+      myReaction={myReaction}
+      onReact={onReact}
+      compact
+    />
   );
 }

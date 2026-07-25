@@ -9,9 +9,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
-  subscribeComments, addComment, toggleCommentLike,
+  subscribeComments, addComment, toggleCommentReaction,
   type RawComment,
 } from '@/lib/firestore';
+import { myReactionEmoji } from '@/lib/reactions';
 import { mockPosts } from '@/lib/mockData';
 import type { Post } from '@/lib/mockData';
 import { PostCard } from '@/pages/Home';
@@ -29,25 +30,26 @@ function CommentRow({
   postId: string;
   currentUserId?: string;
 }) {
-  const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(comment.likes);
-  const [loading, setLoading] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, string[]>>(comment.reactions ?? {});
 
-  async function handleLike() {
-    if (!currentUserId || loading) return;
-    setLoading(true);
-    const next = !liked;
-    setLiked(next);
-    setLikes(l => next ? l + 1 : Math.max(0, l - 1));
-    try {
-      if (isFirebaseConfigured) {
-        await toggleCommentLike(postId, comment.id, currentUserId, !next);
-      }
-    } catch {
-      // revert
-      setLiked(!next);
-      setLikes(l => !next ? l + 1 : Math.max(0, l - 1));
-    } finally { setLoading(false); }
+  async function handleReact(emoji: string) {
+    if (!currentUserId) return;
+    // Optimistic update
+    const current = reactions;
+    const updated: Record<string, string[]> = {};
+    for (const [e, users] of Object.entries(current)) {
+      const filtered = users.filter(id => id !== currentUserId);
+      if (filtered.length > 0) updated[e] = filtered;
+    }
+    const hadThis = (current[emoji] ?? []).includes(currentUserId);
+    if (!hadThis) updated[emoji] = [...(updated[emoji] ?? []), currentUserId];
+    setReactions(updated);
+    if (isFirebaseConfigured) {
+      toggleCommentReaction(postId, comment.id, currentUserId, emoji).catch(err => {
+        console.error(err);
+        setReactions(current); // revert on error
+      });
+    }
   }
 
   return (
@@ -79,9 +81,9 @@ function CommentRow({
             {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
           </span>
           <CommentReactionButton
-            likes={likes}
-            liked={liked}
-            onToggle={handleLike}
+            reactions={reactions}
+            myReaction={myReactionEmoji(reactions, currentUserId ?? '')}
+            onReact={handleReact}
           />
         </div>
       </div>
@@ -185,7 +187,7 @@ export default function PostDetail() {
           authorId: currentUser.id,
           author: currentUser,
           text: body,
-          likes: 0,
+          reactions: {},
           replyCount: 0,
           createdAt: new Date(),
         };

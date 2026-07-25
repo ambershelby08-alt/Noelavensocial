@@ -60,6 +60,7 @@ interface CallContextValue {
   toggleCamera: () => void;
   toggleSpeaker: () => void;
   toggleMinimize: () => void;
+  toggleSwapped: () => void;
   switchCamera: () => Promise<void>;
   /** Present when an incoming call is ringing (before answering). */
   incomingCall: CallDoc | null;
@@ -130,6 +131,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       toggleCamera: rtc.toggleCamera,
       toggleSpeaker: rtc.toggleSpeaker,
       toggleMinimize: rtc.toggleMinimize,
+      toggleSwapped: rtc.toggleSwapped,
       switchCamera: rtc.switchCamera,
       incomingCall,
       answerIncoming,

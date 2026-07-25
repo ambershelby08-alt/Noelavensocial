@@ -41,16 +41,18 @@ interface Props {
   onToggleSpeaker: () => void;
   onMinimize: () => void;
   onSwitchCamera: () => void;
+  onToggleSwap: () => void;
 }
 
 export function CallScreen({
-  call, onEnd, onToggleMute, onToggleCamera, onToggleSpeaker, onMinimize, onSwitchCamera,
+  call, onEnd, onToggleMute, onToggleCamera, onToggleSpeaker, onMinimize, onSwitchCamera, onToggleSwap,
 }: Props) {
   const screenRef  = useRef<HTMLDivElement>(null);
   const hideTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [swapped, setSwapped]                 = useState(false);
+  // `swapped` lives in CallState (call.swapped) so it survives remounts.
+  const swapped = call.swapped;
   const [isFullscreen, setIsFullscreen]       = useState(false);
 
   const isVideo       = call.type === 'video';
@@ -272,7 +274,7 @@ export function CallScreen({
               height: 160,
               boxShadow: '0 0 0 2px rgba(255,255,255,0.25), 0 8px 32px rgba(0,0,0,0.6)',
             }}
-            onClick={e => { e.stopPropagation(); setSwapped(s => !s); }}
+            onClick={e => { e.stopPropagation(); onToggleSwap(); }}
           >
             {(!swapped && call.isCameraOff) ? (
               /* Local cam is in PiP and camera is off */
@@ -346,7 +348,7 @@ export function CallScreen({
                       icon={<ArrowLeftRight size={20} />}
                       label="Swap"
                       active={swapped}
-                      onClick={() => setSwapped(s => !s)}
+                      onClick={onToggleSwap}
                     />
                   )}
                 </>
