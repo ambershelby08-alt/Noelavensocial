@@ -19,7 +19,20 @@ import { isFirebaseConfigured } from '@/lib/firebase';
 import { subscribeCommunitySparkPosts } from '@/lib/firestore';
 import { mockUsers } from '@/lib/mockData';
 import { todayKeyET } from '@/hooks/useDailySpark';
+import { normalizeDate } from '@/lib/timestamp';
 import type { Post } from '@/lib/mockData';
+
+// ── ET date filter ────────────────────────────────────────────────────────────
+// Firestore omits the createdAt filter on the community query (to avoid a
+// composite-index requirement). Posts from a previous day that happened to
+// share the same sparkPrompt text would otherwise slip through. We enforce the
+// date boundary client-side using the same Eastern-Time date key that controls
+// the Daily Spark prompt rotation.
+function isFromTodayET(timestamp: unknown): boolean {
+  const date = normalizeDate(timestamp);
+  if (!date) return false;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(date) === todayKeyET();
+}
 
 export type CommunitySort = 'friends' | 'following' | 'everyone';
 
@@ -152,18 +165,23 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
     const unsub = subscribeCommunitySparkPosts(
       prompt,
       (incoming) => {
+        // Client-side ET date filter: drop posts from a previous day that share
+        // the same sparkPrompt string. Firestore's query omits the createdAt
+        // boundary to avoid a composite-index requirement, so we enforce it here.
+        const todayPosts = incoming.filter(p => isFromTodayET(p.createdAt));
+
         if (import.meta.env.DEV) {
           console.info(
-            `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ${incoming.length} posts`
+            `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ${incoming.length} total, ${todayPosts.length} from today ET`
           );
         }
-        setPosts(incoming);
+        setPosts(todayPosts);
         setLoading(false);
         setTimedOut(false);
         setError(null);
-        setHasMore(incoming.length >= pageSize);
-        memCache.set(prompt, incoming);
-        writeLs(prompt, incoming);
+        setHasMore(todayPosts.length >= pageSize);
+        memCache.set(prompt, todayPosts);
+        writeLs(prompt, todayPosts);
       },
       pageSize,
       (err) => {

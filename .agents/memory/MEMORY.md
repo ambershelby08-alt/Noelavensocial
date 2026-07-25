@@ -3,7 +3,7 @@
 - [Noelaven Cloudinary integration](noelaven-cloudinary.md) — unsigned preset `Noelaven_uploads`; GradientAvatar requires `src` prop on every user display; Vite must restart after secret changes.
 - [Noelaven overlay z-index stack](noelaven-z-index.md) — all sheet/drawer z-indices must follow the established stack or modals paint behind the backdrop.
 - [Noelaven AI spark — OpenAI model](noelaven-ai-spark.md) — gpt-5-nano returns empty content via Replit proxy; use gpt-4.1-mini with max_tokens (not max_completion_tokens).
-- [Noelaven Daily Spark Architecture](noelaven-daily-spark.md) — completion in localStorage, streak logic, community reveal, audience per-post; Firestore needs composite index (sparkPrompt+createdAt).
+- [Noelaven Daily Spark Architecture](noelaven-daily-spark.md) — UID-scoped localStorage keys; completion/streak keys MUST include uid; useEffect([userId,today]) resets state on account switch; ET date filter in useSparkCommunity.
 - [Noelaven story editor](noelaven-story-editor.md) — full-screen editor; EditorLayer types canonical in editor/types.ts; toolbar extended via TOOLBAR_TABS array; z-[90].
 - [Noelaven cover photo](noelaven-cover-photo.md) — coverUrl + coverPosition ({x,y} %) in Firestore; CSS object-position at render; upload only on Save; z-[60] sheet.
 - [Noelaven UserCacheContext](noelaven-user-cache.md) — real-time deduped avatar cache; use UserAvatar (not GradientAvatar) whenever you have a non-currentUser userId.
