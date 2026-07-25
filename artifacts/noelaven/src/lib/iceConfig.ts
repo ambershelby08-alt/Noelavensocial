@@ -46,7 +46,7 @@ export async function getIceConfig(): Promise<RTCConfiguration> {
     const auth  = getAuth();
     const token = await auth.currentUser?.getIdToken().catch(() => undefined);
 
-    const res = await fetch('/api/ice-config', {
+    const res = await fetch('/api/ice-config', { // proxy: /api → api-server, route: /ice-config
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal: AbortSignal.timeout(5000), // don't block call setup
     });

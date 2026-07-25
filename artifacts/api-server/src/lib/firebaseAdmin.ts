@@ -12,6 +12,7 @@
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getMessaging, type Messaging } from 'firebase-admin/messaging';
+import { getAuth, type Auth } from 'firebase-admin/auth';
 import { logger } from './logger';
 
 function createAdminApp(): App | null {
@@ -44,4 +45,8 @@ export const adminDb: Firestore | null = adminApp
 
 export const adminMessaging: Messaging | null = adminApp
   ? getMessaging(adminApp)
+  : null;
+
+export const adminAuth: Auth | null = adminApp
+  ? getAuth(adminApp)
   : null;

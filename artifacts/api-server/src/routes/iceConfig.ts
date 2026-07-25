@@ -13,18 +13,18 @@
 
 import { Router } from 'express';
 import { adminAuth, isAdminConfigured } from '../lib/firebaseAdmin';
-import { buildIceConfig, STUN_SERVERS } from '../lib/turnCredentials';
+import { buildIceConfig } from '../lib/turnCredentials';
 
 const router = Router();
 
-router.get('/api/ice-config', async (req, res) => {
+router.get('/ice-config', async (req, res) => {
   // --- Authenticate -------------------------------------------------------
   // When Firebase Admin is available we verify the caller's ID token so
   // only authenticated app users can obtain TURN credentials.
   const authHeader = req.headers.authorization ?? '';
   let uid = 'anonymous';
 
-  if (isAdminConfigured) {
+  if (isAdminConfigured && adminAuth) {
     if (!authHeader.startsWith('Bearer ')) {
       res.status(401).json({ error: 'Authorization header required' });
       return;

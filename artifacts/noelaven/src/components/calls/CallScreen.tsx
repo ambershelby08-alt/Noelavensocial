@@ -164,7 +164,25 @@ export function CallScreen({ call, onEnd, onToggleMute, onToggleCamera, onToggle
             <p className="text-[22px] font-black text-white drop-shadow">{call.remoteName}</p>
 
             {/* Status line */}
-            {call.isRinging ? (
+            {call.phase === 'failed' ? (
+              <p className="text-[13px] text-red-400 font-semibold mt-1">Call failed</p>
+            ) : call.phase === 'reconnecting' ? (
+              <motion.p
+                animate={{ opacity: [1, 0.4, 1] }}
+                transition={{ duration: 0.9, repeat: Infinity }}
+                className="text-[13px] text-amber-400 font-semibold mt-1"
+              >
+                Reconnecting…
+              </motion.p>
+            ) : call.phase === 'connecting' ? (
+              <motion.p
+                animate={{ opacity: [1, 0.4, 1] }}
+                transition={{ duration: 1.2, repeat: Infinity }}
+                className="text-[13px] text-blue-300 font-semibold mt-1"
+              >
+                Connecting…
+              </motion.p>
+            ) : call.isRinging ? (
               <motion.p
                 animate={{ opacity: [1, 0.4, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity }}
