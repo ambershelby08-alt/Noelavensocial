@@ -19,7 +19,7 @@ export interface IceConfigResponse {
   expiresAt: number;
 }
 
-const STUN_ONLY: RTCConfiguration = {
+export const STUN_ONLY: RTCConfiguration = {
   iceServers: [
     { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
   ],

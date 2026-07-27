@@ -534,9 +534,24 @@ export async function sendWarning(
   userId: string, moderatorId: string, reason: string, reportId?: string
 ): Promise<void> {
   if (isFirebaseConfigured && db) {
+    // 1. Write the formal warning record.
     await addDoc(collection(db, 'userWarnings'), {
       userId, moderatorId, reason, createdAt: serverTimestamp(),
     });
+    // 2. Write a notification so the user sees the badge and in-app alert.
+    //    Fetch the moderator's user doc to satisfy writeNotification's actor param.
+    try {
+      const { writeNotification, getUserDoc } = await import('@/lib/firestore');
+      const moderatorUser = await getUserDoc(moderatorId);
+      if (moderatorUser) {
+        await writeNotification(userId, 'moderation_warning', moderatorUser, {
+          targetPreview: reason,
+          message: `You received a moderation warning: ${reason}`,
+        });
+      }
+    } catch {
+      // Non-critical — the warning itself was already saved.
+    }
   }
   await logAction({
     moderatorId, action: 'send_warning', targetId: userId, targetType: 'user', targetUserId: userId,

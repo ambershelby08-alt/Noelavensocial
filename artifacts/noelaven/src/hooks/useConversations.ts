@@ -6,7 +6,6 @@ import {
   getOrCreateDirectConversation,
   getUserDoc,
   searchUsers as fsSearchUsers,
-  getAllUsers as fsGetAllUsers,
   pinConversation as fsPin,
   archiveConversation as fsArchive,
   muteConversation as fsMute,
@@ -21,12 +20,43 @@ export function useConversations() {
     isFirebaseConfigured ? [] : mockConversations
   );
   const [isLoading, setIsLoading] = useState(isFirebaseConfigured);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  // Users the current user follows — the only people eligible to start a new DM.
+  // We never fetch all Firebase users; that would expose every account.
+  const [followingUsers, setFollowingUsers] = useState<User[]>([]);
 
-  // Pre-load all users for the ComposeDrawer in Firebase mode
   useEffect(() => {
     if (!isFirebaseConfigured || !currentUser) return;
-    fsGetAllUsers().then(users => setAllUsers(users.filter(u => u.id !== currentUser.id))).catch(console.error);
+    import('@/lib/firebase').then(({ db }) => {
+      if (!db) return;
+      import('firebase/firestore').then(({ getDocs, collection, query, limit, getDoc, doc }) => {
+        getDocs(query(collection(db, `users/${currentUser.id}/following`), limit(200)))
+          .then(async snap => {
+            const ids = snap.docs.map(d => d.id).filter(id => id !== currentUser.id);
+            if (ids.length === 0) { setFollowingUsers([]); return; }
+            const userDocs = await Promise.all(ids.map(id => getDoc(doc(db, 'users', id))));
+            setFollowingUsers(
+              userDocs.filter(d => d.exists()).map(d => {
+                const data = d.data()!;
+                return {
+                  id: d.id,
+                  displayName: data.displayName ?? '',
+                  handle:      data.handle      ?? '',
+                  bio:         data.bio         ?? '',
+                  avatarUrl:   data.avatarUrl   ?? '',
+                  coverUrl:    data.coverUrl    ?? '',
+                  interests:   data.interests   ?? [],
+                  followers:   data.followers   ?? 0,
+                  following:   data.following   ?? 0,
+                  postCount:   data.postCount   ?? 0,
+                  badges:      data.badges      ?? [],
+                  joinedAt:    data.joinedAt?.toDate?.() ?? new Date(),
+                } as User;
+              })
+            );
+          })
+          .catch(console.error);
+      });
+    });
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -70,21 +100,24 @@ export function useConversations() {
     }
   }, [currentUser]);
 
-  /** Return users available to message in the ComposeDrawer. */
+  /** Return users available to message in the ComposeDrawer.
+   *  Only shows: (1) existing conversation partners and (2) people you follow.
+   *  Never fetches all Firebase accounts. */
   const getComposeUsers = useCallback((): User[] => {
     if (!isFirebaseConfigured) {
       return mockUsers.filter(u => u.id !== currentUser?.id);
     }
-    if (allUsers.length > 0) return allUsers;
     const seen = new Set<string>();
-    return conversations
+    const fromConvs = conversations
       .flatMap(c => c.participants)
       .filter(p => {
         if (p.id === currentUser?.id || seen.has(p.id)) return false;
         seen.add(p.id);
         return true;
       });
-  }, [allUsers, conversations, currentUser?.id]);
+    const fromFollowing = followingUsers.filter(u => !seen.has(u.id));
+    return [...fromConvs, ...fromFollowing];
+  }, [followingUsers, conversations, currentUser?.id]);
 
   const pinConversation = useCallback(async (convId: string, pin: boolean) => {
     if (!currentUser) return;

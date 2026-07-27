@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDailySparkStatus } from '@/contexts/DailySparkContext';
+import { usePresence } from '@/hooks/usePresence';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
@@ -379,6 +380,9 @@ function InAppMsgToast({ toast, onClose }: { toast: MsgToast; onClose: () => voi
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading, currentUser } = useAuth();
+  // Track this user's online presence — updates isOnline on visibility change,
+  // tab close, and unmount so Active Now stays accurate.
+  usePresence(currentUser?.id);
   const { conversations } = useConversations();
   const {
     call, endCall, toggleMute, toggleCamera, toggleSpeaker,

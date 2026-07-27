@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
 import type { GroupedNotification } from '@/hooks/useNotifications';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -40,6 +40,7 @@ function linkForNotif(n: GroupedNotification): string | null {
   if (type === 'community_invite') return communityId ? `/communities/${communityId}` : null;
   if (type === 'daily_spark') return '/?spark=1';
   if (type === 'message') return convId ? `/messages/${convId}` : '/messages';
+  if (type === 'moderation_warning') return '/notifications';
   return null;
 }
 
@@ -65,6 +66,8 @@ function TypeIcon({ type, emoji }: { type: NotificationType; emoji?: string }) {
       return <MessageSquare size={12} className="text-pink-500" />;
     case 'mention':
       return <AtSign size={12} className="text-orange-500" />;
+    case 'moderation_warning':
+      return <span className="text-[12px] leading-none">⚠️</span>;
     default:
       return <span className="text-[12px] leading-none">🌊</span>;
   }
@@ -159,7 +162,16 @@ function NotifItem({
         <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-purple-500" />
       )}
 
-      <AvatarStack notif={notif} />
+      {/* Tapping the avatar always navigates to the actor's profile,
+          independently of the notification's primary action. */}
+      <div
+        onClick={e => { e.stopPropagation(); }}
+        className="flex-shrink-0"
+      >
+        <Link href={`/profile/${notif.actorId}`}>
+          <AvatarStack notif={notif} />
+        </Link>
+      </div>
 
       <div className="flex-1 min-w-0 pt-0.5">
         <p className={cn(

@@ -250,11 +250,13 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                 transition={{ delay: Math.min(i * 0.04, 0.3) }}
                 className="flex gap-3"
               >
-                <UserAvatar userId={c.authorId} fallbackName={c.author.displayName} fallbackSrc={c.author.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
+                <Link href={`/profile/${c.authorId}`} className="flex-shrink-0 mt-0.5">
+                  <UserAvatar userId={c.authorId} fallbackName={c.author.displayName} fallbackSrc={c.author.avatarUrl || undefined} size={34} className="cursor-pointer hover:opacity-90 transition-opacity" />
+                </Link>
                 <div className="flex-1">
                   <div className="bg-gray-50 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <p className="font-semibold text-[13px] text-gray-900">{c.author.displayName}</p>
+                      <Link href={`/profile/${c.authorId}`}><p className="font-semibold text-[13px] text-gray-900 hover:underline">{c.author.displayName}</p></Link>
                       <FounderBadge userId={c.authorId} size="xs" />
                     </div>
                     <p className="text-[13.5px] text-gray-700 leading-relaxed">{c.text}</p>

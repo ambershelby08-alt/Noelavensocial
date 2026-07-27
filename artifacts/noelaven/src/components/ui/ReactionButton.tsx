@@ -132,9 +132,12 @@ export function ReactionButton({
   const [effectKey, setEffectKey] = useState(0);
   const [pendingEffect, setPendingEffect] = useState<string | null>(null);
 
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didLongPress   = useRef(false);
-  const trayRef        = useRef<HTMLDivElement>(null);
+  const longPressTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress    = useRef(false);
+  /** True once the tray has been opened — prevents handlePressEnd from firing
+   *  the default-emoji override after the user picks from the tray. */
+  const trayWasOpen     = useRef(false);
+  const trayRef         = useRef<HTMLDivElement>(null);
 
   const total   = totalReactionCount(reactions);
   const topThree = getTopReactions(reactions, 3);
@@ -143,8 +146,10 @@ export function ReactionButton({
   // ── Long-press detection ──────────────────────────────────────────────────
   const startLongPress = useCallback(() => {
     didLongPress.current = false;
+    trayWasOpen.current  = false;
     longPressTimer.current = setTimeout(() => {
       didLongPress.current = true;
+      trayWasOpen.current  = true;
       setTrayOpen(true);
     }, 480);
   }, []);
@@ -158,10 +163,14 @@ export function ReactionButton({
 
   const handlePressEnd = useCallback(() => {
     cancelLongPress();
-    if (!didLongPress.current) {
+    // Skip default-emoji fire if the tray was opened — the user already
+    // selected (or dismissed) from the tray, so this pointer-up is spurious.
+    if (!didLongPress.current && !trayWasOpen.current) {
       // Regular tap → toggle default Vibe
       triggerReact(DEFAULT_REACTION.emoji);
     }
+    // Reset so a subsequent short-tap works correctly.
+    trayWasOpen.current = false;
   }, [cancelLongPress]);
 
   // ── Trigger a reaction ────────────────────────────────────────────────────

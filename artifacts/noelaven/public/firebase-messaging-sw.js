@@ -87,11 +87,13 @@ self.addEventListener('notificationclick', event => {
 function buildDeepLink(data) {
   const { type, convId, postId, actorId, storyId } = data;
 
-  if (type === 'message'  && convId)  return `/messages/${convId}`;
-  if (type === 'follow'   && actorId) return `/profile/${actorId}`;
-  if (type === 'mention'  && postId)  return `/`;
-  if ((type === 'comment' || type === 'reply') && postId) return `/`;
-  if ((type === 'reaction' || type === 'like') && postId) return `/`;
-  if ((type === 'story_reply') && storyId) return `/`;
+  if (type === 'message'   && convId)  return `/messages/${convId}`;
+  if (type === 'follow'    && actorId) return `/profile/${actorId}`;
+  if (type === 'mention'   && postId)  return `/post/${postId}`;
+  if ((type === 'comment'  || type === 'reply')    && postId)  return `/post/${postId}`;
+  if ((type === 'reaction' || type === 'like')     && postId)  return `/post/${postId}`;
+  if (type === 'story_reply' && storyId)           return `/story/${storyId}`;
+  if (type === 'daily_spark')                      return `/?spark=1`;
+  if (type === 'moderation_warning')               return `/notifications`;
   return '/notifications';
 }

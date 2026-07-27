@@ -1561,14 +1561,17 @@ export default function Chat() {
               ))}
             </div>
           ) : other ? (
-            <>
+            <Link href={`/profile/${other.id}`} className="flex contents">
               <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={(other as any).avatarUrl || undefined} size={40} />
               <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
-            </>
+            </Link>
           ) : null}
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div
+          className={`flex-1 min-w-0 ${!isGroup && other ? 'cursor-pointer' : ''}`}
+          onClick={!isGroup && other ? () => setLocation(`/profile/${other.id}`) : undefined}
+        >
           <h2 className="font-black text-[15px] text-gray-900 truncate leading-tight">{title}</h2>
           <p className="text-[12px] text-green-500 font-semibold leading-tight">
             {isGroup ? `${conversation?.participants.length ?? 0} members · Active now` : 'Active now'}

@@ -146,12 +146,15 @@ function typeToPrefKey(type: string): string | null {
 
 /** Builds the deep-link URL included in the push (used when app is closed) */
 function buildDeepLink(type: string, data: Record<string, string>): string | null {
-  if (type === 'message'  && data['convId'])  return `/messages/${data['convId']}`;
-  if (type === 'follow'   && data['actorId']) return `/profile/${data['actorId']}`;
-  if (
-    (type === 'comment' || type === 'reply' || type === 'reaction' || type === 'like' || type === 'mention')
-    && data['postId']
-  ) return `/`;
-  if (type === 'story_reply' && data['storyId']) return `/`;
+  if (type === 'message'     && data['convId'])  return `/messages/${data['convId']}`;
+  if (type === 'follow'      && data['actorId']) return `/profile/${data['actorId']}`;
+  if (type === 'mention'     && data['postId'])  return `/post/${data['postId']}`;
+  if ((type === 'comment' || type === 'reply') && data['postId'])
+    return `/post/${data['postId']}`;
+  if ((type === 'reaction' || type === 'like')   && data['postId'])
+    return `/post/${data['postId']}`;
+  if (type === 'story_reply' && data['storyId']) return `/story/${data['storyId']}`;
+  if (type === 'daily_spark')                    return `/?spark=1`;
+  if (type === 'moderation_warning')             return `/notifications`;
   return null;
 }

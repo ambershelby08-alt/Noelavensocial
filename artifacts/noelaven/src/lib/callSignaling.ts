@@ -180,10 +180,9 @@ export function subscribeIceCandidates(
   }, err => console.error('[subscribeIceCandidates]', err.code, err.message));
 }
 
-export const STUN_CONFIG: RTCConfiguration = {
-  iceServers: [
-    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
-  ],
-};
+// Re-export the canonical STUN-only config from iceConfig so there is a single
+// source of truth. useWebRTC.ts should prefer getIceConfig() and only fall back
+// to this when the API call fails.
+export { STUN_ONLY as STUN_CONFIG } from '@/lib/iceConfig';
 
 export { isFirebaseConfigured };

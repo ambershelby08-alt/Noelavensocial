@@ -373,6 +373,10 @@ export function subscribeCommunitySparkPosts(
  */
 export async function recordSparkAnswer(uid: string, dateKey: string, postId: string): Promise<void> {
   if (!db) return;
+  // Guard: reject answers for any date other than today in ET.
+  // This prevents answering yesterday's prompt after the daily reset.
+  const today = todayKeyET();
+  if (dateKey !== today) throw new Error('spark_expired');
   const gateRef = doc(db, 'dailySparkResponses', `${uid}_${dateKey}`);
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(gateRef);
@@ -1596,16 +1600,17 @@ export async function writeNotification(
 function buildPushTitle(type: NotificationType, actor: User): string | null {
   const name = actor.displayName || 'Someone';
   const titles: Partial<Record<NotificationType, string>> = {
-    follow:         `${name} followed you`,
-    like:           `${name} liked your post`,
-    reaction:       `${name} reacted to your post`,
-    comment:        `${name} commented on your post`,
-    reply:          `${name} replied to your comment`,
-    message:        `${name} sent you a message`,
-    mention:        `${name} mentioned you`,
-    story_reply:    `${name} replied to your story`,
-    story_reaction: `${name} reacted to your story`,
-    spark_reaction: `${name} reacted to your Spark`,
+    follow:              `${name} followed you`,
+    like:                `${name} liked your post`,
+    reaction:            `${name} reacted to your post`,
+    comment:             `${name} commented on your post`,
+    reply:               `${name} replied to your comment`,
+    message:             `${name} sent you a message`,
+    mention:             `${name} mentioned you`,
+    story_reply:         `${name} replied to your story`,
+    story_reaction:      `${name} reacted to your story`,
+    spark_reaction:      `${name} reacted to your Spark`,
+    moderation_warning:  `You received a moderation warning`,
   };
   return titles[type] ?? null;
 }
