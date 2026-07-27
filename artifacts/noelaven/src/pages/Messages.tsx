@@ -1,13 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, PenSquare, X, ChevronRight, MessageCircle,
+  Search, PenSquare, X, MessageCircle,
   Pin, Archive, BellOff, Bell, Trash2, ChevronDown, ChevronUp,
 } from 'lucide-react';
-import { mockUsers } from '@/lib/mockData';
 import type { Conversation, User } from '@/lib/mockData';
 import { useConversations } from '@/hooks/useConversations';
+import { useActiveNow, type OnlineUser } from '@/hooks/useActiveNow';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -37,16 +37,6 @@ function lastMsgLabel(conv: Conversation): string {
   }
 }
 
-// Simulated online status
-const ONLINE_IDS = new Set(['user-1', 'user-5']);
-const AWAY_IDS   = new Set(['user-2']);
-
-function onlineStatus(id: string) {
-  if (ONLINE_IDS.has(id)) return 'online';
-  if (AWAY_IDS.has(id))   return 'away';
-  return 'offline';
-}
-
 // ─── Backdrop ─────────────────────────────────────────────────────────────────
 
 function Backdrop({ onClose }: { onClose: () => void }) {
@@ -59,42 +49,58 @@ function Backdrop({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Active users row ─────────────────────────────────────────────────────────
+// ─── Active Now row — real Firestore presence data ────────────────────────────
+//
+// IMPORTANT: this component never receives mock or demo users.
+// In demo mode (no Firebase), useActiveNow returns [] and the empty state is shown.
+// In production, only accounts with isOnline=true in their user doc appear here.
 
-const ACTIVE_USERS = mockUsers.filter(u => ONLINE_IDS.has(u.id) || AWAY_IDS.has(u.id));
+function ActiveUsersRow({ users }: { users: OnlineUser[] }) {
+  if (users.length === 0) {
+    return (
+      <div className="mb-5 px-4">
+        <div className="flex items-center gap-1.5 mb-2">
+          <div className="w-2 h-2 rounded-full bg-gray-300" />
+          <span className="text-[12.5px] font-bold text-gray-400 uppercase tracking-wider">
+            Active Now
+          </span>
+        </div>
+        <p className="text-[13px] text-gray-400">No one is active right now.</p>
+      </div>
+    );
+  }
 
-function ActiveUsersRow() {
   return (
     <div className="mb-5">
       <div className="flex items-center gap-1.5 mb-3 px-4">
         <div className="w-2 h-2 rounded-full bg-green-400" />
-        <span className="text-[12.5px] font-bold text-gray-500 uppercase tracking-wider">Active Now</span>
+        <span className="text-[12.5px] font-bold text-gray-500 uppercase tracking-wider">
+          Active Now
+        </span>
       </div>
       <div className="flex gap-4 overflow-x-auto px-4 pb-1 scrollbar-none">
-        {ACTIVE_USERS.map((user) => {
-          const status = onlineStatus(user.id);
-          return (
-            <Link key={user.id} href={`/profile/${user.id}`}>
-              <motion.div
-                whileTap={{ scale: 0.93 }}
-                className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0"
-              >
-                <div className="relative">
-                  <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={52} />
-                  <div
-                    className={cn(
-                      'absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white',
-                      status === 'online' ? 'bg-green-400' : 'bg-yellow-400'
-                    )}
-                  />
-                </div>
-                <span className="text-[11.5px] text-gray-600 font-medium truncate max-w-[52px] text-center">
-                  {user.displayName.split(' ')[0]}
-                </span>
-              </motion.div>
-            </Link>
-          );
-        })}
+        {users.map((user) => (
+          <Link key={user.id} href={`/profile/${user.id}`}>
+            <motion.div
+              whileTap={{ scale: 0.93 }}
+              className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0"
+            >
+              <div className="relative">
+                <UserAvatar
+                  userId={user.id}
+                  fallbackName={user.displayName}
+                  fallbackSrc={user.avatarUrl || undefined}
+                  size={52}
+                />
+                {/* Green dot — only shown when user is actually online */}
+                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
+              </div>
+              <span className="text-[11.5px] text-gray-600 font-medium truncate max-w-[52px] text-center">
+                {user.displayName.split(' ')[0]}
+              </span>
+            </motion.div>
+          </Link>
+        ))}
       </div>
     </div>
   );
@@ -148,8 +154,8 @@ function ConvActionSheet({
   const isMuted    = conv.mutedBy?.includes(currentUserId);
 
   const actions: ConvAction[] = [
-    { id: 'pin',     label: isPinned   ? 'Unpin'   : 'Pin to top',       icon: <Pin size={18} /> },
-    { id: 'archive', label: isArchived ? 'Unarchive' : 'Archive',        icon: <Archive size={18} /> },
+    { id: 'pin',     label: isPinned   ? 'Unpin'   : 'Pin to top',         icon: <Pin size={18} /> },
+    { id: 'archive', label: isArchived ? 'Unarchive' : 'Archive',          icon: <Archive size={18} /> },
     { id: 'mute',    label: isMuted    ? 'Unmute'  : 'Mute notifications', icon: isMuted ? <Bell size={18} /> : <BellOff size={18} /> },
     { id: 'delete',  label: 'Delete conversation', icon: <Trash2 size={18} />, danger: true },
   ];
@@ -197,18 +203,22 @@ function ConvActionSheet({
 function ConvItem({
   conv,
   onLongPress,
+  onlineIds,
 }: {
-  conv: Conversation;
+  conv:       Conversation;
   onLongPress: () => void;
+  /** Set of UIDs currently online — derived from useActiveNow. */
+  onlineIds:  Set<string>;
 }) {
   const { currentUser } = useAuth();
   const other    = conv.participants.find(p => p.id !== currentUser?.id) ?? conv.participants[0];
   const name     = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
-  const isOnline = conv.type === 'direct' && onlineStatus(other.id) === 'online';
+  // Real presence: only green when this participant is actually online in Firestore.
+  const isOnline = conv.type === 'direct' && onlineIds.has(other.id);
   const unread   = conv.unreadCount > 0;
   const uid      = currentUser?.id ?? '';
-  const isPinned   = conv.pinnedBy?.includes(uid);
-  const isMuted    = conv.mutedBy?.includes(uid);
+  const isPinned = conv.pinnedBy?.includes(uid);
+  const isMuted  = conv.mutedBy?.includes(uid);
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -282,10 +292,17 @@ function ConvItem({
 
 // ─── Compose drawer ───────────────────────────────────────────────────────────
 
-function ComposeDrawer({ onClose, openDirect, composeUsers }: {
-  onClose: () => void;
-  openDirect: (userId: string) => Promise<string | null>;
+function ComposeDrawer({
+  onClose,
+  openDirect,
+  composeUsers,
+  onlineIds,
+}: {
+  onClose:      () => void;
+  openDirect:   (userId: string) => Promise<string | null>;
   composeUsers: User[];
+  /** Set of UIDs currently online — derived from useActiveNow. */
+  onlineIds:    Set<string>;
 }) {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState('');
@@ -349,7 +366,8 @@ function ComposeDrawer({ onClose, openDirect, composeUsers }: {
             >
               <div className="relative">
                 <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={46} />
-                {onlineStatus(user.id) === 'online' && (
+                {/* Green dot reflects real presence — not mock data */}
+                {onlineIds.has(user.id) && (
                   <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
                 )}
               </div>
@@ -374,8 +392,8 @@ function ComposeDrawer({ onClose, openDirect, composeUsers }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Messages() {
-  const [search, setSearch]       = useState('');
-  const [composeOpen, setCompose] = useState(false);
+  const [search, setSearch]         = useState('');
+  const [composeOpen, setCompose]   = useState(false);
   const [actionConv, setActionConv] = useState<Conversation | null>(null);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -386,6 +404,10 @@ export default function Messages() {
 
   const { currentUser } = useAuth();
   const uid = currentUser?.id ?? '';
+
+  // ── Real presence: subscribe to online contacts (following + conv partners) ──
+  const activeNow = useActiveNow(currentUser?.id);
+  const onlineIds = useMemo(() => new Set(activeNow.map(u => u.id)), [activeNow]);
 
   // Separate pinned / active / archived
   const allFiltered = search
@@ -457,8 +479,8 @@ export default function Messages() {
       </div>
 
       <div className="pt-5">
-        {/* Active Now */}
-        {!search && <ActiveUsersRow />}
+        {/* Active Now — powered by real Firestore presence */}
+        {!search && <ActiveUsersRow users={activeNow} />}
 
         {/* Conversations */}
         <div className="px-4 space-y-2">
@@ -496,7 +518,11 @@ export default function Messages() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
               >
-                <ConvItem conv={conv} onLongPress={() => setActionConv(conv)} />
+                <ConvItem
+                  conv={conv}
+                  onlineIds={onlineIds}
+                  onLongPress={() => setActionConv(conv)}
+                />
               </motion.div>
             ))
           )}
@@ -523,7 +549,12 @@ export default function Messages() {
                     className="space-y-2 overflow-hidden"
                   >
                     {archived.map(conv => (
-                      <ConvItem key={conv.id} conv={conv} onLongPress={() => setActionConv(conv)} />
+                      <ConvItem
+                        key={conv.id}
+                        conv={conv}
+                        onlineIds={onlineIds}
+                        onLongPress={() => setActionConv(conv)}
+                      />
                     ))}
                   </motion.div>
                 )}
@@ -541,6 +572,7 @@ export default function Messages() {
             onClose={() => setCompose(false)}
             openDirect={openDirectConversation}
             composeUsers={getComposeUsers()}
+            onlineIds={onlineIds}
           />
         )}
         {actionConv && (

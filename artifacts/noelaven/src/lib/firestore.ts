@@ -8,7 +8,7 @@ import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc,
   deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot,
   serverTimestamp, increment, arrayUnion, arrayRemove, Timestamp,
-  runTransaction,
+  runTransaction, documentId,
   type DocumentData, type Unsubscribe, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -1608,6 +1608,81 @@ function buildPushTitle(type: NotificationType, actor: User): string | null {
     spark_reaction: `${name} reacted to your Spark`,
   };
   return titles[type] ?? null;
+}
+
+// ─── Presence ─────────────────────────────────────────────────────────────────
+
+/**
+ * Write the current user's online status onto their user document.
+ * Called by usePresence on mount, visibilitychange, beforeunload, and cleanup.
+ * Fails silently — presence is non-critical.
+ */
+export async function updatePresence(uid: string, isOnline: boolean): Promise<void> {
+  if (!db || !uid) return;
+  try {
+    await updateDoc(doc(db, 'users', uid), {
+      isOnline,
+      lastSeen: serverTimestamp(),
+    });
+  } catch {
+    // Fail silently (offline, permission denied on incomplete profile, etc.)
+  }
+}
+
+/**
+ * Shape of a user entry in the Active Now row.
+ * Pulled from live Firestore user documents — never from mock data.
+ */
+export interface OnlineUser {
+  id:          string;
+  displayName: string;
+  handle:      string;
+  avatarUrl:   string;
+  lastSeen:    Date;
+}
+
+/**
+ * Subscribe to real-time online status for a list of contact IDs.
+ * Uses a single `documentId() in [...]` query (Firestore cap: 30 IDs).
+ * Only users whose document has `isOnline: true` are included.
+ * Results are sorted by lastSeen descending.
+ *
+ * Called by useActiveNow — do not call directly.
+ */
+export function subscribeOnlineContacts(
+  contactIds: string[],
+  onChange: (users: OnlineUser[]) => void,
+): Unsubscribe {
+  if (!db || contactIds.length === 0) {
+    onChange([]);
+    return () => {};
+  }
+
+  // Firestore `in` queries are capped at 30 values.
+  const ids = contactIds.slice(0, 30);
+
+  const q = query(collection(db, 'users'), where(documentId(), 'in', ids));
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const online: OnlineUser[] = [];
+      for (const d of snap.docs) {
+        const data = d.data();
+        if (!data.isOnline) continue;
+        online.push({
+          id:          d.id,
+          displayName: data.displayName ?? '',
+          handle:      data.handle      ?? '',
+          avatarUrl:   data.avatarUrl   ?? '',
+          lastSeen:    ts(data.lastSeen),
+        });
+      }
+      online.sort((a, b) => b.lastSeen.getTime() - a.lastSeen.getTime());
+      onChange(online);
+    },
+    () => onChange([]),
+  );
 }
 
 // ─── Seed initial communities ─────────────────────────────────────────────────

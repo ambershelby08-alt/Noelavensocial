@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import { type FirebaseError } from 'firebase/app';
 import { auth, isFirebaseConfigured } from '@/lib/firebase';
-import { getUserDoc, createUserDoc, updateUserDoc, upsertUserBaseDoc, seedCommunitiesIfNeeded } from '@/lib/firestore';
+import { getUserDoc, createUserDoc, updateUserDoc, upsertUserBaseDoc, seedCommunitiesIfNeeded, updatePresence } from '@/lib/firestore';
 import { User, mockUsers } from '@/lib/mockData';
 import {
   getSavedAccounts, upsertSavedAccount,
@@ -126,6 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (profile && profile.handle) {
           // Complete profile — route to Home.
           setCurrentUser(profile);
+          // Mark user online now that their session is confirmed.
+          if (!isDemoMode) updatePresence(profile.id, true).catch(() => {});
           setPendingUser(null);
           setPendingUid(null);
           setIsNewUser(false);
@@ -393,6 +395,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       evictConversations(currentUser.id);
     }
     if (!isDemoMode && auth) {
+      // Mark offline before signing out so listeners see the update.
+      if (currentUser?.id) await updatePresence(currentUser.id, false).catch(() => {});
       await firebaseSignOut(auth);
     }
     setCurrentUser(null);
@@ -419,6 +423,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       evictConversations(currentUser.id);
     }
     if (!isDemoMode && auth) {
+      // Mark offline before switching so listeners see the update.
+      if (currentUser?.id) await updatePresence(currentUser.id, false).catch(() => {});
       await firebaseSignOut(auth);
     }
     setCurrentUser(null);

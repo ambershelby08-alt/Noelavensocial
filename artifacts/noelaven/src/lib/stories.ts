@@ -93,6 +93,8 @@ export async function createStory(
   trimData:   TrimData | null  = null,
   filterName: FilterPreset     = 'normal',
   publicId?:  string,
+  /** Canonical SparkAudience value; defaults to 'public'. */
+  audience:   string = 'public',
 ): Promise<string> {
   if (!db) throw new Error('Firebase not configured');
   const now       = new Date();
@@ -107,12 +109,13 @@ export async function createStory(
     mediaType,
     caption,
     layers,
-    cropData:   cropData   ?? null,
-    trimData:   trimData   ?? null,
-    filterName: filterName ?? 'normal',
-    createdAt:  Timestamp.fromDate(now),
-    expiresAt:  Timestamp.fromDate(expiresAt),
-    viewerIds:  [],
+    cropData:      cropData   ?? null,
+    trimData:      trimData   ?? null,
+    filterName:    filterName ?? 'normal',
+    storyAudience: audience,
+    createdAt:     Timestamp.fromDate(now),
+    expiresAt:     Timestamp.fromDate(expiresAt),
+    viewerIds:     [],
   });
   return ref.id;
 }

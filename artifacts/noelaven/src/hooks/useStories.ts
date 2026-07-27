@@ -8,7 +8,7 @@ import {
   markStoryViewed, deleteStory as fsDeleteStory, groupStories,
 } from '@/lib/stories';
 import { mockUsers } from '@/lib/mockData';
-import type { User } from '@/lib/mockData';
+import type { User, SparkAudience } from '@/lib/mockData';
 
 // ─── Demo-mode mock stories ───────────────────────────────────────────────────
 
@@ -77,6 +77,8 @@ export function useStories() {
     trimData:   TrimData | null = null,
     filterName: FilterPreset = 'normal',
     publicId?:  string,
+    /** Audience for this story: 'public' | 'mutuals' | 'private' | 'onlyMe' */
+    audience:   SparkAudience = 'public',
   ): Promise<void> {
     if (!currentUser) return;
     if (!isFirebaseConfigured) return;
@@ -85,6 +87,7 @@ export function useStories() {
       mediaUrl, mediaType, caption,
       layers, cropData, trimData, filterName,
       publicId,
+      audience,
     );
   }
 
