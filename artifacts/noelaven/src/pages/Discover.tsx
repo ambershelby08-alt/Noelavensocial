@@ -12,6 +12,7 @@ import {
   followUser as fsFollow, unfollowUser as fsUnfollow,
   togglePostSave, togglePostReaction as fsToggleReaction,
   writeNotification as fsWriteNotification,
+  subscribeIsFollowing,
 } from '@/lib/firestore';
 import { mockCommunities } from '@/lib/mockData';
 import type { Post, User } from '@/lib/mockData';
@@ -22,6 +23,7 @@ import { getGradientPair } from '@/components/ui/GradientAvatar';
 import { cn } from '@/lib/utils';
 import { usePersonalization } from '@/hooks/usePersonalization';
 import { useDiscover } from '@/hooks/useDiscover';
+import { useFollowingIds } from '@/hooks/useFollowingIds';
 import { reactionPhrase } from '@/lib/reactions';
 
 // ─── 50 Categories ────────────────────────────────────────────────────────────
@@ -160,8 +162,17 @@ function SectionHeader({
 function FollowButton({
   userId, currentUserId, size = 'md',
 }: { userId: string; currentUserId?: string; size?: 'sm' | 'md' }) {
+  const { currentUser } = useAuth();
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Sync real-time follow state from Firestore so the button is accurate even
+  // when the creator list includes people the user already follows.
+  useEffect(() => {
+    if (!currentUserId || !isFirebaseConfigured) return;
+    const unsub = subscribeIsFollowing(currentUserId, userId, setFollowing);
+    return unsub;
+  }, [currentUserId, userId]);
 
   async function handle(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
@@ -172,7 +183,12 @@ function FollowButton({
         if (isFirebaseConfigured) await fsUnfollow(currentUserId, userId);
         setFollowing(false);
       } else {
-        if (isFirebaseConfigured) await fsFollow(currentUserId, userId);
+        if (isFirebaseConfigured) {
+          await fsFollow(currentUserId, userId);
+          if (currentUser) {
+            fsWriteNotification(userId, 'follow', currentUser, { message: `${currentUser.displayName} started following you` }).catch(() => {});
+          }
+        }
         setFollowing(true);
       }
     } catch { /* ignore */ } finally { setLoading(false); }
@@ -820,6 +836,14 @@ interface ForYouViewProps {
 
 function ForYouView({ posts, loading, onReact, onSave, onOpenPhoto }: ForYouViewProps) {
   const [, navigate] = useLocation();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  function handleShare(postId: string) {
+    const url = `${window.location.origin}/post/${postId}`;
+    navigator.clipboard?.writeText(url).catch(() => {});
+    setCopiedId(postId);
+    setTimeout(() => setCopiedId(prev => prev === postId ? null : prev), 2000);
+  }
 
   if (loading) {
     return (
@@ -846,17 +870,30 @@ function ForYouView({ posts, loading, onReact, onSave, onOpenPhoto }: ForYouView
   return (
     <div className="pt-2">
       {posts.map((post, index) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          index={index}
-          onReact={onReact}
-          onOpenComments={() => navigate(`/post/${post.id}`)}
-          onOpenShare={() => {}}
-          onSave={(id, saved) => onSave(id, !saved)}
-          onOpenMenu={() => {}}
-          onOpenPhoto={onOpenPhoto}
-        />
+        <div key={post.id} className="relative">
+          <PostCard
+            post={post}
+            index={index}
+            onReact={onReact}
+            onOpenComments={() => navigate(`/post/${post.id}`)}
+            onOpenShare={() => handleShare(post.id)}
+            onSave={(id, saved) => onSave(id, !saved)}
+            onOpenMenu={() => navigate(`/post/${post.id}`)}
+            onOpenPhoto={onOpenPhoto}
+          />
+          <AnimatePresence>
+            {copiedId === post.id && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-full bg-gray-900/90 text-white text-[12px] font-semibold pointer-events-none"
+              >
+                Link copied!
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       ))}
     </div>
   );
@@ -961,10 +998,12 @@ interface SuggestedViewProps {
   currentUserId?: string;
   selectedInterests: string[];
   onToggleInterest: (interest: string) => void;
+  onInterestToggled?: () => void;
+  liveHashtags: Array<{ tag: string; count: number }>;
 }
 
 function SuggestedView({
-  creators, currentUserId, selectedInterests, onToggleInterest,
+  creators, currentUserId, selectedInterests, onToggleInterest, onInterestToggled, liveHashtags,
 }: SuggestedViewProps) {
   const [communities, setCommunities] = useState<DiscoverCommunity[]>(() =>
     mockCommunities.filter(c => !c.isJoined) as DiscoverCommunity[]
@@ -1038,7 +1077,7 @@ function SuggestedView({
       <section className="px-4">
         <SectionHeader emoji="🏷️" title="Topics to Follow" />
         <div className="mt-3 flex flex-wrap gap-2">
-          {DEMO_TRENDING_HASHTAGS.map(({ tag }) => (
+          {(liveHashtags.length >= 4 ? liveHashtags : DEMO_TRENDING_HASHTAGS).map(({ tag }) => (
             <button
               key={tag}
               className="px-4 py-2 rounded-xl bg-white border border-black/[0.06] text-[13px] font-bold text-gray-700 hover:border-purple-300 hover:text-purple-600 transition-colors shadow-sm"
@@ -1063,7 +1102,7 @@ function SuggestedView({
               <motion.button
                 key={cat.slug}
                 whileTap={{ scale: 0.92 }}
-                onClick={() => onToggleInterest(cat.label)}
+                onClick={() => { onToggleInterest(cat.label); onInterestToggled?.(); }}
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-2 rounded-full text-[12.5px] font-bold transition-all border',
                   selected
@@ -1079,6 +1118,15 @@ function SuggestedView({
             );
           })}
         </div>
+        {selectedInterests.length > 0 && (
+          <motion.p
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 text-[12px] text-purple-500 font-semibold text-center"
+          >
+            ✓ {selectedInterests.length} interest{selectedInterests.length !== 1 ? 's' : ''} selected — your For You feed is being personalised
+          </motion.p>
+        )}
       </section>
     </motion.div>
   );
@@ -1092,6 +1140,7 @@ type Tab = typeof TABS[number];
 export default function Discover() {
   const { currentUser } = useAuth();
   const personalization = usePersonalization();
+  const followingIds    = useFollowingIds(currentUser?.id);
 
   // ── Search state ───────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery]   = useState('');
@@ -1105,6 +1154,14 @@ export default function Discover() {
 
   // ── Data ───────────────────────────────────────────────────────────────────
   const discover = useDiscover(activeCategory);
+
+  // Filter suggested creators: exclude self and anyone already followed
+  const unfollowedCreators = useMemo(
+    () => discover.suggestedCreators.filter(
+      u => u.id !== currentUser?.id && !followingIds.has(u.id)
+    ),
+    [discover.suggestedCreators, currentUser?.id, followingIds],
+  );
 
   // ── Local optimistic overrides for reactions + saves ───────────────────────
   const [localOverrides, setLocalOverrides] = useState<Record<string, Partial<Post>>>({});
@@ -1370,7 +1427,7 @@ export default function Discover() {
                   <TrendingView
                     hashtags={discover.trendingHashtags}
                     sparks={discover.trendingSparks}
-                    creators={discover.suggestedCreators}
+                    creators={unfollowedCreators}
                     posts={trendingPosts}
                     currentUserId={currentUser?.id}
                     onSearch={handleSearch}
@@ -1383,10 +1440,12 @@ export default function Discover() {
               {activeTab === 'Suggested' && (
                 <motion.div key="suggested" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
                   <SuggestedView
-                    creators={discover.suggestedCreators}
+                    creators={unfollowedCreators}
                     currentUserId={currentUser?.id}
                     selectedInterests={personalization.signals.interests}
                     onToggleInterest={personalization.toggleInterest}
+                    onInterestToggled={() => setTimeout(() => setActiveTab('For You'), 600)}
+                    liveHashtags={discover.trendingHashtags}
                   />
                 </motion.div>
               )}
