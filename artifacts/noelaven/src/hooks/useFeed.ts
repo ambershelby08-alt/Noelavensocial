@@ -22,6 +22,8 @@ export function useFeed() {
   // Ref so callbacks always see the latest posts without re-creating
   const postsRef = useRef<Post[]>(posts);
   useEffect(() => { postsRef.current = posts; }, [posts]);
+  // Guard against rapid double-taps: track which posts have a reaction in-flight
+  const pendingReactions = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!isFirebaseConfigured || !currentUser) {
@@ -75,6 +77,7 @@ export function useFeed() {
    */
   const toggleReaction = useCallback(async (postId: string, emoji: string) => {
     if (!currentUser) return;
+    if (pendingReactions.current.has(postId)) return; // debounce rapid taps
     const post = postsRef.current.find(p => p.id === postId);
     if (!post) return;
 
@@ -111,6 +114,7 @@ export function useFeed() {
     }));
 
     if (isFirebaseConfigured) {
+      pendingReactions.current.add(postId);
       try {
         await fsTogglePostReaction(postId, currentUser.id, emoji, currentUser);
       } catch {
@@ -120,6 +124,8 @@ export function useFeed() {
             ? { ...p, reactions: post.reactions, myReaction: post.myReaction, likes: post.likes, liked: post.liked }
             : p
         ));
+      } finally {
+        pendingReactions.current.delete(postId);
       }
     }
   }, [currentUser]);

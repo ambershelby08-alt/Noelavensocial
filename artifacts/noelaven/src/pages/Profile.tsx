@@ -790,6 +790,8 @@ export default function Profile() {
   const { communities } = useCommunities();
 
   const [activeTab, setActiveTab]       = useState<TabLabel>('Posts');
+  // Reset to Posts tab whenever we navigate to a different user's profile
+  useEffect(() => { setActiveTab('Posts'); }, [userId]);
   const [editOpen, setEditOpen]             = useState(false);
   const [coverEditorOpen, setCoverEditorOpen] = useState(false);
   const [followersOpen, setFollowersOpen]   = useState(false);

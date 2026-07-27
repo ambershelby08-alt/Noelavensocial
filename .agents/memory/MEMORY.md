@@ -7,6 +7,7 @@
 - [Noelaven Spark Community Feed](noelaven-spark-community.md) — prompt MUST be file-persisted on server; only 'public' audience in subscription; sort tabs require useFollowingIds; confirmedForUserId guard prevents account-switch flash.
 - [Noelaven story editor](noelaven-story-editor.md) — full-screen editor; EditorLayer types canonical in editor/types.ts; toolbar extended via TOOLBAR_TABS array; z-[90].
 - [Noelaven cover photo](noelaven-cover-photo.md) — coverUrl + coverPosition ({x,y} %) in Firestore; CSS object-position at render; upload only on Save; z-[60] sheet.
+- [Noelaven story audience](noelaven-story-audience.md) — storyAudience field on Story type; normalizeStoryAudience() in stories.ts; groupStories filters with followingIds; StoryComposer has audience picker; onPublishItem signature includes audience.
 - [Noelaven UserCacheContext](noelaven-user-cache.md) — real-time deduped avatar cache; use UserAvatar (not GradientAvatar) whenever you have a non-currentUser userId.
 - [Noelaven timestamp safety](noelaven-timestamp-safety.md) — never call .getTime() directly; use normalizeDate/safeGetTime/formatRelativeTime from src/lib/timestamp.ts; instanceof Timestamp is unreliable in monorepos.
 - [Noelaven messaging architecture](noelaven-messaging-arch.md) — production messaging layer: extended Message/Conversation types, Firestore helpers, hooks (useMessages/useConversations/useVoiceRecorder), Chat.tsx + Messages.tsx patterns.
@@ -23,5 +24,7 @@
 - [Noelaven Liked & Saved Posts](noelaven-liked-saved-posts.md) — separate Firestore subscriptions, NOT feed filtering; liked_posts written by togglePostReaction inside the transaction.
 - [Noelaven Audience System](noelaven-audience.md) — canonical values: public/mutuals/private/onlyMe; normalizeAudience() maps legacy friends/only_me/everyone at read time.
 - [Noelaven Spark community query](spark-query-architecture.md) — query by sparkDateKey (single where, no composite index needed); never use sparkPrompt+orderBy (composite index never deployed → empty feed).
+- [Noelaven DM conversation IDs](noelaven-dm-ids.md) — DM convIds are deterministic: dm_{minUid}_{maxUid}; use setDoc+merge to avoid race conditions; no composite index (type filter client-side).
 - [Noelaven Daily Spark status architecture](spark-status-architecture.md) — use `useDailySparkStatus()` from DailySparkContext everywhere; gate composer open on `statusConfirmed`; `recordSparkAnswer` is the backend gate.
 - [Noelaven beta stabilization](noelaven-beta-stab.md) — root causes + fixes for reactions override, presence wiring, messaging privacy, notif avatar taps, warning notifications, push deep links, spark expiry guard, STUN dedup.
+- [Noelaven offline persistence](noelaven-offline.md) — Firestore uses initializeFirestore + persistentLocalCache + persistentMultipleTabManager; falls back to getFirestore on failure; localStorage msgCache seeds message state on load.

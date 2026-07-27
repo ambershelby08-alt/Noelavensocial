@@ -155,13 +155,19 @@ function ConfirmModal({
           <button
             onClick={handleSubmit}
             disabled={busy || (!reason.trim() && action.type !== 'assign' && action.type !== 'resolve')}
+            title={(!reason.trim() && action.type !== 'assign' && action.type !== 'resolve') ? 'Please enter a reason first' : undefined}
             className={cn(
-              'flex-1 py-3 rounded-xl font-bold text-[14px] text-white transition-all disabled:opacity-50',
+              'flex-1 py-3 rounded-xl font-bold text-[14px] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed',
               isDanger ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-500 hover:bg-purple-600'
             )}
           >
             {busy ? 'Processing…' : 'Confirm'}
           </button>
+          {!reason.trim() && action.type !== 'assign' && action.type !== 'resolve' && (
+            <p className="w-full text-center text-[11px] text-amber-500 font-medium mt-0.5">
+              A reason is required
+            </p>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -239,6 +245,20 @@ function ReportCard({
             <p className="text-[12.5px] text-gray-600 italic line-clamp-3">
               "{report.evidence?.textSnapshot ?? report.targetPreview}"
             </p>
+            {report.targetType === 'post' && report.targetId && (
+              <Link href={`/post/${report.targetId}`}>
+                <span className="mt-1 inline-block text-[11.5px] font-semibold text-purple-500 hover:underline cursor-pointer">
+                  View post →
+                </span>
+              </Link>
+            )}
+            {report.targetType === 'user' && (report.reportedUserId ?? report.targetOwnerId) && (
+              <Link href={`/profile/${report.reportedUserId ?? report.targetOwnerId}`}>
+                <span className="mt-1 inline-block text-[11.5px] font-semibold text-purple-500 hover:underline cursor-pointer">
+                  View profile →
+                </span>
+              </Link>
+            )}
           </div>
         )}
 

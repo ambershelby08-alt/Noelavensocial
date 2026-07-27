@@ -246,7 +246,7 @@ function ConvItem({
             <GroupAvatar participants={conv.participants} />
           ) : (
             <>
-              <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={(other as any).avatarUrl || undefined} size={52} />
+              <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={other.avatarUrl || undefined} size={52} />
               {isOnline && (
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
               )}

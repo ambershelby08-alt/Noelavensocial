@@ -223,6 +223,17 @@ export function CallScreen({
 
             <p className="text-[22px] font-black text-white drop-shadow">{call.remoteName}</p>
 
+            {/* Microphone / camera permission denied warning */}
+            {call.mediaPermissionDenied && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[12px] text-amber-300 font-semibold mt-1 text-center max-w-[220px]"
+              >
+                ⚠️ Mic{call.type === 'video' ? ' & camera' : ''} access denied — others can't hear you
+              </motion.p>
+            )}
+
             {/* Status line */}
             {call.phase === 'failed' ? (
               <p className="text-[13px] text-red-400 font-semibold mt-1">Call failed</p>

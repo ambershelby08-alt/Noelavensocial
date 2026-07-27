@@ -555,11 +555,17 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
               <textarea
                 ref={textRef}
                 value={text}
-                onChange={e => setText(e.target.value)}
+                onChange={e => setText(e.target.value.slice(0, 500))}
                 placeholder="Share your spark with the world… ✨"
                 rows={4}
+                maxLength={500}
                 className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-[14.5px] text-gray-800 placeholder:text-gray-400 outline-none resize-none leading-relaxed"
               />
+              {text.length > 400 && (
+                <p className={`text-right text-[11px] font-medium mt-0.5 ${text.length >= 500 ? 'text-red-500' : 'text-amber-500'}`}>
+                  {500 - text.length} left
+                </p>
+              )}
 
               {/* Image preview */}
               {imageUrl && (
@@ -1180,11 +1186,17 @@ export function PostComposer({ onPost }: PostComposerProps) {
           <textarea
             placeholder="Share something kind… 💛"
             value={content}
-            onChange={e => setContent(e.target.value)}
+            onChange={e => setContent(e.target.value.slice(0, 500))}
             onFocus={() => setIsExpanded(true)}
             className="w-full bg-transparent resize-none outline-none text-gray-800 text-[15px] placeholder:text-gray-400 min-h-[44px] pt-2.5 leading-relaxed"
             rows={isExpanded ? 3 : 1}
+            maxLength={500}
           />
+          {content.length > 400 && (
+            <p className={`text-right text-[11px] font-medium mt-0.5 ${content.length >= 500 ? 'text-red-500' : 'text-amber-500'}`}>
+              {500 - content.length} left
+            </p>
+          )}
 
           {/* Image preview */}
           {imageUrl && (
@@ -2356,7 +2368,7 @@ export default function Home() {
             key="story-composer"
             initialItems={composerItems}
             onCancel={() => setComposerItems([])}
-            onPublishItem={async (item, editData) => {
+            onPublishItem={async (item, editData, audience) => {
               let url: string          = item.previewUrl;
               let mediaType            = item.mediaType;
               let publicId: string | undefined;
@@ -2373,6 +2385,7 @@ export default function Home() {
                 editData.trimData,
                 editData.filterName,
                 publicId,
+                audience,
               );
             }}
             onAllPublished={() => {

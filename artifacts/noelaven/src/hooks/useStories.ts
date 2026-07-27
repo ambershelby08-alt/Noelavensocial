@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
+import { useFollowingIds } from '@/hooks/useFollowingIds';
 import {
   type Story, type StoryGroup, type StoryMediaType,
   type EditorLayer, type CropData, type TrimData, type FilterPreset,
@@ -40,6 +41,7 @@ function buildDemoStories(): Story[] {
     cropData:        null,
     trimData:        null,
     filterName:      'normal' as FilterPreset,
+    storyAudience:   'public' as const,
   }));
 }
 
@@ -63,9 +65,11 @@ export function useStories() {
     return unsub;
   }, []);
 
+  const followingIds = useFollowingIds(currentUser?.id);
+
   const groups: StoryGroup[] = useMemo(
-    () => groupStories(stories, currentUser?.id),
-    [stories, currentUser?.id],
+    () => groupStories(stories, currentUser?.id, followingIds),
+    [stories, currentUser?.id, followingIds],
   );
 
   async function publishStory(

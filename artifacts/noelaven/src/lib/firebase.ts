@@ -1,6 +1,9 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import {
+  initializeFirestore, getFirestore, Firestore,
+  persistentLocalCache, persistentMultipleTabManager,
+} from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getMessaging, Messaging, isSupported } from 'firebase/messaging';
 
@@ -33,7 +36,18 @@ let messaging: Messaging | null = null;
 if (isFirebaseConfigured) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   auth = getAuth(app);
-  db = getFirestore(app);
+  // Enable multi-tab IndexedDB persistence so messages render instantly on
+  // re-open and remain visible offline. Falls back to memory-only on failure
+  // (e.g. Safari private mode, third-party cookie restrictions).
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
+  } catch {
+    db = getFirestore(app);
+  }
   storage = getStorage(app);
   // Messaging is only available in browsers that support service workers
   isSupported().then(supported => {

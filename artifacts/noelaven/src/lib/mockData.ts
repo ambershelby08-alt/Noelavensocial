@@ -74,7 +74,7 @@ export interface Message {
   id: string;
   senderId: string;
   content: string;
-  type: 'text' | 'image' | 'video' | 'voice' | 'post_share';
+  type: 'text' | 'image' | 'video' | 'voice' | 'post_share' | 'call';
   status?: 'sending' | 'sent' | 'delivered' | 'seen' | 'failed';
   reactions: Record<string, string[]>;
   readBy: string[];
@@ -96,6 +96,10 @@ export interface Message {
   voiceDuration?: number;
   voiceWaveformData?: number[];
   forwardedFrom?: { senderId: string; senderName: string };
+  /** Set on call-summary messages (type === 'call'). */
+  callType?: 'voice' | 'video';
+  callDuration?: number;   // seconds; 0 means the call was missed / declined
+  callStatus?: 'ended' | 'missed' | 'declined';
   sharedPost?: {
     postId: string;
     authorId: string;

@@ -19,6 +19,7 @@ import {
   createCall,
   answerCall,
   updateCallStatus,
+  deleteCall,
   addIceCandidate,
   subscribeCall,
   subscribeIceCandidates,
@@ -28,11 +29,13 @@ import {
   type CallDoc,
 } from '@/lib/callSignaling';
 import { getIceConfig } from '@/lib/iceConfig';
+import { sendMessage as fsSendMessage } from '@/lib/firestore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CallState {
   callId: string | null;
+  conversationId: string | null;
   status: CallStatus | null;
   /** Local-only phase for UI display. */
   phase: LocalCallPhase | null;
@@ -51,14 +54,24 @@ export interface CallState {
   swapped: boolean;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
+  /** True if getUserMedia was denied — shown as a warning in CallScreen. */
+  mediaPermissionDenied: boolean;
+}
+
+/** Format seconds as M:SS */
+function formatCallDuration(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 const INITIAL: CallState = {
-  callId: null, status: null, phase: null, type: null,
+  callId: null, conversationId: null, status: null, phase: null, type: null,
   remoteId: null, remoteName: null, remoteAvatar: null,
   duration: 0, isMuted: false, isSpeakerOn: true, isCameraOff: false,
   isRinging: false, isActive: false, isMinimized: false, swapped: false,
   localStream: null, remoteStream: null,
+  mediaPermissionDenied: false,
 };
 
 // ─── Timeouts ─────────────────────────────────────────────────────────────────
@@ -318,15 +331,25 @@ export function useWebRTC() {
         video: type === 'video',
       });
       localRef.current = stream;
-      setCall(s => ({ ...s, localStream: stream }));
+      setCall(s => ({ ...s, localStream: stream, mediaPermissionDenied: false }));
       return stream;
     } catch {
-      // No permissions — create silent/black fallback
-      const ctx  = new AudioContext();
-      const dest = ctx.createMediaStreamDestination();
-      localRef.current = dest.stream;
-      setCall(s => ({ ...s, localStream: dest.stream }));
-      return dest.stream;
+      // No permissions — create silent/black fallback and surface the denial to UI
+      console.warn('[WebRTC] getUserMedia denied — using silent/black fallback');
+      setCall(s => ({ ...s, mediaPermissionDenied: true }));
+      try {
+        const ctx  = new AudioContext();
+        const dest = ctx.createMediaStreamDestination();
+        localRef.current = dest.stream;
+        setCall(s => ({ ...s, localStream: dest.stream }));
+        return dest.stream;
+      } catch {
+        // AudioContext also unavailable (e.g. in a sandboxed iframe)
+        const empty = new MediaStream();
+        localRef.current = empty;
+        setCall(s => ({ ...s, localStream: empty }));
+        return empty;
+      }
     }
   }
 
@@ -345,6 +368,7 @@ export function useWebRTC() {
       ...s,
       status: 'ringing', phase: 'ringing', type,
       remoteId: calleeId, remoteName: calleeName, remoteAvatar: calleeAvatar,
+      conversationId,
       isRinging: true,
     }));
 
@@ -481,6 +505,7 @@ export function useWebRTC() {
     setCall(s => ({
       ...s,
       callId: incoming.callId,
+      conversationId: incoming.conversationId,
       status: 'active',
       phase: 'connecting',
       type: incoming.type,
@@ -531,13 +556,37 @@ export function useWebRTC() {
   // ── End call ──────────────────────────────────────────────────────────────
 
   const endCall = useCallback(async () => {
-    const id = call.callId;
+    const id       = call.callId;
+    const convId   = call.conversationId;
+    const duration = call.duration;
+    const type     = call.type;
+    const wasActive = call.isActive;
+    const uid      = currentUser?.id;
     console.log('[WebRTC] endCall — user hung up callId:', id);
     cleanup(); // dismiss UI immediately
     if (id && id !== 'demo-call' && isFirebaseConfigured) {
       updateCallStatus(id, 'ended').catch(() => {});
+      // Clean up Firestore call doc + ICE candidates after a short delay
+      // (delay gives both sides time to read the 'ended' status first)
+      setTimeout(() => deleteCall(id).catch(() => {}), 5000);
     }
-  }, [call.callId, cleanup]);
+    // Inject a call-summary system message into the conversation thread
+    if (convId && uid && isFirebaseConfigured && id !== 'demo-call') {
+      try {
+        const callLabel = type === 'video' ? 'Video' : 'Voice';
+        const content = wasActive
+          ? `${callLabel} call · ${formatCallDuration(duration)}`
+          : `Missed ${callLabel.toLowerCase()} call`;
+        await fsSendMessage(convId, uid, content, 'call', {
+          callType: type ?? 'voice',
+          callDuration: duration,
+          callStatus: wasActive ? 'ended' : 'missed',
+        });
+      } catch {
+        // Non-critical — call still ended successfully
+      }
+    }
+  }, [call.callId, call.conversationId, call.duration, call.type, call.isActive, currentUser, cleanup]);
 
   // ── Media controls ────────────────────────────────────────────────────────
 

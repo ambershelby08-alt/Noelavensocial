@@ -63,13 +63,22 @@ export function useMessages(convId: string | undefined) {
     } else {
       setIsLoading(true);
     }
+    let mounted = true;
     let unsubConv: (() => void) | undefined;
     let unsubMsgs: (() => void) | undefined;
     let unsubTyping: (() => void) | undefined;
 
+    // subscribeConversation is async — store the unsub once resolved, but if
+    // the component unmounts before the Promise resolves, unsubscribe immediately.
     subscribeConversation(convId, conv => {
       setConversation(conv);
-    }, currentUser?.id).then(fn => { unsubConv = fn; });
+    }, currentUser?.id).then(fn => {
+      if (mounted) {
+        unsubConv = fn;
+      } else {
+        fn(); // component already unmounted — tear down the listener immediately
+      }
+    }).catch(() => {});
 
     unsubMsgs = subscribeMessages(convId, (msgs, oldestDoc) => {
       setMessages(msgs);
@@ -94,6 +103,7 @@ export function useMessages(convId: string | undefined) {
     }
 
     return () => {
+      mounted = false;
       unsubConv?.();
       unsubMsgs?.();
       unsubTyping?.();

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { StoryMediaType } from '@/lib/stories';
 import type { ItemEditData } from '@/components/stories/editor/types';
+import type { SparkAudience } from '@/lib/mockData';
 import { StoryItemEditor } from './StoryItemEditor';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -45,10 +46,19 @@ export interface StoryComposerProps {
   initialItems:   ComposerItem[];
   onCancel:       () => void;
   /** Upload + write ONE story. editData carries layers/crop/trim/filter. Throw to signal failure. */
-  onPublishItem:  (item: ComposerItem, editData: ItemEditData) => Promise<void>;
+  onPublishItem:  (item: ComposerItem, editData: ItemEditData, audience: SparkAudience) => Promise<void>;
   /** Called after every item succeeds. */
   onAllPublished: () => void;
 }
+
+// ─── Audience options ─────────────────────────────────────────────────────────
+
+const AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: string }[] = [
+  { value: 'public',  label: 'Everyone', icon: '🌍' },
+  { value: 'mutuals', label: 'Mutuals',  icon: '🤝' },
+  { value: 'private', label: 'Followers', icon: '👥' },
+  { value: 'onlyMe',  label: 'Only Me',  icon: '🔒' },
+];
 
 // ─── ID helper (exported for Home.tsx) ───────────────────────────────────────
 
@@ -157,6 +167,7 @@ export function StoryComposer({
   const [statuses,    setStatuses]    = useState<Record<string, ItemStatus>>({});
   const [publishing,  setPublishing]  = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [audience,    setAudience]    = useState<SparkAudience>('public');
 
   // Per-item edit data keyed by item.id
   const [editDataMap, setEditDataMap] = useState<Record<string, ItemEditData>>({});
@@ -261,7 +272,7 @@ export function StoryComposer({
       setStatuses(prev => ({ ...prev, [item.id]: 'uploading' }));
       try {
         const editData = editDataMap[item.id] ?? DEFAULT_EDIT_DATA;
-        await onPublishItem(item, editData);
+        await onPublishItem(item, editData, audience);
         setStatuses(prev => ({ ...prev, [item.id]: 'done' }));
       } catch {
         setStatuses(prev => ({ ...prev, [item.id]: 'error' }));
@@ -542,6 +553,46 @@ export function StoryComposer({
               + Add More Photos or Videos
             </span>
           </button>
+
+          {/* ── Audience picker ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Who can see this?
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {AUDIENCE_OPTIONS.map(opt => {
+                const active = audience === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => !publishing && setAudience(opt.value)}
+                    disabled={publishing}
+                    style={{
+                      flex: 1,
+                      padding: '8px 4px',
+                      borderRadius: 10,
+                      border: active ? 'none' : '1.5px solid #E5E7EB',
+                      background: active ? 'linear-gradient(135deg,#6B73FF,#C44FDB)' : 'transparent',
+                      cursor: publishing ? 'default' : 'pointer',
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', gap: 3,
+                      opacity: publishing ? 0.5 : 1,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 16, lineHeight: 1 }}>{opt.icon}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700,
+                      color: active ? 'white' : '#6B7280',
+                      letterSpacing: '-0.01em',
+                    }}>
+                      {opt.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <motion.button
             whileTap={{ scale: queue.length && !publishing ? 0.97 : 1 }}

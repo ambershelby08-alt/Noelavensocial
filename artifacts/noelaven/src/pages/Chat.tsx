@@ -7,7 +7,7 @@ import {
   Reply, Edit2, Trash2, Copy, Forward, Flag,
   Bell, BellOff, Ban, LogOut, Play, Pause,
   CornerUpLeft, Loader2, AlertCircle, GalleryHorizontal, RefreshCw,
-  Download, CheckCircle, Share2,
+  Download, CheckCircle, Share2, PhoneMissed,
 } from 'lucide-react';
 import { downloadImage } from '@/lib/downloadMedia';
 import { mockMessages } from '@/lib/mockData';
@@ -405,7 +405,28 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
   const isVideo = msg.type === 'video';
   const isVoice = msg.type === 'voice';
   const isPost  = msg.type === 'post_share';
+  const isCall  = msg.type === 'call';
   const isMedia = isImage || isVideo || isPost || isVoice;
+
+  // Call-event system message — centred pill, not a regular bubble
+  if (isCall) {
+    const missed   = msg.callStatus === 'missed' || msg.callStatus === 'declined';
+    const isVideo_ = msg.callType === 'video';
+    return (
+      <div className="flex items-center justify-center py-1">
+        <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-100/80 rounded-full text-[12px] text-gray-500 border border-black/[0.04]">
+          {missed ? (
+            <PhoneMissed size={13} className="text-red-400 flex-shrink-0" />
+          ) : isVideo_ ? (
+            <Video size={13} className="text-purple-400 flex-shrink-0" />
+          ) : (
+            <Phone size={13} className="text-purple-400 flex-shrink-0" />
+          )}
+          <span className={missed ? 'text-red-400 font-medium' : ''}>{msg.content}</span>
+        </div>
+      </div>
+    );
+  }
 
   // Deleted for everyone
   if (msg.deletedForEveryone) {
@@ -557,8 +578,8 @@ function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCop
   const isPhoto    = (msg.type === 'image') && !!(msg.mediaUrl ?? msg.localMediaUrl);
 
   const actions = [
-    { id: 'reply',    icon: <Reply size={18} />,    label: 'Reply',               always: true },
-    { id: 'forward',  icon: <Forward size={18} />,  label: 'Forward',             always: true },
+    { id: 'reply',    icon: <Reply size={18} />,    label: 'Reply',               always: msg.type !== 'call' },
+    { id: 'forward',  icon: <Forward size={18} />,  label: 'Forward',             always: msg.type !== 'call' },
     { id: 'download', icon: <Download size={18} />, label: 'Download photo',      always: isPhoto && !!onDownload },
     { id: 'copy',     icon: <Copy size={18} />,     label: 'Copy',                always: msg.type === 'text' },
     { id: 'edit',     icon: <Edit2 size={18} />,    label: 'Edit',                always: canEdit },
@@ -902,6 +923,7 @@ function ForwardPickerSheet({
     : msg.type === 'video'   ? '🎥 Video'
     : msg.type === 'voice'   ? '🎤 Voice message'
     : msg.type === 'post_share' ? '📌 Shared post'
+    : msg.type === 'call'    ? msg.content
     : (msg.editedContent ?? msg.content).slice(0, 80);
 
   const filtered = query.trim()

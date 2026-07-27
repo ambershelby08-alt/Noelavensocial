@@ -18,7 +18,7 @@
 
 import {
   getFirestore, collection, doc, addDoc, getDoc,
-  updateDoc, onSnapshot, serverTimestamp, query, where,
+  updateDoc, deleteDoc, getDocs, onSnapshot, serverTimestamp, query, where,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { isFirebaseConfigured } from '@/lib/firebase';
@@ -87,6 +87,25 @@ export async function answerCall(callId: string, answer: RTCSessionDescriptionIn
 /** Either party: update status (ended / declined / missed). */
 export async function updateCallStatus(callId: string, status: CallStatus): Promise<void> {
   await updateDoc(doc(db(), 'calls', callId), { status });
+}
+
+/**
+ * Delete a call document and its ICE candidate sub-collections.
+ * Called by the caller after a short delay post-hang-up to avoid data bloat.
+ * Fails silently — cleanup is best-effort.
+ */
+export async function deleteCall(callId: string): Promise<void> {
+  try {
+    const callRef = doc(db(), 'calls', callId);
+    // Delete ICE candidate sub-collections first
+    for (const sub of ['callerCandidates', 'calleeCandidates']) {
+      const subSnap = await getDocs(collection(db(), 'calls', callId, sub));
+      await Promise.all(subSnap.docs.map(d => deleteDoc(d.ref)));
+    }
+    await deleteDoc(callRef);
+  } catch {
+    // Best-effort — don't throw
+  }
 }
 
 /** Add an ICE candidate (caller or callee side). */

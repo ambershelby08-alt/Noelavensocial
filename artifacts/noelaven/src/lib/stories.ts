@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { safeGetTime } from '@/lib/timestamp';
 import { db } from './firebase';
-import type { User } from './mockData';
+import type { User, SparkAudience } from './mockData';
 import type { EditorLayer, CropData, TrimData } from '@/components/stories/editor/types';
 import type { FilterPreset } from '@/components/stories/editor/filters';
 
@@ -40,6 +40,8 @@ export interface Story {
   trimData: TrimData | null;
   /** CSS filter preset applied to this story in the viewer. */
   filterName: FilterPreset;
+  /** Who can see this story. Defaults to 'public' for legacy docs without the field. */
+  storyAudience: SparkAudience;
 }
 
 export interface StoryGroup {
@@ -60,6 +62,17 @@ function toDate(v: unknown): Date {
   return (v as { toDate?: () => Date })?.toDate?.() ?? new Date();
 }
 
+/** Map any legacy / unknown audience string to a canonical SparkAudience value. */
+function normalizeStoryAudience(raw: unknown): SparkAudience {
+  switch (raw) {
+    case 'mutuals': return 'mutuals';
+    case 'private': return 'private';
+    case 'onlyMe':
+    case 'only_me': return 'onlyMe';
+    default:        return 'public';
+  }
+}
+
 function docToStory(id: string, d: DocumentData): Story {
   return {
     id,
@@ -78,6 +91,7 @@ function docToStory(id: string, d: DocumentData): Story {
     cropData:        d.cropData  ?? null,
     trimData:        d.trimData  ?? null,
     filterName:      (d.filterName as FilterPreset) ?? 'normal',
+    storyAudience:   normalizeStoryAudience(d.storyAudience),
   };
 }
 
@@ -152,10 +166,37 @@ export async function deleteStory(storyId: string): Promise<void> {
 
 // ─── Client-side grouping ─────────────────────────────────────────────────────
 
-export function groupStories(stories: Story[], currentUserId?: string): StoryGroup[] {
+/**
+ * Returns true if the viewer should see a story with the given audience.
+ * Own stories are always visible.
+ * 'public'  → everyone.
+ * 'mutuals' / 'private' → viewer must follow the author.
+ * 'onlyMe'  → author only.
+ */
+function storyVisibleTo(
+  story: Story,
+  viewerId: string | undefined,
+  followingIds: Set<string>,
+): boolean {
+  if (story.authorId === viewerId) return true;   // always own
+  switch (story.storyAudience) {
+    case 'public':  return true;
+    case 'mutuals':
+    case 'private': return followingIds.has(story.authorId);
+    case 'onlyMe':  return false;
+    default:        return true;
+  }
+}
+
+export function groupStories(
+  stories: Story[],
+  currentUserId?: string,
+  followingIds: Set<string> = new Set(),
+): StoryGroup[] {
   const map = new Map<string, StoryGroup>();
 
   for (const story of stories) {
+    if (!storyVisibleTo(story, currentUserId, followingIds)) continue;
     if (!map.has(story.authorId)) {
       map.set(story.authorId, {
         authorId:        story.authorId,

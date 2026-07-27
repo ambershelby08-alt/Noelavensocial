@@ -58,7 +58,16 @@ export function SafetyProvider({ children }: { children: React.ReactNode }) {
   const [safetySettings, setSafetySettings] = useState<SafetySettings>(defaultSafetySettings());
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid) {
+      // Clear all safety state on sign-out or account switch to avoid data leaking
+      // between sessions on the same device.
+      setBlockedIds(new Set());
+      setBlockedByIds(new Set());
+      setMutedIds(new Set());
+      setRestrictedIds(new Set());
+      setSafetySettings(defaultSafetySettings());
+      return;
+    }
     const unsubs = [
       subscribeBlockedUsers   (uid, ids => setBlockedIds   (new Set(ids))),
       subscribeBlockedByUsers (uid, ids => setBlockedByIds (new Set(ids))),

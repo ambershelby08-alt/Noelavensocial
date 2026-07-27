@@ -8,7 +8,7 @@ import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc,
   deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot,
   serverTimestamp, increment, arrayUnion, arrayRemove, Timestamp,
-  runTransaction, documentId,
+  runTransaction, documentId, writeBatch,
   type DocumentData, type Unsubscribe, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -899,6 +899,9 @@ function docToMessage(id: string, data: DocumentData): Message {
     voiceWaveformData: data.voiceWaveformData ?? undefined,
     forwardedFrom: data.forwardedFrom ?? undefined,
     sharedPost: data.sharedPost ?? undefined,
+    callType: data.callType ?? undefined,
+    callDuration: data.callDuration ?? undefined,
+    callStatus: data.callStatus ?? undefined,
     createdAt: ts(data.createdAt),
   };
 }
@@ -983,6 +986,9 @@ export async function sendMessage(
     voiceWaveformData?: number[];
     sharedPost?: Message['sharedPost'];
     forwardedFrom?: Message['forwardedFrom'];
+    callType?: Message['callType'];
+    callDuration?: number;
+    callStatus?: Message['callStatus'];
   } = {},
   senderProfile?: User
 ): Promise<string> {
@@ -1006,15 +1012,19 @@ export async function sendMessage(
     voiceWaveformData: opts.voiceWaveformData ?? null,
     sharedPost: opts.sharedPost ?? null,
     forwardedFrom: opts.forwardedFrom ?? null,
+    callType: opts.callType ?? null,
+    callDuration: opts.callDuration ?? null,
+    callStatus: opts.callStatus ?? null,
     createdAt: serverTimestamp(),
   });
 
   // Preview text for conversation list
   const preview =
-    type === 'image' ? '📷 Photo'
-    : type === 'video' ? '🎥 Video'
-    : type === 'voice' ? '🎤 Voice message'
+    type === 'image'      ? '📷 Photo'
+    : type === 'video'    ? '🎥 Video'
+    : type === 'voice'    ? '🎤 Voice message'
     : type === 'post_share' ? '📌 Shared a post'
+    : type === 'call'     ? content   // content already has the summary text
     : content;
 
   // Increment unread counts for all other participants
@@ -1086,16 +1096,15 @@ export async function getOrCreateDirectConversation(
   otherUser: User
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
-  const q = query(
-    collection(db, 'conversations'),
-    where('type', '==', 'direct'),
-    where('participantIds', 'array-contains', userId)
-  );
-  const snap = await getDocs(q);
-  for (const d of snap.docs) {
-    if ((d.data().participantIds as string[]).includes(otherUserId)) return d.id;
-  }
-  const ref = await addDoc(collection(db, 'conversations'), {
+  // Use a deterministic document ID (sorted UIDs) to eliminate the read-then-write
+  // race condition that could create duplicate DM threads between the same two users.
+  const [a, b] = [userId, otherUserId].sort();
+  const convId = `dm_${a}_${b}`;
+  const convRef = doc(db, 'conversations', convId);
+  const existing = await getDoc(convRef);
+  if (existing.exists()) return convId;
+  // setDoc is idempotent — if two users race, both writes produce identical data.
+  await setDoc(convRef, {
     type: 'direct',
     participantIds: [userId, otherUserId],
     participants: [
@@ -1106,8 +1115,8 @@ export async function getOrCreateDirectConversation(
     lastMessageAt: serverTimestamp(),
     unreadCounts: { [userId]: 0, [otherUserId]: 0 },
     createdAt: serverTimestamp(),
-  });
-  return ref.id;
+  }, { merge: true }); // merge: existing data is preserved if the doc already exists
+  return convId;
 }
 
 // ─── Message actions ──────────────────────────────────────────────────────────
@@ -1323,7 +1332,11 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     where('read', '==', false)
   );
   const snap = await getDocs(q);
-  await Promise.all(snap.docs.map(d => updateDoc(d.ref, { read: true })));
+  if (snap.empty) return;
+  // Use a batched write — up to 500 ops per batch; notifications are capped at 50
+  const batch = writeBatch(db);
+  snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+  await batch.commit();
 }
 
 export async function markNotificationRead(notifId: string): Promise<void> {
@@ -1610,6 +1623,9 @@ function buildPushTitle(type: NotificationType, actor: User): string | null {
     story_reply:         `${name} replied to your story`,
     story_reaction:      `${name} reacted to your story`,
     spark_reaction:      `${name} reacted to your Spark`,
+    like_comment:        `${name} liked your comment`,
+    community_invite:    `${name} invited you to a community`,
+    daily_spark:         `New Daily Spark is live — join the conversation!`,
     moderation_warning:  `You received a moderation warning`,
   };
   return titles[type] ?? null;

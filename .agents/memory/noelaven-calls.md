@@ -66,6 +66,24 @@ Both `startCall` and `answerIncomingCall` log whether TURN servers are present i
 | `localStream` | MediaStream \| null | local camera/mic stream |
 | `remoteStream` | MediaStream \| null | remote participant's stream — dedicated MediaStream, never shared with local |
 
+## Call summary messages (added)
+
+When `endCall` is called, a `type: 'call'` system message is written to the conversation:
+- Connected call → "Voice/Video call · M:SS"
+- Missed call → "Missed voice/video call"
+
+`Message` type now has `callType`, `callDuration`, `callStatus` optional fields.
+`Chat.tsx` renders call messages as centred pill-shaped events (not regular bubbles), using `PhoneMissed` for missed calls.
+
+## Permission denied warning (added)
+
+`CallState.mediaPermissionDenied: boolean` — set to true when `getUserMedia` throws.
+`CallScreen` shows an amber warning: "Mic (& camera) access denied — others can't hear you".
+`CallState.conversationId: string | null` — stored from `startCall` param and from `incoming.conversationId` in `answerIncomingCall`.
+
+## Cleanup
+`deleteCall(callId)` in callSignaling.ts deletes the call doc + ICE candidate sub-collections after a 5s delay post-hang-up (gives both sides time to read 'ended' status). Called from `endCall` in useWebRTC.ts.
+
 ## Files
 
 - `artifacts/noelaven/src/hooks/useWebRTC.ts` — core hook
