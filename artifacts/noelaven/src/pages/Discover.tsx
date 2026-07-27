@@ -260,7 +260,17 @@ function UserCard({
 
 // ─── CommunityRow ─────────────────────────────────────────────────────────────
 
-function CommunityRow({ community, index }: { community: typeof mockCommunities[number]; index: number }) {
+/** Generic community shape — works with both Firestore data and mock fallback. */
+interface DiscoverCommunity {
+  id: string;
+  name: string;
+  emoji: string;
+  category: string;
+  memberCount: number;
+  isJoined?: boolean;
+}
+
+function CommunityRow({ community, index }: { community: DiscoverCommunity; index: number }) {
   const [joined, setJoined] = useState(community.isJoined);
   const [from] = getGradientPair(community.name);
   return (
@@ -619,12 +629,18 @@ interface SearchViewProps {
   recentSearches: string[];
   onRemoveSearch: (term: string) => void;
   onClearSearches: () => void;
+  /** Live trending hashtags derived from fetched posts — used as trending search terms. */
+  trendingHashtags: Array<{ tag: string; count: number }>;
 }
 
 function SearchView({
   query, onSearch, currentUserId, discoverSearch,
-  recentSearches, onRemoveSearch, onClearSearches,
+  recentSearches, onRemoveSearch, onClearSearches, trendingHashtags,
 }: SearchViewProps) {
+  // Build trending search terms from live hashtags; fall back to demo list when empty.
+  const trendingSearchTerms: string[] = trendingHashtags.length >= 3
+    ? trendingHashtags.slice(0, 8).map(h => h.tag)
+    : DEMO_TRENDING_SEARCHES;
   const [results, setResults] = useState<{ users: User[]; posts: Post[]; hashtags: string[] }>({
     users: [], posts: [], hashtags: [],
   });
@@ -692,7 +708,7 @@ function SearchView({
             Trending Searches
           </h3>
           <div className="space-y-0.5">
-            {DEMO_TRENDING_SEARCHES.map((term, i) => (
+            {trendingSearchTerms.map((term, i) => (
               <motion.button
                 key={term}
                 onClick={() => onSearch(term)}
@@ -950,7 +966,37 @@ interface SuggestedViewProps {
 function SuggestedView({
   creators, currentUserId, selectedInterests, onToggleInterest,
 }: SuggestedViewProps) {
-  const unjoinedCommunities = mockCommunities.filter(c => !c.isJoined);
+  const [communities, setCommunities] = useState<DiscoverCommunity[]>(() =>
+    mockCommunities.filter(c => !c.isJoined) as DiscoverCommunity[]
+  );
+
+  // Fetch communities from Firestore, ordered by member count.
+  // Falls back to mock data when Firebase is not configured or the collection is empty.
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+    import('@/lib/firebase').then(({ db }) => {
+      if (!db) return;
+      import('firebase/firestore').then(({ getDocs, collection, query, orderBy, limit }) => {
+        getDocs(query(collection(db, 'communities'), orderBy('memberCount', 'desc'), limit(12)))
+          .then(snap => {
+            if (snap.empty) return; // keep mock fallback
+            const fetched: DiscoverCommunity[] = snap.docs.map(d => {
+              const data = d.data();
+              return {
+                id:          d.id,
+                name:        data.name        ?? '',
+                emoji:       data.emoji       ?? '🌐',
+                category:    data.category    ?? '',
+                memberCount: data.memberCount ?? 0,
+                isJoined:    data.isJoined    ?? false,
+              };
+            });
+            setCommunities(fetched.filter(c => !c.isJoined));
+          })
+          .catch(() => {}); // silently keep mock fallback
+      });
+    });
+  }, []);
 
   return (
     <motion.div
@@ -976,12 +1022,12 @@ function SuggestedView({
       )}
 
       {/* Circles to Join */}
-      {unjoinedCommunities.length > 0 && (
+      {communities.length > 0 && (
         <section className="px-4">
           <SectionHeader emoji="🌐" title="Circles to Join"
             subtitle="Communities that match your vibe" />
           <div className="mt-3 space-y-2">
-            {unjoinedCommunities.slice(0, 6).map((c, i) => (
+            {communities.slice(0, 6).map((c, i) => (
               <CommunityRow key={c.id} community={c} index={i} />
             ))}
           </div>
@@ -1297,6 +1343,7 @@ export default function Discover() {
               recentSearches={personalization.signals.recentSearches}
               onRemoveSearch={personalization.removeSearch}
               onClearSearches={personalization.clearSearches}
+              trendingHashtags={discover.trendingHashtags}
             />
           </motion.div>
         ) : (
