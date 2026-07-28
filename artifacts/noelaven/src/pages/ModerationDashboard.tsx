@@ -574,13 +574,23 @@ export default function ModerationDashboard() {
 
   const reportTabs = new Set<TabId>(['pending', 'reviewing', 'resolved', 'dismissed']);
 
-  // Filtered content
+  // Filtered content — matches reason, preview, evidence text, AND the reported
+  // user's UID / targetOwnerId so moderators can pull all reports against a user
+  // by typing a partial UID into the search bar.
   const filteredReports = search.trim()
-    ? reports.filter(r =>
-        r.reason.toLowerCase().includes(search.toLowerCase()) ||
-        r.targetPreview?.toLowerCase().includes(search.toLowerCase()) ||
-        r.evidence?.textSnapshot?.toLowerCase().includes(search.toLowerCase())
-      )
+    ? reports.filter(r => {
+        const q = search.toLowerCase();
+        return (
+          r.reason.toLowerCase().includes(q) ||
+          r.targetPreview?.toLowerCase().includes(q) ||
+          r.evidence?.textSnapshot?.toLowerCase().includes(q) ||
+          r.reportedUserId?.toLowerCase().includes(q) ||
+          r.targetOwnerId?.toLowerCase().includes(q) ||
+          r.reporterId?.toLowerCase().includes(q) ||
+          r.category?.toLowerCase().includes(q) ||
+          r.additionalDetails?.toLowerCase().includes(q)
+        );
+      })
     : reports;
 
   return (
@@ -639,7 +649,7 @@ export default function ModerationDashboard() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search reports…"
+              placeholder="Search by reason, content, or user UID…"
               className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white border border-black/[0.06] text-[13.5px] text-gray-800 outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition-all"
             />
           </div>
