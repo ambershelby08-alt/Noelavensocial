@@ -475,13 +475,14 @@ export async function followUser(
   actor?: User
 ): Promise<void> {
   if (!db) return;
-  await Promise.all([
-    setDoc(doc(db, 'users', currentUserId, 'following', targetUserId), { createdAt: serverTimestamp() }),
-    setDoc(doc(db, 'users', targetUserId, 'followers', currentUserId), { createdAt: serverTimestamp() }),
-    updateDoc(doc(db, 'users', currentUserId), { following: increment(1) }).catch(() => {}),
-    updateDoc(doc(db, 'users', targetUserId), { followers: increment(1) }).catch(() => {}),
-  ]);
-  // Notify the target user that someone followed them (fire-and-forget)
+  // Use a batched write so all four ops are atomic — if any fails, none commit.
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'users', currentUserId, 'following', targetUserId), { createdAt: serverTimestamp() });
+  batch.set(doc(db, 'users', targetUserId, 'followers', currentUserId), { createdAt: serverTimestamp() });
+  batch.update(doc(db, 'users', currentUserId), { following: increment(1) });
+  batch.update(doc(db, 'users', targetUserId), { followers: increment(1) });
+  await batch.commit();
+  // Notify the target user that someone followed them (fire-and-forget, outside batch)
   if (actor) {
     writeNotification(targetUserId, 'follow', actor, {
       message: `${actor.displayName} started following you`,
@@ -491,12 +492,13 @@ export async function followUser(
 
 export async function unfollowUser(currentUserId: string, targetUserId: string): Promise<void> {
   if (!db) return;
-  await Promise.all([
-    deleteDoc(doc(db, 'users', currentUserId, 'following', targetUserId)).catch(() => {}),
-    deleteDoc(doc(db, 'users', targetUserId, 'followers', currentUserId)).catch(() => {}),
-    updateDoc(doc(db, 'users', currentUserId), { following: increment(-1) }).catch(() => {}),
-    updateDoc(doc(db, 'users', targetUserId), { followers: increment(-1) }).catch(() => {}),
-  ]);
+  // Use a batched write so all four ops are atomic.
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'users', currentUserId, 'following', targetUserId));
+  batch.delete(doc(db, 'users', targetUserId, 'followers', currentUserId));
+  batch.update(doc(db, 'users', currentUserId), { following: increment(-1) });
+  batch.update(doc(db, 'users', targetUserId), { followers: increment(-1) });
+  await batch.commit().catch(() => {});
 }
 
 /**
@@ -1555,6 +1557,30 @@ export async function deleteReply(
  * Write a notification to `userId` (the recipient).
  * Silently no-ops when actor === recipient so users don't notify themselves.
  */
+/**
+ * Map a NotificationType to the key used in notificationPrefs on the user doc.
+ * Returns undefined for types that should always be delivered (e.g. moderation).
+ */
+function notifTypeToPrefKey(type: NotificationType): string | undefined {
+  const map: Partial<Record<NotificationType, string>> = {
+    like:              'likes',
+    reaction:          'reactions',
+    comment:           'comments',
+    reply:             'replies',
+    like_comment:      'replies',
+    follow:            'followers',
+    message:           'messages',
+    mention:           'mentions',
+    story_reaction:    'storyReplies',
+    story_reply:       'storyReplies',
+    story_view:        'storyViews',
+    spark_reaction:    'reactions',
+    daily_spark:       'dailySpark',
+    community_invite:  'communityInvites',
+  };
+  return map[type];
+}
+
 export async function writeNotification(
   userId: string,
   type: NotificationType,
@@ -1571,6 +1597,20 @@ export async function writeNotification(
   }
 ): Promise<void> {
   if (!db || userId === actor.id) return;
+
+  // Check recipient's notification preferences stored on their user doc.
+  // We do this server-side (at write time) so push notifications are also gated.
+  const prefKey = notifTypeToPrefKey(type);
+  if (prefKey) {
+    try {
+      const recipientSnap = await getDoc(doc(db, 'users', userId));
+      const prefs = recipientSnap.data()?.notificationPrefs as Record<string, boolean> | undefined;
+      if (prefs && prefs[prefKey] === false) return; // recipient opted out
+    } catch {
+      // If we can't read prefs, deliver anyway rather than silently dropping.
+    }
+  }
+
   await addDoc(collection(db, 'notifications'), {
     userId,
     type,
@@ -1646,6 +1686,58 @@ function buildPushTitle(type: NotificationType, actor: User): string | null {
  * Called by usePresence on mount, visibilitychange, beforeunload, and cleanup.
  * Fails silently — presence is non-critical.
  */
+// ── Handle uniqueness ─────────────────────────────────────────────────────────
+
+/**
+ * Returns true if `handle` is unclaimed (or is claimed only by `excludeUserId`).
+ * Case-insensitive — handles are always stored lowercase.
+ */
+export async function checkHandleAvailable(handle: string, excludeUserId?: string): Promise<boolean> {
+  if (!db) return true;
+  const q = query(collection(db, 'users'), where('handle', '==', handle.toLowerCase()), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return true;
+  return snap.docs[0].id === excludeUserId;
+}
+
+// ── Notification preferences ──────────────────────────────────────────────────
+
+/**
+ * Persist the user's notification preference map to their Firestore user doc.
+ * Called from Settings whenever a toggle changes so the server-side guard in
+ * writeNotification can respect them.
+ */
+export async function saveUserNotifPrefs(userId: string, prefs: Record<string, boolean>): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'users', userId), { notificationPrefs: prefs }).catch(() => {});
+}
+
+// ── Message notification clearance ───────────────────────────────────────────
+
+/**
+ * Mark all unread `message`-type notifications for `userId` in `convId` as read.
+ * Called when the user opens a conversation so the badge clears immediately.
+ */
+export async function clearMessageNotificationsForConv(userId: string, convId: string): Promise<void> {
+  if (!db) return;
+  try {
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', userId),
+      where('convId', '==', convId),
+      where('type', '==', 'message'),
+      where('read', '==', false),
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+    await batch.commit();
+  } catch {
+    // Non-critical — message can still be read even if badge doesn't clear
+  }
+}
+
 export async function updatePresence(uid: string, isOnline: boolean): Promise<void> {
   if (!db || !uid) return;
   try {

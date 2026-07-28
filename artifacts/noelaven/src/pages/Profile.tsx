@@ -289,6 +289,24 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
     setSaving(true);
     setSaveError(null);
 
+    // Check handle uniqueness only if the user changed their handle
+    if (trimmedHandle !== user.handle) {
+      try {
+        const { checkHandleAvailable } = await import('@/lib/firestore');
+        const { isFirebaseConfigured } = await import('@/lib/firebase');
+        if (isFirebaseConfigured) {
+          const available = await checkHandleAvailable(trimmedHandle.toLowerCase(), user.id);
+          if (!available) {
+            setSaveError('That username is already taken — try another');
+            setSaving(false);
+            return;
+          }
+        }
+      } catch {
+        // If check fails, proceed — Firestore write will be attempted
+      }
+    }
+
     // Build a partial update — only include fields whose value actually changed.
     // This ensures that editing the display name never silently overwrites the
     // @handle and vice versa.  Each field is independent.

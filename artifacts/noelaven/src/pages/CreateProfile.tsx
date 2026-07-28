@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { NoelavenLogo } from '@/components/ui/NoelavenLogo';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
+import { checkHandleAvailable } from '@/lib/firestore';
+import { isFirebaseConfigured } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -318,9 +320,21 @@ export default function CreateProfile() {
     }
   }
 
-  function goToStep2() {
+  async function goToStep2() {
     if (!handle.trim()) { setHandleError('Username is required'); return; }
     if (handle.length < 3) { setHandleError('At least 3 characters'); return; }
+    // Check handle uniqueness in Firestore
+    if (isFirebaseConfigured) {
+      try {
+        const available = await checkHandleAvailable(handle.toLowerCase());
+        if (!available) {
+          setHandleError('That username is already taken — try another');
+          return;
+        }
+      } catch {
+        // If the check fails, let it through — the server write will catch duplicates
+      }
+    }
     setHandleError('');
     setStep(2);
   }

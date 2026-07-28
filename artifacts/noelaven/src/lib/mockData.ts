@@ -128,7 +128,7 @@ export interface Conversation {
 export type NotificationType =
   | 'like' | 'reaction' | 'comment' | 'reply' | 'like_comment'
   | 'follow' | 'community_invite' | 'daily_spark'
-  | 'mention' | 'message' | 'story_reaction' | 'story_reply' | 'spark_reaction'
+  | 'mention' | 'message' | 'story_reaction' | 'story_reply' | 'story_view' | 'spark_reaction'
   | 'moderation_warning';
 
 export interface Notification {

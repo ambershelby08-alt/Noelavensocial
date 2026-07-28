@@ -8,6 +8,7 @@ import {
   subscribeStories, createStory as fsCreateStory,
   markStoryViewed, deleteStory as fsDeleteStory, groupStories,
 } from '@/lib/stories';
+import { notifyStoryView } from '@/lib/notifications';
 import { mockUsers } from '@/lib/mockData';
 import type { User, SparkAudience } from '@/lib/mockData';
 
@@ -102,6 +103,11 @@ export function useStories() {
   async function markViewed(storyId: string): Promise<void> {
     if (!currentUser || !isFirebaseConfigured) return;
     await markStoryViewed(storyId, currentUser.id);
+    // Notify the story author on first view (fire-and-forget)
+    const story = stories.find(s => s.id === storyId);
+    if (story && !story.viewerIds.includes(currentUser.id)) {
+      notifyStoryView(story.authorId, currentUser as unknown as import('@/lib/mockData').User, storyId).catch(() => {});
+    }
   }
 
   /**

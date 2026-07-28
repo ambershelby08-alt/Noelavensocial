@@ -325,6 +325,12 @@ export default function Settings() {
     const next = { ...notifPrefs, [key]: val };
     setNotifPrefs(next);
     saveNotifPrefs(next);
+    // Also persist to Firestore so server-side notification writes respect prefs
+    if (isFirebaseConfigured && currentUser) {
+      import('@/lib/firestore').then(({ saveUserNotifPrefs }) => {
+        saveUserNotifPrefs(currentUser.id, next).catch(() => {});
+      });
+    }
   }
 
   async function handleSendReport() {

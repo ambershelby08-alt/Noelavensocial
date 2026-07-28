@@ -187,6 +187,19 @@ export async function notifyMessage(
   });
 }
 
+export async function notifyStoryView(
+  storyAuthorId: string,
+  actor: User,
+  storyId: string,
+) {
+  // Don't notify the author if they view their own story
+  if (storyAuthorId === actor.id) return;
+  await write(storyAuthorId, 'story_view', actor, {
+    storyId,
+    message: `${actor.displayName} viewed your story`,
+  });
+}
+
 export async function notifyStoryReaction(
   storyOwnerId: string,
   actor: User,

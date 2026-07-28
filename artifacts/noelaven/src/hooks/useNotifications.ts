@@ -69,6 +69,7 @@ function typeMatchesPref(type: NotificationType, p: FullPrefs): boolean {
     case 'message':     return p.messages ?? true;
     case 'mention':     return p.mentions ?? true;
     case 'story_reply': return p.storyReplies ?? true;
+    case 'story_view':  return (p as unknown as Record<string, boolean>).storyViews ?? true;
     case 'daily_spark': return p.dailySpark ?? true;
     case 'community_invite': return p.communityInvites ?? true;
     default: return true;

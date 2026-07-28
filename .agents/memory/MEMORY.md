@@ -28,3 +28,5 @@
 - [Noelaven Daily Spark status architecture](spark-status-architecture.md) — use `useDailySparkStatus()` from DailySparkContext everywhere; gate composer open on `statusConfirmed`; `recordSparkAnswer` is the backend gate.
 - [Noelaven beta stabilization](noelaven-beta-stab.md) — root causes + fixes for reactions override, presence wiring, messaging privacy, notif avatar taps, warning notifications, push deep links, spark expiry guard, STUN dedup.
 - [Noelaven offline persistence](noelaven-offline.md) — Firestore uses initializeFirestore + persistentLocalCache + persistentMultipleTabManager; falls back to getFirestore on failure; localStorage msgCache seeds message state on load.
+- [Noelaven notification prefs architecture](noelaven-notif-prefs.md) — prefs stored in localStorage AND Firestore user doc; writeNotification checks Firestore before writing; Settings syncs both on toggle.
+- [Noelaven Firestore rules deployment](noelaven-firestore-deploy.md) — no .firebaserc; deploy via Firebase Rules REST API using FIREBASE_SERVICE_ACCOUNT_JSON; project ID: noelaven-511ad.

@@ -141,6 +141,16 @@ service cloud.firestore {
         allow update, delete:
             if (isAuthenticated() && resource.data.authorId == request.auth.uid)
             || isModerator();
+
+        // Replies are nested under each comment
+        match /replies/{replyId} {
+          allow read: if isAuthenticated();
+          allow create: if isAuthenticated()
+              && request.resource.data.authorId == request.auth.uid;
+          allow update, delete:
+              if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+              || isModerator();
+        }
       }
     }
 

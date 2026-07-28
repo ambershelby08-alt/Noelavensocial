@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
   subscribeMessages, subscribeConversation, markConversationRead,
+  clearMessageNotificationsForConv,
   sendMessage as fsSend,
   editMessage as fsEdit,
   deleteMessageForMe as fsDeleteForMe,
@@ -100,6 +101,8 @@ export function useMessages(convId: string | undefined) {
 
     if (currentUser) {
       markConversationRead(convId, currentUser.id).catch(console.error);
+      // Also clear any unread message-type notifications for this conversation
+      clearMessageNotificationsForConv(convId, currentUser.id).catch(console.error);
     }
 
     return () => {
