@@ -59,9 +59,25 @@ export function readCachedMessages(userId: string, convId: string): Message[] {
   return parse<Message[]>(localStorage.getItem(msgsKey(userId, convId))) ?? [];
 }
 
-/** Evict cached messages for a conversation (e.g. after leave). */
+/** Evict cached messages for a single conversation (e.g. after leave). */
 export function evictMessages(userId: string, convId: string): void {
   try { localStorage.removeItem(msgsKey(userId, convId)); } catch { /* ignore */ }
+}
+
+/**
+ * Evict ALL message caches for a user — call on sign-out / account switch so
+ * the next user on this device never briefly sees another account's messages.
+ */
+export function evictAllMessages(userId: string): void {
+  try {
+    const prefix = `${PREFIX}msgs_${userId}_`;
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(prefix)) toRemove.push(key);
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
 }
 
 // ─── Conversations ────────────────────────────────────────────────────────────

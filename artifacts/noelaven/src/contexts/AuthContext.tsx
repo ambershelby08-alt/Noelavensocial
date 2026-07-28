@@ -391,8 +391,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     // Evict per-user caches before clearing the session
     if (currentUser) {
-      const { evictConversations } = await import('@/lib/msgCache');
+      const { evictConversations, evictAllMessages } = await import('@/lib/msgCache');
       evictConversations(currentUser.id);
+      evictAllMessages(currentUser.id);
     }
     if (!isDemoMode && auth) {
       // Mark offline before signing out so listeners see the update.
@@ -419,8 +420,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPendingSwitchEmail(account.email);
     // Evict per-user caches
     if (currentUser) {
-      const { evictConversations } = await import('@/lib/msgCache');
+      const { evictConversations, evictAllMessages } = await import('@/lib/msgCache');
       evictConversations(currentUser.id);
+      evictAllMessages(currentUser.id);
     }
     if (!isDemoMode && auth) {
       // Mark offline before switching so listeners see the update.
