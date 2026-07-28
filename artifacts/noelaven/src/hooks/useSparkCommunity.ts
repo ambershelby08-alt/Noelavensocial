@@ -159,13 +159,18 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
         // on the same day (confirmed via Admin SDK on 2026-07-25: 3 different
         // prompts). Exact-match filtering would drop valid responses from other
         // accounts who answered a slightly different prompt text.
+        // Include public AND mutuals-audience spark posts.
+        // The "Everyone" tab in Home.tsx narrows the result to public-only
+        // after the fact. The "Mutuals" and "Following" tabs then apply an
+        // author-relationship filter on top, so mutuals-only posts are only
+        // ever shown to users who genuinely have that relationship with the author.
         const sparkPosts = incoming
-          .filter(p => !!p.sparkPrompt)             // must be a Daily Spark post
-          .filter(p => p.sparkAudience === 'public'); // Everyone tab: public only
+          .filter(p => !!p.sparkPrompt)
+          .filter(p => p.sparkAudience === 'public' || p.sparkAudience === 'mutuals');
 
         console.info(
           `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ` +
-          `${incoming.length} raw today, ${sparkPosts.length} public spark posts`
+          `${incoming.length} raw today, ${sparkPosts.length} spark posts (public+mutuals)`
         );
         setPosts(sparkPosts);
         setLoading(false);

@@ -900,32 +900,52 @@ function CommunityReveal({
   const followingIds = useFollowingIds(currentUserId);
   const followerIds  = useFollowerIds(currentUserId);
 
-  // ── Apply tab-based filtering ────────────────────────────────────────────────
+  // ── Audience-aware visibility gate ──────────────────────────────────────────
   //
-  // The Firestore subscription (useSparkCommunity) returns ONLY public posts.
-  // Here we further filter by the active sort tab:
+  // useSparkCommunity returns both 'public' and 'mutuals'-audience spark posts.
+  // This function enforces the audience contract regardless of which tab is active:
   //
-  //   Everyone  — all public spark posts from any user (except current user)
-  //   Following — public posts from users the current user follows
-  //   Mutuals   — public posts from users who follow each other with the
-  //               current user (followingIds ∩ followerIds)
+  //   public   → always visible to any viewer
+  //   mutuals  → ONLY visible when the viewer is a mutual follow with the author
+  //              (viewer follows author AND author follows viewer)
   //
-  // currentUserId's own post is always excluded from all tabs; it appears
-  // separately as "Your response" above the community section.
+  // The tab filters then layer an author-relationship constraint ON TOP of this
+  // gate — they never loosen it.
+  function isVisible(p: Post): boolean {
+    if (p.sparkAudience === 'public') return true;
+    if (p.sparkAudience === 'mutuals') {
+      return followingIds.has(p.authorId) && followerIds.has(p.authorId);
+    }
+    return false;
+  }
+
   const allOthers = posts.filter(p => p.authorId !== currentUserId);
 
   const community = (() => {
-    if (sort === 'everyone')  return allOthers;
-    if (sort === 'following') return allOthers.filter(p => followingIds.has(p.authorId));
-    if (sort === 'mutuals')   return allOthers.filter(p => followingIds.has(p.authorId) && followerIds.has(p.authorId));
-    return allOthers;
+    if (sort === 'everyone') {
+      // Only public posts — mutuals-only posts are never shown here.
+      return allOthers.filter(p => p.sparkAudience === 'public');
+    }
+    if (sort === 'following') {
+      // Posts from followed authors that the viewer is authorized to see.
+      // A mutuals-only post from a one-way follow is excluded by isVisible().
+      return allOthers.filter(p => followingIds.has(p.authorId) && isVisible(p));
+    }
+    if (sort === 'mutuals') {
+      // Posts from mutual authors. isVisible() is redundant here (both directions
+      // required for mutual) but kept for clarity and future-proofing.
+      return allOthers.filter(p => followingIds.has(p.authorId) && followerIds.has(p.authorId) && isVisible(p));
+    }
+    return allOthers.filter(p => p.sparkAudience === 'public');
   })();
 
   const featured = community.slice(0, 2);
   const rest     = community.slice(2);
-  // +1 for the current user only when they have actually answered today.
-  // Before answering, their own post is not in Firestore yet, so do not inflate the count.
-  const total    = allOthers.length + (hasAnsweredToday ? 1 : 0);
+  // Headline count: posts the current viewer can actually see (public posts
+  // plus mutuals posts where the viewer has the mutual relationship),
+  // plus the viewer's own post if they have answered today.
+  const visibleOthers = allOthers.filter(p => isVisible(p));
+  const total = visibleOthers.length + (hasAnsweredToday ? 1 : 0);
 
   const badges = streakBadges(streak);
 
