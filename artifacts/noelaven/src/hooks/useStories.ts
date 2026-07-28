@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { useFollowingIds } from '@/hooks/useFollowingIds';
+import { useFollowerIds } from '@/hooks/useFollowerIds';
 import {
   type Story, type StoryGroup, type StoryMediaType,
   type EditorLayer, type CropData, type TrimData, type FilterPreset,
@@ -71,10 +72,11 @@ export function useStories() {
   }, [currentUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const followingIds = useFollowingIds(currentUser?.id);
+  const followerIds  = useFollowerIds(currentUser?.id);
 
   const groups: StoryGroup[] = useMemo(
-    () => groupStories(stories, currentUser?.id, followingIds),
-    [stories, currentUser?.id, followingIds],
+    () => groupStories(stories, currentUser?.id, followingIds, followerIds),
+    [stories, currentUser?.id, followingIds, followerIds],
   );
 
   async function publishStory(

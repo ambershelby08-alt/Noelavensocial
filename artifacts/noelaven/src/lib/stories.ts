@@ -170,19 +170,21 @@ export async function deleteStory(storyId: string): Promise<void> {
  * Returns true if the viewer should see a story with the given audience.
  * Own stories are always visible.
  * 'public'  → everyone.
- * 'mutuals' / 'private' → viewer must follow the author.
- * 'onlyMe'  → author only.
+ * 'private' → "Followers-only": viewer must follow the author (one-way follow sufficient).
+ * 'mutuals' → viewer must follow the author AND the author must follow the viewer back.
+ * 'onlyMe'  → author only (no one else).
  */
 function storyVisibleTo(
   story: Story,
   viewerId: string | undefined,
   followingIds: Set<string>,
+  followerIds: Set<string>,
 ): boolean {
   if (story.authorId === viewerId) return true;   // always own
   switch (story.storyAudience) {
     case 'public':  return true;
-    case 'mutuals':
     case 'private': return followingIds.has(story.authorId);
+    case 'mutuals': return followingIds.has(story.authorId) && followerIds.has(story.authorId);
     case 'onlyMe':  return false;
     default:        return true;
   }
@@ -192,11 +194,12 @@ export function groupStories(
   stories: Story[],
   currentUserId?: string,
   followingIds: Set<string> = new Set(),
+  followerIds: Set<string> = new Set(),
 ): StoryGroup[] {
   const map = new Map<string, StoryGroup>();
 
   for (const story of stories) {
-    if (!storyVisibleTo(story, currentUserId, followingIds)) continue;
+    if (!storyVisibleTo(story, currentUserId, followingIds, followerIds)) continue;
     if (!map.has(story.authorId)) {
       map.set(story.authorId, {
         authorId:        story.authorId,
