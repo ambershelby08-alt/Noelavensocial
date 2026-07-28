@@ -297,7 +297,20 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated()
           && request.resource.data.authorId == request.auth.uid;
-      allow update, delete:
+
+      // Author or moderator can update anything.
+      // Any authenticated viewer can update ONLY the viewerIds array (mark as viewed).
+      // The hasOnly+hasAll combo ensures: only viewerIds changes, and only new entries
+      // are added (no removals), so viewers can't tamper with other fields or remove others.
+      allow update:
+          if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+          || isModerator()
+          || (isAuthenticated()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewerIds'])
+              && request.resource.data.viewerIds.hasAll(resource.data.viewerIds));
+
+      // Delete is strictly author/moderator — no viewer shortcut.
+      allow delete:
           if (isAuthenticated() && resource.data.authorId == request.auth.uid)
           || isModerator();
 

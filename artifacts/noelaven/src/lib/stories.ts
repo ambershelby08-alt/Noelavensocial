@@ -247,14 +247,36 @@ export async function addStoryComment(
   return ref.id;
 }
 
-/** Real-time listener for all comments on a story, ordered oldest-first. */
+/**
+ * Real-time listener for story comments, ordered oldest-first.
+ *
+ * Security model:
+ *  - The story author can read ALL comments (rule: authorId on story == viewer uid).
+ *  - Any other viewer can only read their OWN comments (rule: comment.authorId == viewer uid).
+ *
+ * To avoid a permission-denied error on the collection query, non-authors must
+ * filter to only their own documents.  Passing isStoryAuthor=true skips the
+ * filter so the owner sees everyone's comments in the activity panel.
+ */
 export function subscribeStoryComments(
   storyId: string,
+  viewerUid: string,
+  isStoryAuthor: boolean,
   onData: (comments: StoryComment[]) => void,
 ): Unsubscribe {
   if (!db) return () => {};
+
+  const baseCol = collection(db, 'stories', storyId, 'comments');
+  // Owner query: all comments ordered by time — uses a single-field index (always available).
+  // Non-owner query: only their own comment(s). orderBy is omitted intentionally —
+  // combining where(authorId) + orderBy(createdAt) needs a composite index that isn't
+  // guaranteed to exist, and non-owners have at most one comment so ordering is irrelevant.
+  const q = isStoryAuthor
+    ? query(baseCol, orderBy('createdAt', 'asc'))
+    : query(baseCol, where('authorId', '==', viewerUid));
+
   return onSnapshot(
-    query(collection(db, 'stories', storyId, 'comments'), orderBy('createdAt', 'asc')),
+    q,
     snap => onData(snap.docs.map(d => ({
       id:              d.id,
       authorId:        d.data().authorId        ?? '',

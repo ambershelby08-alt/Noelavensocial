@@ -424,13 +424,15 @@ export function StoryViewer({
   // Reset duration when story changes
   useEffect(() => { setSegDurMs(PHOTO_DURATION_MS); }, [groupIdx, storyIdx]);
 
-  // Subscribe to reactions + comments for the current story
+  // Subscribe to reactions + comments for the current story.
+  // Comments query is scoped by ownership: the story author sees all comments;
+  // other viewers only see their own (Firestore rule enforcement).
   useEffect(() => {
-    if (!story || !isFirebaseConfigured) return;
+    if (!story || !isFirebaseConfigured || !currentUserId) return;
     const unsubR = subscribeStoryReactions(story.id, setReactions);
-    const unsubC = subscribeStoryComments(story.id, setComments);
+    const unsubC = subscribeStoryComments(story.id, currentUserId, isOwner, setComments);
     return () => { unsubR(); unsubC(); };
-  }, [story?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [story?.id, currentUserId, isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pause when any overlay blocks interaction
   useEffect(() => {
