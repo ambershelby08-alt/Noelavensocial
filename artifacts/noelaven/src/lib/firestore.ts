@@ -1476,6 +1476,55 @@ export async function toggleCommentReaction(
   });
 }
 
+/** Shape of a single reply document. */
+export interface ReplyData {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorHandle: string;
+  authorAvatar: string;
+  text: string;
+  reactions: Record<string, string[]>;
+  createdAt: Date;
+}
+
+/**
+ * Real-time subscription to replies for a given comment.
+ * Returns sorted ascending by createdAt so threads read top-to-bottom.
+ */
+export function subscribeReplies(
+  postId: string,
+  commentId: string,
+  onData: (replies: ReplyData[]) => void
+): Unsubscribe {
+  if (!db) return () => {};
+  return onSnapshot(
+    query(
+      collection(db, 'posts', postId, 'comments', commentId, 'replies'),
+      orderBy('createdAt', 'asc'),
+      limit(30)
+    ),
+    snap => {
+      onData(
+        snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            authorId:     data.authorId     ?? '',
+            authorName:   data.authorName   ?? '',
+            authorHandle: data.authorHandle ?? '',
+            authorAvatar: data.authorAvatar ?? '',
+            text:         data.text         ?? '',
+            reactions:    (data.reactions   as Record<string, string[]>) ?? {},
+            createdAt:    ts(data.createdAt),
+          };
+        })
+      );
+    },
+    err => console.error('[subscribeReplies]', err.code, err.message)
+  );
+}
+
 export async function toggleReplyReaction(
   postId: string,
   commentId: string,

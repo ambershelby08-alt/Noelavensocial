@@ -403,6 +403,9 @@ export function useWebRTC() {
       // ── Build peer connection (caller inline — mirrors buildPc for callee) ─
       const pc = new RTCPeerConnection(iceConfig);
       pcRef.current = pc;
+      // Bump generation counter so any stale reconnect timers scheduled
+      // before this call was started ignore the new connection.
+      pcGenRef.current += 1;
 
       // Dedicated remote stream — NEVER assign localStream here
       const remote = new MediaStream();

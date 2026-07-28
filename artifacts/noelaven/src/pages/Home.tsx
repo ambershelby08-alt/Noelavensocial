@@ -31,11 +31,14 @@ import {
   subscribeComments as subscribePostComments,
   addComment as fsAddComment,
   toggleCommentReaction as fsToggleCommentReaction,
+  toggleReplyReaction as fsToggleReplyReaction,
+  subscribeReplies,
   addReply as fsAddReply,
   writeNotification as fsWriteNotification,
   sendMessage as fsSendMessage,
   recordSparkAnswer,
 } from '@/lib/firestore';
+import type { ReplyData } from '@/lib/firestore';
 import { useConversations } from '@/hooks/useConversations';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -103,6 +106,11 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
   const [replyingTo, setReplyingTo] = useState<CommentData | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // ── Reply expansion state ───────────────────────────────────────────────────
+  const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
+  const [commentReplies, setCommentReplies] = useState<ReplyData[]>([]);
+  const [repliesLoading, setRepliesLoading] = useState(false);
+
   // Subscribe to real Firestore comments (or use demo data)
   useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -117,6 +125,54 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
     });
     return unsub;
   }, [post.id]);
+
+  // Subscribe to replies for the expanded comment
+  useEffect(() => {
+    if (!expandedCommentId) { setCommentReplies([]); return; }
+    if (!isFirebaseConfigured) {
+      // Demo mode: synthesise a couple of placeholder replies so the UI is testable
+      setCommentReplies([]);
+      setRepliesLoading(false);
+      return;
+    }
+    setRepliesLoading(true);
+    const unsub = subscribeReplies(post.id, expandedCommentId, (replies) => {
+      setCommentReplies(replies);
+      setRepliesLoading(false);
+    });
+    return unsub;
+  }, [post.id, expandedCommentId]);
+
+  function toggleReplies(commentId: string) {
+    if (expandedCommentId === commentId) {
+      setExpandedCommentId(null);
+      setCommentReplies([]);
+    } else {
+      // Clear stale replies immediately so the previous comment's data never
+      // renders under this comment while the new subscription is loading.
+      setCommentReplies([]);
+      setExpandedCommentId(commentId);
+      setRepliesLoading(true);
+    }
+  }
+
+  function handleReactReply(commentId: string, replyId: string, emoji: string) {
+    if (!currentUser) return;
+    const reply = commentReplies.find(r => r.id === replyId);
+    if (!reply) return;
+    const current = reply.reactions ?? {};
+    const hadThis = (current[emoji] ?? []).includes(currentUser.id);
+    const updated: Record<string, string[]> = {};
+    for (const [e, users] of Object.entries(current)) {
+      const filtered = users.filter(id => id !== currentUser.id);
+      if (filtered.length > 0) updated[e] = filtered;
+    }
+    if (!hadThis) updated[emoji] = [...(updated[emoji] ?? []), currentUser.id];
+    setCommentReplies(prev => prev.map(r => r.id === replyId ? { ...r, reactions: updated } : r));
+    if (isFirebaseConfigured) {
+      fsToggleReplyReaction(post.id, commentId, replyId, currentUser.id, emoji).catch(console.error);
+    }
+  }
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 350);
@@ -275,11 +331,51 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                       Reply
                     </button>
                     {c.replyCount > 0 && (
-                      <span className="text-[11px] text-purple-400 font-medium">
+                      <button
+                        onClick={() => toggleReplies(c.id)}
+                        className="text-[11px] text-purple-400 font-medium hover:text-purple-600 transition-colors flex items-center gap-0.5"
+                      >
+                        {expandedCommentId === c.id ? '▲' : '▼'}&nbsp;
                         {c.replyCount} {c.replyCount === 1 ? 'reply' : 'replies'}
-                      </span>
+                      </button>
                     )}
                   </div>
+
+                  {/* ── Reply rows ──────────────────────────────────────── */}
+                  {expandedCommentId === c.id && (
+                    <div className="mt-2 ml-1 border-l-2 border-purple-100 pl-3 space-y-2">
+                      {repliesLoading && commentReplies.length === 0 ? (
+                        <div className="py-1 flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 border-2 border-gray-200 border-t-purple-400 rounded-full animate-spin" />
+                          <span className="text-[11px] text-gray-400">Loading replies…</span>
+                        </div>
+                      ) : commentReplies.length === 0 ? (
+                        <p className="text-[11px] text-gray-400 py-1">No replies yet.</p>
+                      ) : commentReplies.map(r => (
+                        <div key={r.id} className="flex gap-2">
+                          <Link href={`/profile/${r.authorId}`} className="flex-shrink-0 mt-0.5">
+                            <UserAvatar userId={r.authorId} fallbackName={r.authorName} fallbackSrc={r.authorAvatar || undefined} size={26} className="cursor-pointer hover:opacity-90 transition-opacity" />
+                          </Link>
+                          <div className="flex-1">
+                            <div className="bg-purple-50/60 rounded-2xl rounded-tl-sm px-3 py-2">
+                              <Link href={`/profile/${r.authorId}`}>
+                                <p className="font-semibold text-[12px] text-gray-900 hover:underline leading-tight">{r.authorName}</p>
+                              </Link>
+                              <p className="text-[12.5px] text-gray-700 leading-relaxed mt-0.5">{r.text}</p>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 px-1">
+                              <span className="text-[10px] text-gray-400">{formatRelativeTime(r.createdAt)}</span>
+                              <CommentReactionButton
+                                reactions={r.reactions ?? {}}
+                                myReaction={myReactionEmoji(r.reactions ?? {}, currentUser?.id ?? '')}
+                                onReact={emoji => handleReactReply(c.id, r.id, emoji)}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ))}

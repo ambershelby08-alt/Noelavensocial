@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useSafety } from '@/contexts/SafetyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { useUserProfile } from '@/contexts/UserCacheContext';
 import type { SafetySettings } from '@/lib/mockData';
 
 // ─── Who-can select ───────────────────────────────────────────────────────────
@@ -143,21 +144,31 @@ function UserPill({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── User pill with live profile resolution ───────────────────────────────────
 
-interface SafeUserStub { id: string; displayName: string; handle: string; }
-
-function getUserStubs(ids: Set<string>): SafeUserStub[] {
-  // In demo mode, map known IDs to mock names
-  const demo: Record<string, SafeUserStub> = {
-    'user-1': { id: 'user-1', displayName: 'Alex Chen',    handle: 'alexchen'    },
-    'user-2': { id: 'user-2', displayName: 'Jamie Torres', handle: 'jamiet'      },
-    'user-3': { id: 'user-3', displayName: 'Sam Rivera',   handle: 'samrivera'   },
-    'user-4': { id: 'user-4', displayName: 'Casey Morgan', handle: 'caseymorgan' },
-    'user-5': { id: 'user-5', displayName: 'Diana Prince', handle: 'dianaprince' },
-  };
-  return [...ids].map(id => demo[id] ?? { id, displayName: id, handle: id });
+/**
+ * Resolves a userId to a real display name and handle via the UserCacheContext,
+ * falling back gracefully while the profile is loading.  Replaces the old
+ * `getUserStubs` approach which hard-coded demo names and showed raw UIDs in
+ * production Firebase mode.
+ */
+function ResolvedUserPill({
+  userId, action, actionLabel, actionColor,
+}: {
+  userId: string; action: () => void; actionLabel: string; actionColor?: string;
+}) {
+  const profile = useUserProfile(userId);
+  const name   = profile?.displayName ?? '…';
+  const handle = profile?.handle ?? userId.slice(0, 10);
+  return (
+    <UserPill
+      userId={userId} name={name} handle={handle}
+      action={action} actionLabel={actionLabel} actionColor={actionColor}
+    />
+  );
 }
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function SafetySettings() {
   const { currentUser } = useAuth();
@@ -176,9 +187,9 @@ export default function SafetySettings() {
     await updateSafetySettings({ [key]: val });
   }
 
-  const blockedUsers    = getUserStubs(blockedIds);
-  const mutedUsers      = getUserStubs(mutedIds);
-  const restrictedUsers = getUserStubs(restrictedIds);
+  const blockedUserIds    = [...blockedIds];
+  const mutedUserIds      = [...mutedIds];
+  const restrictedUserIds = [...restrictedIds];
 
   return (
     <div className="min-h-screen bg-[#FDF9F6] pb-32">
@@ -282,17 +293,17 @@ export default function SafetySettings() {
         </SectionCard>
 
         {/* ── Blocked Users ─────────────────────────────────────────────── */}
-        <SectionCard title={`Blocked (${blockedUsers.length})`} icon={UserX}>
-          {blockedUsers.length === 0 ? (
+        <SectionCard title={`Blocked (${blockedUserIds.length})`} icon={UserX}>
+          {blockedUserIds.length === 0 ? (
             <div className="px-5 py-6 text-center">
               <p className="text-[13px] text-gray-400">You haven't blocked anyone.</p>
             </div>
           ) : (
             <AnimatePresence>
-              {blockedUsers.map(u => (
-                <UserPill
-                  key={u.id} userId={u.id} name={u.displayName} handle={u.handle}
-                  action={() => unblockUser(u.id)} actionLabel="Unblock" actionColor="#6B73FF"
+              {blockedUserIds.map(id => (
+                <ResolvedUserPill
+                  key={id} userId={id}
+                  action={() => unblockUser(id)} actionLabel="Unblock" actionColor="#6B73FF"
                 />
               ))}
             </AnimatePresence>
@@ -300,17 +311,17 @@ export default function SafetySettings() {
         </SectionCard>
 
         {/* ── Muted Users ───────────────────────────────────────────────── */}
-        <SectionCard title={`Muted (${mutedUsers.length})`} icon={VolumeX}>
-          {mutedUsers.length === 0 ? (
+        <SectionCard title={`Muted (${mutedUserIds.length})`} icon={VolumeX}>
+          {mutedUserIds.length === 0 ? (
             <div className="px-5 py-6 text-center">
               <p className="text-[13px] text-gray-400">You haven't muted anyone.</p>
             </div>
           ) : (
             <AnimatePresence>
-              {mutedUsers.map(u => (
-                <UserPill
-                  key={u.id} userId={u.id} name={u.displayName} handle={u.handle}
-                  action={() => unmuteUser(u.id)} actionLabel="Unmute" actionColor="#8E44AD"
+              {mutedUserIds.map(id => (
+                <ResolvedUserPill
+                  key={id} userId={id}
+                  action={() => unmuteUser(id)} actionLabel="Unmute" actionColor="#8E44AD"
                 />
               ))}
             </AnimatePresence>
@@ -318,22 +329,22 @@ export default function SafetySettings() {
         </SectionCard>
 
         {/* ── Restricted Users ──────────────────────────────────────────── */}
-        <SectionCard title={`Restricted (${restrictedUsers.length})`} icon={EyeOff}>
+        <SectionCard title={`Restricted (${restrictedUserIds.length})`} icon={EyeOff}>
           <div className="px-5 pt-2 pb-1">
             <p className="text-[12px] text-gray-400 leading-relaxed">
               Restricted users can see your public posts but their comments require your approval before others see them.
             </p>
           </div>
-          {restrictedUsers.length === 0 ? (
+          {restrictedUserIds.length === 0 ? (
             <div className="px-5 py-4 text-center">
               <p className="text-[13px] text-gray-400">No restricted users.</p>
             </div>
           ) : (
             <AnimatePresence>
-              {restrictedUsers.map(u => (
-                <UserPill
-                  key={u.id} userId={u.id} name={u.displayName} handle={u.handle}
-                  action={() => unrestrictUser(u.id)} actionLabel="Unrestrict"
+              {restrictedUserIds.map(id => (
+                <ResolvedUserPill
+                  key={id} userId={id}
+                  action={() => unrestrictUser(id)} actionLabel="Unrestrict"
                 />
               ))}
             </AnimatePresence>
