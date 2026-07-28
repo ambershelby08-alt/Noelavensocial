@@ -1789,6 +1789,25 @@ export async function clearMessageNotificationsForConv(userId: string, convId: s
   }
 }
 
+// ── Presence TTL ──────────────────────────────────────────────────────────────
+// A user counts as "online" only if their Firestore doc has isOnline=true AND
+// their lastSeen was updated within the last PRESENCE_TTL_MS milliseconds.
+// This is the safety net for the case where beforeunload cleanup doesn't fire
+// (browser crash, force-quit, network drop). The heartbeat in usePresence.ts
+// keeps lastSeen fresh every 60 s, so any user who stops heartbeating is
+// automatically considered offline within one TTL window.
+const PRESENCE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
+/**
+ * Returns true if the raw Firestore user-document data represents an online
+ * user whose heartbeat is recent enough to be trusted.
+ */
+function isPresenceOnline(data: DocumentData): boolean {
+  if (!data.isOnline) return false;
+  const seen = ts(data.lastSeen);
+  return Date.now() - seen.getTime() < PRESENCE_TTL_MS;
+}
+
 export async function updatePresence(uid: string, isOnline: boolean): Promise<void> {
   if (!db || !uid) return;
   try {
@@ -1799,6 +1818,30 @@ export async function updatePresence(uid: string, isOnline: boolean): Promise<vo
   } catch {
     // Fail silently (offline, permission denied on incomplete profile, etc.)
   }
+}
+
+/**
+ * Subscribe to a single user's real-time presence.
+ * Fires immediately with the current state and on every change.
+ * Used by Chat.tsx to drive the header "Active now" / green dot.
+ */
+export function subscribeUserPresence(
+  uid: string,
+  onChange: (online: boolean, lastSeen: Date | null) => void,
+): Unsubscribe {
+  if (!db || !uid) {
+    onChange(false, null);
+    return () => {};
+  }
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snap) => {
+      if (!snap.exists()) { onChange(false, null); return; }
+      const data = snap.data();
+      onChange(isPresenceOnline(data), data.lastSeen ? ts(data.lastSeen) : null);
+    },
+    () => onChange(false, null),
+  );
 }
 
 /**
@@ -1841,7 +1884,9 @@ export function subscribeOnlineContacts(
       const online: OnlineUser[] = [];
       for (const d of snap.docs) {
         const data = d.data();
-        if (!data.isOnline) continue;
+        // Use TTL-aware check: isOnline=true alone is not enough — the lastSeen
+        // heartbeat must also be recent or the user is considered offline.
+        if (!isPresenceOnline(data)) continue;
         online.push({
           id:          d.id,
           displayName: data.displayName ?? '',

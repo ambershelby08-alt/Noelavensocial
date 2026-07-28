@@ -15,6 +15,7 @@ import type { Message, User, Conversation } from '@/lib/mockData';
 import { useMessages } from '@/hooks/useMessages';
 import { useConversations } from '@/hooks/useConversations';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
+import { useUserPresence } from '@/hooks/useUserPresence';
 import { useCall } from '@/contexts/CallContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
@@ -28,7 +29,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, isSameDay, differenceInMinutes } from 'date-fns';
-import { safeGetTime } from '@/lib/timestamp';
+import { safeGetTime, formatRelativeTime } from '@/lib/timestamp';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1073,6 +1074,15 @@ export default function Chat() {
 
   const conversation = hookConv ?? null;
 
+  // Real-time presence for the other participant (1-to-1 chats only).
+  // Must be called here — before any early returns — to satisfy the Rules of Hooks.
+  // We derive the UID directly from `conversation` rather than from `other`
+  // (which is only computed post-guard) so this call is unconditional.
+  const _presenceUid = (conversation?.type !== 'group')
+    ? (conversation?.participants.find(p => p.id !== currentUser?.id)?.id ?? null)
+    : null;
+  const otherPresence = useUserPresence(_presenceUid);
+
   // ── UI state ───────────────────────────────────────────────────────────────
   const [inputText, setInputText]         = useState('');
   const [emojiOpen, setEmojiOpen]         = useState(false);
@@ -1203,6 +1213,15 @@ export default function Chat() {
   const title    = conversation ? (conversation.type === 'group' ? (conversation.name ?? 'Group') : (other?.displayName ?? '')) : '…';
   const isGroup  = conversation?.type === 'group' ? true : false;
   const isMuted  = !!(conversations.find(c => c.id === convId)?.mutedBy?.includes(cu.id));
+
+  /** Human-readable subtitle for the chat header. */
+  const headerSubtitle = isGroup
+    ? `${conversation?.participants.length ?? 0} members`
+    : otherPresence.isOnline
+      ? 'Active now'
+      : otherPresence.lastSeen
+        ? `Last seen ${formatRelativeTime(otherPresence.lastSeen)}`
+        : '';
 
   // Typing users (resolve to User objects for TypingIndicator)
   const typingUsers = (isFirebaseConfigured ? typingUserIds : (isOtherTyping && other ? [other.id] : []))
@@ -1625,7 +1644,9 @@ export default function Chat() {
           ) : other ? (
             <Link href={`/profile/${other.id}`} className="flex contents">
               <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={(other as any).avatarUrl || undefined} size={40} />
-              <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+              {otherPresence.isOnline && (
+                <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+              )}
             </Link>
           ) : null}
         </div>
@@ -1635,9 +1656,11 @@ export default function Chat() {
           onClick={!isGroup && other ? () => setLocation(`/profile/${other.id}`) : undefined}
         >
           <h2 className="font-black text-[15px] text-gray-900 truncate leading-tight">{title}</h2>
-          <p className="text-[12px] text-green-500 font-semibold leading-tight">
-            {isGroup ? `${conversation?.participants.length ?? 0} members · Active now` : 'Active now'}
-          </p>
+          {headerSubtitle && (
+            <p className={`text-[12px] font-semibold leading-tight ${otherPresence.isOnline || isGroup ? 'text-green-500' : 'text-gray-400'}`}>
+              {headerSubtitle}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-0.5 flex-shrink-0">
