@@ -541,7 +541,7 @@ function ShareSheet({ post, onClose, onShared, onSendToChats }: ShareSheetProps)
 const AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: React.ReactNode }[] = [
   { value: 'public',  label: 'Public',   icon: <Globe      size={11} /> },
   { value: 'mutuals', label: 'Mutuals',  icon: <Users      size={11} /> },
-  { value: 'private', label: 'Private',  icon: <Lock       size={11} /> },
+  { value: 'private', label: 'Followers', icon: <Lock       size={11} /> },
   { value: 'onlyMe',  label: 'Only Me',  icon: <UserCircle size={11} /> },
 ];
 
@@ -998,12 +998,14 @@ function CommunityReveal({
 
   // ── Audience-aware visibility gate ──────────────────────────────────────────
   //
-  // useSparkCommunity returns both 'public' and 'mutuals'-audience spark posts.
+  // useSparkCommunity returns 'public', 'mutuals', and 'private'-audience posts.
   // This function enforces the audience contract regardless of which tab is active:
   //
   //   public   → always visible to any viewer
   //   mutuals  → ONLY visible when the viewer is a mutual follow with the author
   //              (viewer follows author AND author follows viewer)
+  //   private  → "Followers-only": visible when the viewer follows the author
+  //              (one-way follow is sufficient — similar to Twitter/X private accounts)
   //
   // The tab filters then layer an author-relationship constraint ON TOP of this
   // gate — they never loosen it.
@@ -1011,6 +1013,10 @@ function CommunityReveal({
     if (p.sparkAudience === 'public') return true;
     if (p.sparkAudience === 'mutuals') {
       return followingIds.has(p.authorId) && followerIds.has(p.authorId);
+    }
+    if (p.sparkAudience === 'private') {
+      // "Followers-only" — visible to anyone who follows the author.
+      return followingIds.has(p.authorId);
     }
     return false;
   }

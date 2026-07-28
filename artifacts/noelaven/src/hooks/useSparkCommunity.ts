@@ -159,18 +159,24 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
         // on the same day (confirmed via Admin SDK on 2026-07-25: 3 different
         // prompts). Exact-match filtering would drop valid responses from other
         // accounts who answered a slightly different prompt text.
-        // Include public AND mutuals-audience spark posts.
+        // Include public, mutuals, AND private (followers-only) spark posts.
         // The "Everyone" tab in Home.tsx narrows the result to public-only
         // after the fact. The "Mutuals" and "Following" tabs then apply an
-        // author-relationship filter on top, so mutuals-only posts are only
-        // ever shown to users who genuinely have that relationship with the author.
+        // author-relationship filter on top via isVisible(), so restricted posts
+        // are only ever shown to users who genuinely have that relationship.
+        // 'onlyMe' posts are intentionally excluded — authors see those via
+        // their own post in the CommunityReveal header, not the community list.
         const sparkPosts = incoming
           .filter(p => !!p.sparkPrompt)
-          .filter(p => p.sparkAudience === 'public' || p.sparkAudience === 'mutuals');
+          .filter(p =>
+            p.sparkAudience === 'public' ||
+            p.sparkAudience === 'mutuals' ||
+            p.sparkAudience === 'private'
+          );
 
         console.info(
           `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ` +
-          `${incoming.length} raw today, ${sparkPosts.length} spark posts (public+mutuals)`
+          `${incoming.length} raw today, ${sparkPosts.length} spark posts (public+mutuals+private)`
         );
         setPosts(sparkPosts);
         setLoading(false);
