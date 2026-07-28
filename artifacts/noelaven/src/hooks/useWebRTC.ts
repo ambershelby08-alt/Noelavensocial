@@ -20,6 +20,7 @@ import {
   answerCall,
   updateCallStatus,
   deleteCall,
+  getCall,
   addIceCandidate,
   subscribeCall,
   subscribeIceCandidates,
@@ -477,6 +478,22 @@ export function useWebRTC() {
           console.log('[WebRTC] Call status →', remoteDoc.status, '— cleaning up caller');
           cleanup(); return;
         }
+
+        // ── Callee answered — cancel ring timer immediately ────────────────
+        // The ring timer must be cleared as soon as we detect status === 'active'
+        // or an answer SDP arriving. If we let it run, it fires at 45 s and
+        // marks the live call as missed (Bug: call drops after ~45 s).
+        if (remoteDoc.status === 'active' || remoteDoc.answer) {
+          if (timers.current.ring) {
+            clearTimeout(timers.current.ring);
+            timers.current.ring = null;
+            console.log('[WebRTC] Ring timer cancelled — callee answered');
+          }
+          // Mirror the answered status in caller's local state so endCall() can
+          // distinguish "answered + connected/ended" from "never answered (missed)".
+          setCall(s => s.status !== 'active' ? { ...s, status: 'active', isRinging: false } : s);
+        }
+
         if (remoteDoc.answer && pc.signalingState !== 'stable') {
           try {
             await pc.setRemoteDescription(new RTCSessionDescription(remoteDoc.answer));
@@ -486,12 +503,30 @@ export function useWebRTC() {
       });
       unsubs.current.push(u2);
 
-      // Ring timeout
-      timers.current.ring = setTimeout(() => {
+      // Ring timeout — only fires if the callee never answers.
+      // The subscribeCall handler above cancels this timer the moment the
+      // callee answers (status → 'active'). This async guard is a belt-and-
+      // suspenders fallback in case the Firestore snapshot arrived late.
+      timers.current.ring = setTimeout(async () => {
         timers.current.ring = null;
-        if (callIdRef.current) updateCallStatus(callIdRef.current, 'missed').catch(() => {});
-        // Write a missed-call event into the shared conversation so both parties see it.
-        // conversationId and type are captured from startCall's parameters (closure).
+        const cid = callIdRef.current;
+        if (!cid) return;
+
+        // Verify the call is still ringing before marking missed. If the callee
+        // answered between the timer scheduling and now, skip the missed write.
+        try {
+          const liveDoc = await getCall(cid);
+          if (!liveDoc || liveDoc.status !== 'ringing') {
+            console.log('[WebRTC] Ring timer fired but call is already', liveDoc?.status, '— skipping missed write');
+            return;
+          }
+        } catch {
+          // Can't read — proceed; better a false missed than a stuck timer.
+        }
+
+        console.log('[WebRTC] Ring timeout — marking as missed');
+        updateCallStatus(cid, 'missed').catch(() => {});
+        // Write a missed-call event into the shared conversation.
         if (conversationId && currentUser?.id && isFirebaseConfigured) {
           const callLabel = type === 'video' ? 'Video' : 'Voice';
           fsSendMessage(conversationId, currentUser.id, `Missed ${callLabel.toLowerCase()} call`, 'call', {
@@ -586,10 +621,18 @@ export function useWebRTC() {
     const convId   = call.conversationId;
     const duration = call.duration;
     const type     = call.type;
-    const wasActive = call.isActive;
     const uid      = currentUser?.id;
-    console.log('[WebRTC] endCall — user hung up callId:', id);
+
+    // A call is "answered" once status reaches 'active' — set in caller state
+    // when the subscribeCall handler detects the callee's answer, and set in
+    // callee state immediately on answerIncomingCall. Using isActive alone was
+    // wrong: isActive only flips when ICE reaches 'connected', so a call ended
+    // during ICE negotiation (after the callee answered) was logged as "missed".
+    const wasAnswered = call.isActive || call.status === 'active';
+
+    console.log('[WebRTC] endCall — callId:', id, '| wasAnswered:', wasAnswered, '| duration:', duration);
     cleanup(); // dismiss UI immediately
+
     if (id && id !== 'demo-call' && isFirebaseConfigured) {
       updateCallStatus(id, 'ended').catch(() => {});
       // Clean up Firestore call doc + ICE candidates after a short delay
@@ -600,19 +643,19 @@ export function useWebRTC() {
     if (convId && uid && isFirebaseConfigured && id !== 'demo-call') {
       try {
         const callLabel = type === 'video' ? 'Video' : 'Voice';
-        const content = wasActive
+        const content = wasAnswered
           ? `${callLabel} call · ${formatCallDuration(duration)}`
           : `Missed ${callLabel.toLowerCase()} call`;
         await fsSendMessage(convId, uid, content, 'call', {
           callType: type ?? 'voice',
           callDuration: duration,
-          callStatus: wasActive ? 'ended' : 'missed',
+          callStatus: wasAnswered ? 'ended' : 'missed',
         });
       } catch {
         // Non-critical — call still ended successfully
       }
     }
-  }, [call.callId, call.conversationId, call.duration, call.type, call.isActive, currentUser, cleanup]);
+  }, [call.callId, call.conversationId, call.duration, call.type, call.isActive, call.status, currentUser, cleanup]);
 
   // ── Media controls ────────────────────────────────────────────────────────
 
