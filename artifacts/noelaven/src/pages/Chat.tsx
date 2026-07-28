@@ -1084,6 +1084,7 @@ export default function Chat() {
   // call overlay is managed globally by CallContext / AppShell
   const [safetySheet, setSafetySheet]     = useState(false);
   const [forwardMsg, setForwardMsg]       = useState<LocalMsg | null>(null);
+  const [forwardDone, setForwardDone]     = useState(0); // # convs forwarded to; >0 shows toast
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [atBottom, setAtBottom]           = useState(true);
   const [newMsgCount, setNewMsgCount]     = useState(0);
@@ -1497,26 +1498,63 @@ export default function Chat() {
   }
 
   async function handleForwardSend(convIds: string[]) {
-    if (!forwardMsg) return;
+    if (!forwardMsg || !convIds.length) return;
     const content =
-      forwardMsg.type === 'image'      ? '📷 Photo'
-      : forwardMsg.type === 'video'    ? '🎥 Video'
-      : forwardMsg.type === 'voice'    ? '🎤 Voice message'
+      forwardMsg.type === 'image'        ? '📷 Photo'
+      : forwardMsg.type === 'video'      ? '🎥 Video'
+      : forwardMsg.type === 'voice'      ? '🎤 Voice message'
       : forwardMsg.type === 'post_share' ? '📌 Shared post'
       : (forwardMsg.editedContent ?? forwardMsg.content);
+
+    // Resolve sender display name — participant list first, then original forwardedFrom
+    // attribution if this is a re-forward, finally fall back to the raw UID.
+    const senderName =
+      conversation?.participants.find(p => p.id === forwardMsg.senderId)?.displayName
+      ?? forwardMsg.forwardedFrom?.senderName
+      ?? forwardMsg.senderId;
+
+    const fwdOpts = {
+      forwardedFrom: { senderId: forwardMsg.senderId, senderName },
+      ...(forwardMsg.mediaUrl   ? { mediaUrl: forwardMsg.mediaUrl, mediaType: forwardMsg.mediaType }   : {}),
+      ...(forwardMsg.sharedPost ? { sharedPost: forwardMsg.sharedPost }                                : {}),
+      // Preserve voice-message playback metadata so waveform + duration survive the forward
+      ...(forwardMsg.voiceDuration   != null ? { voiceDuration: forwardMsg.voiceDuration }             : {}),
+      ...(forwardMsg.voiceWaveformData?.length ? { voiceWaveformData: forwardMsg.voiceWaveformData }   : {}),
+    };
+
     if (isFirebaseConfigured) {
       await Promise.all(convIds.map(cid =>
-        fsSendMessage(cid, cu.id, content, forwardMsg.type ?? 'text', {
-          forwardedFrom: {
-            senderId: forwardMsg.senderId,
-            senderName: conversation?.participants.find(p => p.id === forwardMsg.senderId)?.displayName ?? forwardMsg.senderId,
-          },
-          ...(forwardMsg.mediaUrl ? { mediaUrl: forwardMsg.mediaUrl, mediaType: forwardMsg.mediaType } : {}),
-          ...(forwardMsg.sharedPost ? { sharedPost: forwardMsg.sharedPost } : {}),
-        })
+        fsSendMessage(cid, cu.id, content, forwardMsg.type ?? 'text', fwdOpts)
       ));
+    } else {
+      // Demo mode: inject the forwarded message into mockMessages for each target
+      // conversation so it appears when the user navigates there, and update local
+      // state immediately if the current conversation is among the targets.
+      const tempBase = {
+        senderId: cu.id,
+        content,
+        type: forwardMsg.type ?? 'text',
+        reactions: {} as Record<string, string[]>,
+        readBy: [cu.id],
+        forwardedFrom: { senderId: forwardMsg.senderId, senderName },
+        ...(forwardMsg.mediaUrl ? { mediaUrl: forwardMsg.mediaUrl, mediaType: forwardMsg.mediaType } : {}),
+        ...(forwardMsg.sharedPost ? { sharedPost: forwardMsg.sharedPost } : {}),
+        ...(forwardMsg.voiceDuration   != null ? { voiceDuration: forwardMsg.voiceDuration }          : {}),
+        ...(forwardMsg.voiceWaveformData?.length ? { voiceWaveformData: forwardMsg.voiceWaveformData } : {}),
+      };
+      for (const cid of convIds) {
+        const tempMsg: LocalMsg = { ...tempBase, id: `fwd-${Date.now()}-${cid}`, createdAt: new Date() };
+        if (!mockMessages[cid]) mockMessages[cid] = [];
+        mockMessages[cid].push(tempMsg);
+        // If this is the currently open conversation, update live state too
+        if (cid === convId) setMessages(prev => [...prev, tempMsg]);
+      }
     }
+
     setForwardMsg(null);
+    setForwardDone(convIds.length);
+    // Auto-dismiss the toast
+    setTimeout(() => setForwardDone(0), 2500);
   }
 
   // ── Group messages by sender + time ────────────────────────────────────────
@@ -1872,6 +1910,23 @@ export default function Chat() {
             onSend={handleForwardSend}
             onClose={() => setForwardMsg(null)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Forward success toast ────────────────────────────────────── */}
+      <AnimatePresence>
+        {forwardDone > 0 && (
+          <motion.div
+            key="fwd-toast"
+            initial={{ opacity: 0, y: 20, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-2 px-5 py-3 rounded-full shadow-xl text-white text-[13.5px] font-semibold pointer-events-none"
+            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 6px 24px rgba(107,115,255,0.45)' }}
+          >
+            <CheckCircle size={15} />
+            Forwarded to {forwardDone} chat{forwardDone !== 1 ? 's' : ''}
+          </motion.div>
         )}
       </AnimatePresence>
 
