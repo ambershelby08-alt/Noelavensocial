@@ -1156,21 +1156,29 @@ export async function toggleMessageReaction(
 ): Promise<void> {
   if (!db) return;
   const msgRef = doc(db, 'conversations', convId, 'messages', msgId);
-  const snap = await getDoc(msgRef);
-  if (!snap.exists()) return;
-  const reactions: Record<string, string[]> = snap.data().reactions ?? {};
-  const users = reactions[emoji] ?? [];
-  if (users.includes(userId)) {
-    const next = users.filter(u => u !== userId);
-    if (next.length === 0) {
-      const { [emoji]: _removed, ...rest } = reactions;
-      await updateDoc(msgRef, { reactions: rest });
+  // Use a transaction so concurrent taps from different clients never produce
+  // a read-before-write race condition (e.g. two users reacting simultaneously
+  // could clobber each other's reactions with the old getDoc+updateDoc pattern).
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(msgRef);
+    if (!snap.exists()) return;
+    // Deep-copy so we mutate our local object, not the snapshot's data reference.
+    const reactions: Record<string, string[]> = { ...(snap.data().reactions ?? {}) };
+    const users = reactions[emoji] ?? [];
+    if (users.includes(userId)) {
+      // User already reacted with this emoji — remove them
+      const next = users.filter(u => u !== userId);
+      if (next.length === 0) {
+        delete reactions[emoji];
+      } else {
+        reactions[emoji] = next;
+      }
     } else {
-      await updateDoc(msgRef, { [`reactions.${emoji}`]: next });
+      // New reaction
+      reactions[emoji] = [...users, userId];
     }
-  } else {
-    await updateDoc(msgRef, { [`reactions.${emoji}`]: arrayUnion(userId) });
-  }
+    tx.update(msgRef, { reactions });
+  });
 }
 
 export async function markMessageDelivered(

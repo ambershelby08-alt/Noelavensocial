@@ -1160,7 +1160,9 @@ export default function Chat() {
         setNewMsgCount(0);
         requestAnimationFrame(() => {
           const el = scrollRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
+          // Smooth scroll for new messages so the arrival feels natural;
+          // initial load uses instant scroll (handled by the branch above).
+          if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
         });
       } else if (fromOthers > 0) {
         // User is reading history — show badge, don't scroll
@@ -1172,7 +1174,7 @@ export default function Chat() {
       if (atBottom) {
         requestAnimationFrame(() => {
           const el = scrollRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
+          if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
         });
       }
     }
