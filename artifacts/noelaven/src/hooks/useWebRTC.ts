@@ -701,7 +701,6 @@ export function useWebRTC() {
       const devices = await navigator.mediaDevices.enumerateDevices();
       videoDevices = (devices ?? []).filter(d => d.kind === 'videoinput');
     } catch {
-      // enumerateDevices not supported / permission denied — bail out gracefully.
       console.info('[WebRTC] switchCamera: enumerateDevices unavailable');
       return;
     }
@@ -710,13 +709,31 @@ export function useWebRTC() {
       return;
     }
 
+    // Primary strategy: rotate by deviceId.
+    // getSettings().deviceId is reliable on all browsers; facingMode is not.
+    const currentDeviceId = videoTrack.getSettings().deviceId ?? '';
+    const currentIdx = videoDevices.findIndex(d => d.deviceId === currentDeviceId);
+    const nextIdx    = (currentIdx + 1) % videoDevices.length;
+    const nextDevice = videoDevices[nextIdx];
+
+    // Fallback strategy (mobile): use facingMode hint without 'exact' so the
+    // browser picks the best matching camera rather than throwing OverconstrainedError.
     const settings      = videoTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
-    const currentFacing = settings.facingMode ?? 'user';
-    const newFacing     = currentFacing === 'user' ? 'environment' : 'user';
+    const currentFacing = settings.facingMode;
+    const nextFacing    = currentFacing === 'user' ? 'environment'
+                        : currentFacing === 'environment' ? 'user'
+                        : undefined;
+
+    // Build the video constraint: prefer deviceId when known, facingMode as hint.
+    const videoConstraint: MediaTrackConstraints = nextDevice?.deviceId
+      ? { deviceId: { exact: nextDevice.deviceId } }
+      : nextFacing
+        ? { facingMode: nextFacing }
+        : true as unknown as MediaTrackConstraints;
 
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: newFacing } },
+        video: videoConstraint,
         audio: false,
       });
 
@@ -742,10 +759,12 @@ export function useWebRTC() {
       localRef.current.addTrack(newTrack);
       videoTrack.stop();
 
-      // New MediaStream reference triggers callback refs in CallScreen.
+      // New MediaStream reference triggers re-render in CallScreen.
       const updated = new MediaStream(localRef.current.getTracks());
       localRef.current = updated;
       setCall(s => ({ ...s, localStream: updated }));
+
+      console.info('[WebRTC] switchCamera → device', nextDevice?.label || nextDevice?.deviceId || 'unknown');
     } catch (err) {
       console.warn('[WebRTC] switchCamera failed:', err);
     }
