@@ -118,7 +118,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   async function declineIncoming() {
     if (!incomingCall) return;
-    await rtc.declineCall(incomingCall.callId);
+    await rtc.declineCall(incomingCall.callId, incomingCall.conversationId, incomingCall.type);
     setIncomingCall(null); // stops ring via useEffect
   }
 

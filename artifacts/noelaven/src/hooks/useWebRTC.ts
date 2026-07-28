@@ -487,6 +487,16 @@ export function useWebRTC() {
       timers.current.ring = setTimeout(() => {
         timers.current.ring = null;
         if (callIdRef.current) updateCallStatus(callIdRef.current, 'missed').catch(() => {});
+        // Write a missed-call event into the shared conversation so both parties see it.
+        // conversationId and type are captured from startCall's parameters (closure).
+        if (conversationId && currentUser?.id && isFirebaseConfigured) {
+          const callLabel = type === 'video' ? 'Video' : 'Voice';
+          fsSendMessage(conversationId, currentUser.id, `Missed ${callLabel.toLowerCase()} call`, 'call', {
+            callType: type ?? 'voice',
+            callDuration: 0,
+            callStatus: 'missed',
+          }).catch(() => {});
+        }
         cleanup();
       }, RING_TIMEOUT_MS);
 
@@ -548,10 +558,23 @@ export function useWebRTC() {
 
   // ── Decline ───────────────────────────────────────────────────────────────
 
-  const declineCall = useCallback(async (callId: string) => {
+  const declineCall = useCallback(async (
+    callId: string,
+    conversationId?: string,
+    callType?: CallType,
+  ) => {
     if (isFirebaseConfigured) await updateCallStatus(callId, 'declined').catch(() => {});
+    // Write a declined-call event into the shared conversation so both parties see it.
+    if (conversationId && currentUser?.id && isFirebaseConfigured) {
+      const callLabel = callType === 'video' ? 'Video' : 'Voice';
+      fsSendMessage(conversationId, currentUser.id, `Declined ${callLabel.toLowerCase()} call`, 'call', {
+        callType: callType ?? 'voice',
+        callDuration: 0,
+        callStatus: 'declined',
+      }).catch(() => {});
+    }
     cleanup();
-  }, [cleanup]);
+  }, [cleanup, currentUser]);
 
   // ── End call ──────────────────────────────────────────────────────────────
 
