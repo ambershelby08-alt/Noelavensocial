@@ -14,7 +14,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
-  subscribeReports, getPendingReports, updateReportStatus, assignReport, updateReportPriority,
+  subscribeReports, updateReportStatus, assignReport, updateReportPriority,
   suspendUser, banUser, unbanUser, sendWarning, restrictAccount,
   removeContent, restoreContent,
   getSuspendedUsers, getBannedUsers, getModerationLog, checkIsAdmin,
