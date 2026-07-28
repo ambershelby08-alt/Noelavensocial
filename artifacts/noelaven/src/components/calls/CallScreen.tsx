@@ -120,6 +120,7 @@ export function CallScreen({
     <motion.div
       ref={screenRef}
       key="call-screen"
+      data-testid="call-screen"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -236,9 +237,10 @@ export function CallScreen({
 
             {/* Status line */}
             {call.phase === 'failed' ? (
-              <p className="text-[13px] text-red-400 font-semibold mt-1">Call failed</p>
+              <p data-testid="call-status" className="text-[13px] text-red-400 font-semibold mt-1">Call failed</p>
             ) : call.phase === 'reconnecting' ? (
               <motion.p
+                data-testid="call-status"
                 animate={{ opacity: [1, 0.4, 1] }}
                 transition={{ duration: 0.9, repeat: Infinity }}
                 className="text-[13px] text-amber-400 font-semibold mt-1"
@@ -247,6 +249,7 @@ export function CallScreen({
               </motion.p>
             ) : call.phase === 'connecting' ? (
               <motion.p
+                data-testid="call-status"
                 animate={{ opacity: [1, 0.4, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity }}
                 className="text-[13px] text-blue-300 font-semibold mt-1"
@@ -255,6 +258,7 @@ export function CallScreen({
               </motion.p>
             ) : call.isRinging ? (
               <motion.p
+                data-testid="call-status"
                 animate={{ opacity: [1, 0.4, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity }}
                 className="text-[13px] text-purple-300 font-semibold mt-1"
@@ -262,7 +266,7 @@ export function CallScreen({
                 {isVideo ? '📹 Video calling…' : '📞 Calling…'}
               </motion.p>
             ) : call.isActive ? (
-              <p className="text-[14px] text-green-400 font-bold tabular-nums mt-1 drop-shadow">
+              <p data-testid="call-duration" className="text-[14px] text-green-400 font-bold tabular-nums mt-1 drop-shadow">
                 {fmtDuration(call.duration)}
               </p>
             ) : null}
@@ -368,6 +372,7 @@ export function CallScreen({
 
             {/* End-call button — large red pill */}
             <motion.button
+              data-testid="end-call-btn"
               whileTap={{ scale: 0.88 }}
               onClick={(e) => { e.stopPropagation(); onEnd(); }}
               className="w-[72px] h-[72px] rounded-full bg-red-500 flex items-center justify-center shadow-2xl"
@@ -423,6 +428,7 @@ interface IncomingCallProps {
 export function IncomingCallBanner({ callerName, callerAvatar, callerId, type, onAccept, onDecline }: IncomingCallProps) {
   return (
     <motion.div
+      data-testid="incoming-call-banner"
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: -100, opacity: 0 }}
@@ -442,17 +448,17 @@ export function IncomingCallBanner({ callerName, callerAvatar, callerId, type, o
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-white font-black text-[15px] truncate">{callerName}</p>
+          <p data-testid="incoming-caller-name" className="text-white font-black text-[15px] truncate">{callerName}</p>
           <p className="text-purple-300 text-[12px] font-medium">
             {type === 'voice' ? '📞 Incoming voice call' : '📹 Incoming video call'}
           </p>
         </div>
         <div className="flex gap-2.5 flex-shrink-0">
-          <motion.button whileTap={{ scale: 0.88 }} onClick={onDecline}
+          <motion.button data-testid="decline-call-btn" whileTap={{ scale: 0.88 }} onClick={onDecline}
             className="w-11 h-11 rounded-full bg-red-500/90 flex items-center justify-center">
             <PhoneOff size={18} className="text-white" />
           </motion.button>
-          <motion.button whileTap={{ scale: 0.88 }} onClick={onAccept}
+          <motion.button data-testid="accept-call-btn" whileTap={{ scale: 0.88 }} onClick={onAccept}
             className="w-11 h-11 rounded-full bg-green-500 flex items-center justify-center">
             <Phone size={18} className="text-white" />
           </motion.button>

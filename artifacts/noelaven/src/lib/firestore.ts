@@ -1103,9 +1103,11 @@ export async function getOrCreateDirectConversation(
   const [a, b] = [userId, otherUserId].sort();
   const convId = `dm_${a}_${b}`;
   const convRef = doc(db, 'conversations', convId);
-  const existing = await getDoc(convRef);
-  if (existing.exists()) return convId;
-  // setDoc is idempotent — if two users race, both writes produce identical data.
+  // Do NOT pre-read with getDoc: the Firestore read rule evaluates
+  // resource.data.participantIds, which throws when the doc doesn't yet exist
+  // (resource is null) → permission-denied → setDoc never runs.
+  // setDoc with merge is idempotent: safe to call even if the doc already exists;
+  // existing fields not present in the write are preserved.
   await setDoc(convRef, {
     type: 'direct',
     participantIds: [userId, otherUserId],

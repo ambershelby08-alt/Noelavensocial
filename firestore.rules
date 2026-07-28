@@ -165,7 +165,13 @@ service cloud.firestore {
 
     // ── Conversations ─────────────────────────────────────────────────────────
     match /conversations/{convId} {
-      allow read, update: if isAuthenticated()
+      // read: allow participant reads AND non-existent-doc reads (resource==null means
+      // the doc doesn't exist; accessing resource.data on null would throw → denied,
+      // so we guard with resource != null to let onSnapshot return an empty snapshot).
+      allow read: if isAuthenticated()
+          && (resource == null || request.auth.uid in resource.data.participantIds);
+      allow update: if isAuthenticated()
+          && resource != null
           && request.auth.uid in resource.data.participantIds;
       allow create: if isAuthenticated()
           && request.auth.uid in request.resource.data.participantIds;

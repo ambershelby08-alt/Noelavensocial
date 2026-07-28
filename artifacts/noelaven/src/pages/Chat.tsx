@@ -1645,11 +1645,13 @@ export default function Chat() {
           {!isGroup && (
             <>
               <button
+                data-testid="start-voice-call-btn"
                 onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'voice')}
                 className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
                 <Phone size={18} />
               </button>
               <button
+                data-testid="start-video-call-btn"
                 onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'video')}
                 className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
                 <Video size={20} />
