@@ -246,7 +246,16 @@ function ConvItem({
             <GroupAvatar participants={conv.participants} />
           ) : (
             <>
-              <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={other.avatarUrl || undefined} size={52} />
+              {/* DM avatar — tapping opens the participant's profile without
+                  navigating to the chat (Link wrapper stops the parent Link) */}
+              <Link
+                href={`/profile/${other.id}`}
+                onClick={e => e.stopPropagation()}
+                className="block rounded-full"
+                aria-label={`View ${other.displayName}'s profile`}
+              >
+                <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={other.avatarUrl || undefined} size={52} />
+              </Link>
               {isOnline && (
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
               )}

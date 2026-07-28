@@ -294,6 +294,34 @@ service cloud.firestore {
       allow update, delete:
           if (isAuthenticated() && resource.data.authorId == request.auth.uid)
           || isModerator();
+
+      // Story reactions — one document per user, keyed by userId.
+      // Any authenticated viewer may react; only they can change or remove it.
+      match /reactions/{userId} {
+        // Everyone can see the reaction count/list (used for activity panel).
+        allow read: if isAuthenticated();
+        // The reacting user writes their own reaction doc (userId == their uid).
+        allow create, update: if isOwner(userId)
+            && request.resource.data.userId == request.auth.uid;
+        allow delete: if isOwner(userId);
+      }
+
+      // Story comments — private (Instagram-style direct replies to the author).
+      // The author sees all comments in the activity panel; the commenter sees
+      // their own comment immediately. Others cannot read this subcollection.
+      match /comments/{commentId} {
+        // Readable by the story author or the comment's own author.
+        allow read: if isAuthenticated()
+            && (get(/databases/$(database)/documents/stories/$(storyId)).data.authorId == request.auth.uid
+                || resource.data.authorId == request.auth.uid);
+        // Any authenticated user may leave a comment, but must claim their own uid.
+        allow create: if isAuthenticated()
+            && request.resource.data.authorId == request.auth.uid;
+        // Only the commenter or a moderator may edit/delete.
+        allow update, delete:
+            if (isAuthenticated() && resource.data.authorId == request.auth.uid)
+            || isModerator();
+      }
     }
 
     // ── Daily Spark gate (one answer per UID per ET date) ─────────────────────

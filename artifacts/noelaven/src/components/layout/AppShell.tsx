@@ -217,7 +217,14 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
     <>
     <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-black/[0.06] bg-white/80 backdrop-blur-xl pt-8 pb-6 px-4 z-40">
       <div className="flex items-center px-3 mb-10">
-        <NoelavenLogo variant="full" size="md" />
+        <Link
+          href="/"
+          aria-label="Go to Noelaven Home"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="flex items-center"
+        >
+          <NoelavenLogo variant="full" size="md" />
+        </Link>
         {isDemoMode && (
           <span className="ml-auto text-[9px] uppercase font-black tracking-wider bg-purple-50 text-purple-500 px-2 py-1 rounded-full">
             Demo
@@ -313,7 +320,14 @@ function MobileHeader({ notifUnreadCount = 0 }: { notifUnreadCount?: number }) {
   const { isDemoMode } = useAuth();
   return (
     <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-5 bg-[#FDF9F6]/90 backdrop-blur-xl border-b border-black/[0.05]">
-      <NoelavenLogo variant="full" size="sm" />
+      <Link
+        href="/"
+        aria-label="Go to Noelaven Home"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="flex items-center"
+      >
+        <NoelavenLogo variant="full" size="sm" />
+      </Link>
       <div className="flex items-center gap-3">
         {isDemoMode && (
           <span className="text-[9px] uppercase font-black tracking-wider bg-purple-50 text-purple-500 px-2 py-1 rounded-full">

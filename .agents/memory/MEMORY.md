@@ -30,3 +30,4 @@
 - [Noelaven offline persistence](noelaven-offline.md) — Firestore uses initializeFirestore + persistentLocalCache + persistentMultipleTabManager; falls back to getFirestore on failure; localStorage msgCache seeds message state on load.
 - [Noelaven notification prefs architecture](noelaven-notif-prefs.md) — prefs stored in localStorage AND Firestore user doc; writeNotification checks Firestore before writing; Settings syncs both on toggle.
 - [Noelaven Firestore rules deployment](noelaven-firestore-deploy.md) — no .firebaserc; deploy via Firebase Rules REST API using FIREBASE_SERVICE_ACCOUNT_JSON; project ID: noelaven-511ad.
+- [Noelaven story reactions and comments](noelaven-story-reactions-comments.md) — subcollections reactions/{userId} + comments/{commentId}; StoryViewer v2 with reaction tray, comment input, ActivityPanel; Firestore rules added.

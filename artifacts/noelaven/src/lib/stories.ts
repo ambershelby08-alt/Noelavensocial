@@ -4,8 +4,8 @@
  */
 
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, query,
-  where, orderBy, onSnapshot, arrayUnion,
+  collection, doc, addDoc, updateDoc, deleteDoc, setDoc, getDoc, query,
+  where, orderBy, onSnapshot, arrayUnion, serverTimestamp,
   Timestamp, type DocumentData, type Unsubscribe,
 } from 'firebase/firestore';
 import { safeGetTime } from '@/lib/timestamp';
@@ -162,6 +162,109 @@ export async function markStoryViewed(storyId: string, userId: string): Promise<
 export async function deleteStory(storyId: string): Promise<void> {
   if (!db) throw new Error('Firebase not configured');
   await deleteDoc(doc(db, 'stories', storyId));
+}
+
+// ─── Story reactions ──────────────────────────────────────────────────────────
+
+/** One reaction per user per story; stored in stories/{storyId}/reactions/{userId}. */
+export interface StoryReaction {
+  userId: string;
+  reactionType: string; // emoji character
+  createdAt: Date;
+}
+
+/**
+ * Toggle a reaction for a user on a story.
+ * If the user already has the same emoji selected → remove it (toggle off).
+ * If the user has a different emoji → replace it.
+ * If no reaction yet → add it.
+ */
+export async function toggleStoryReaction(
+  storyId: string,
+  userId: string,
+  reactionType: string,
+): Promise<void> {
+  if (!db) throw new Error('Firebase not configured');
+  const ref = doc(db, 'stories', storyId, 'reactions', userId);
+  const snap = await getDoc(ref);
+  if (snap.exists() && snap.data().reactionType === reactionType) {
+    // Same emoji tapped again → remove
+    await deleteDoc(ref);
+  } else {
+    // New or changed reaction → upsert
+    await setDoc(ref, { userId, reactionType, createdAt: serverTimestamp() });
+  }
+}
+
+/** Real-time listener for all reactions on a story. */
+export function subscribeStoryReactions(
+  storyId: string,
+  onData: (reactions: StoryReaction[]) => void,
+): Unsubscribe {
+  if (!db) return () => {};
+  return onSnapshot(
+    collection(db, 'stories', storyId, 'reactions'),
+    snap => onData(snap.docs.map(d => ({
+      userId:       d.data().userId       ?? d.id,
+      reactionType: d.data().reactionType ?? '🌊',
+      createdAt:    toDate(d.data().createdAt),
+    }))),
+    err => console.error('[subscribeStoryReactions]', err.code, err.message),
+  );
+}
+
+// ─── Story comments ───────────────────────────────────────────────────────────
+
+/**
+ * A comment/reply left on a story.
+ * Private by default — only the story author sees all comments in the activity panel.
+ * The commenter sees their own comment immediately in the viewer.
+ * Stored in stories/{storyId}/comments/{commentId}.
+ */
+export interface StoryComment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorAvatarUrl: string;
+  text: string;
+  createdAt: Date;
+}
+
+/** Add a comment to a story. Returns the new document ID. */
+export async function addStoryComment(
+  storyId: string,
+  author: { id: string; displayName: string; avatarUrl?: string | null },
+  text: string,
+): Promise<string> {
+  if (!db) throw new Error('Firebase not configured');
+  const ref = await addDoc(collection(db, 'stories', storyId, 'comments'), {
+    authorId:        author.id,
+    authorName:      author.displayName,
+    authorAvatarUrl: author.avatarUrl ?? '',
+    text,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+/** Real-time listener for all comments on a story, ordered oldest-first. */
+export function subscribeStoryComments(
+  storyId: string,
+  onData: (comments: StoryComment[]) => void,
+): Unsubscribe {
+  if (!db) return () => {};
+  return onSnapshot(
+    query(collection(db, 'stories', storyId, 'comments'), orderBy('createdAt', 'asc')),
+    snap => onData(snap.docs.map(d => ({
+      id:              d.id,
+      authorId:        d.data().authorId        ?? '',
+      authorName:      d.data().authorName      ?? '',
+      authorAvatarUrl: d.data().authorAvatarUrl ?? '',
+      text:            d.data().text            ?? '',
+      createdAt:       toDate(d.data().createdAt),
+    }))),
+    err => console.error('[subscribeStoryComments]', err.code, err.message),
+  );
 }
 
 // ─── Client-side grouping ─────────────────────────────────────────────────────

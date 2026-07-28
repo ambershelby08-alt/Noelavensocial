@@ -6,20 +6,39 @@
  * Crop transform: applied from story.cropData when present.
  * Hold-to-pause:  single-finger hold pauses the progress bar.
  * Swipe-to-close: drag down ≥ 120 px dismisses.
- * Tap areas:      left 1/3 = prev, right 2/3 = next.
+ * Tap areas:      left 1/3 = prev, right 2/3 = next (stop 80 px from bottom).
  * Layers:         text + sticker layers rendered as read-only overlays.
- * Three-dot menu: visible only to the story owner — delete (with confirm) + save to device.
+ *
+ * v2 features:
+ * Reactions:      long-press the emoji pill at bottom → full Noelaven tray.
+ *                 Tap your own reaction again → remove it.
+ *                 Saved to stories/{storyId}/reactions/{userId}.
+ * Comments:       Text input at bottom for non-owners (private, Instagram-style).
+ *                 Saved to stories/{storyId}/comments/{commentId}.
+ * Activity panel: Owner taps "👁 N" to see all viewers/reactions/comments.
+ * Profile nav:    Author avatar + name → navigate to /profile/{uid}, close viewer.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MoreVertical, Trash2, Download, AlertTriangle } from 'lucide-react';
-import { GradientAvatar } from '@/components/ui/GradientAvatar';
+import { X, MoreVertical, Trash2, Download, AlertTriangle, Eye, Send } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { filterCSS } from '@/components/stories/editor/filters';
-import type { StoryGroup, Story } from '@/lib/stories';
+import type { StoryGroup, Story, StoryReaction, StoryComment } from '@/lib/stories';
+import {
+  subscribeStoryReactions,
+  toggleStoryReaction as fsToggleReaction,
+  subscribeStoryComments,
+  addStoryComment as fsAddComment,
+} from '@/lib/stories';
 import type { EditorLayer, TextLayer, CropData } from '@/components/stories/editor/types';
 import { formatRelativeTime } from '@/lib/timestamp';
+import { REACTIONS, getLabelForEmoji } from '@/lib/reactions';
+import { writeNotification } from '@/lib/firestore';
+import { isFirebaseConfigured } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import type { User } from '@/lib/mockData';
 
 const PHOTO_DURATION_MS = 5000;
 
@@ -49,16 +68,16 @@ function StoryLayer({ layer }: { layer: EditorLayer }) {
   return (
     <div style={base}>
       <div style={{
-        fontSize:   tl.fontSize ?? 24,
-        fontWeight: tl.fontWeight,
-        fontFamily: tl.fontFamily ?? 'system-ui, sans-serif',
-        color:      tl.color,
-        textAlign:  tl.textAlign ?? 'center',
-        whiteSpace: 'pre-wrap',
-        lineHeight: 1.25,
-        padding:    '4px 8px',
+        fontSize:     tl.fontSize ?? 24,
+        fontWeight:   tl.fontWeight,
+        fontFamily:   tl.fontFamily ?? 'system-ui, sans-serif',
+        color:        tl.color,
+        textAlign:    tl.textAlign ?? 'center',
+        whiteSpace:   'pre-wrap',
+        lineHeight:   1.25,
+        padding:      '4px 8px',
         borderRadius: 6,
-        wordBreak: 'break-word', maxWidth: 240,
+        wordBreak:    'break-word', maxWidth: 240,
         ...textBgStyle(tl.layerStyle, tl.color),
       }}>
         {tl.content}
@@ -80,16 +99,13 @@ function cropStyle(cropData: CropData | null): React.CSSProperties {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function relativeTime(date: unknown): string {
-  // Delegate to the shared timestamp utility — handles Firestore Timestamps,
-  // plain Dates, ISO strings, and epoch numbers safely via duck-typing.
   const result = formatRelativeTime(date);
-  // formatRelativeTime returns e.g. "3m ago" — strip " ago" for compact display.
   return result.replace(' ago', '');
 }
 
 async function saveMediaToDevice(story: Story) {
   try {
-    const res = await fetch(story.mediaUrl, { mode: 'cors' });
+    const res  = await fetch(story.mediaUrl, { mode: 'cors' });
     const blob = await res.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -100,9 +116,221 @@ async function saveMediaToDevice(story: Story) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch {
-    // CORS may prevent cross-origin save; open in new tab as fallback
     window.open(story.mediaUrl, '_blank');
   }
+}
+
+// ─── Reaction tray overlay ────────────────────────────────────────────────────
+
+interface ReactionTrayProps {
+  myReaction: string | null;
+  onPick:     (emoji: string) => void;
+  onClose:    () => void;
+}
+
+function StoryReactionTray({ myReaction, onPick, onClose }: ReactionTrayProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 30 }}
+      transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+      className="absolute bottom-[88px] left-0 right-0 z-[35] mx-3"
+      // Stop drag propagation so the parent swipe-to-close doesn't fire
+      onPointerDown={e => e.stopPropagation()}
+    >
+      {/* Backdrop tap to close */}
+      <div
+        className="fixed inset-0 z-[-1]"
+        onPointerDown={e => { e.stopPropagation(); onClose(); }}
+      />
+      <div className="bg-[#1C1C1E]/95 backdrop-blur-lg rounded-3xl p-4 shadow-2xl">
+        <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-3 text-center">Positive</p>
+        <div className="grid grid-cols-6 gap-2 mb-3">
+          {REACTIONS.filter(r => r.category === 'positive').map(r => (
+            <button
+              key={r.emoji}
+              onPointerDown={e => { e.stopPropagation(); onPick(r.emoji); }}
+              className={[
+                'flex flex-col items-center gap-0.5 py-2 rounded-2xl transition-all active:scale-90',
+                myReaction === r.emoji ? 'bg-white/20 ring-1 ring-white/30' : 'hover:bg-white/10',
+              ].join(' ')}
+            >
+              <span className="text-2xl leading-none">{r.emoji}</span>
+              <span className="text-[8px] text-white/50 leading-none">{r.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mb-3 text-center">Thoughtful</p>
+        <div className="grid grid-cols-4 gap-2">
+          {REACTIONS.filter(r => r.category === 'thoughtful').map(r => (
+            <button
+              key={r.emoji}
+              onPointerDown={e => { e.stopPropagation(); onPick(r.emoji); }}
+              className={[
+                'flex flex-col items-center gap-0.5 py-2 rounded-2xl transition-all active:scale-90',
+                myReaction === r.emoji ? 'bg-white/20 ring-1 ring-white/30' : 'hover:bg-white/10',
+              ].join(' ')}
+            >
+              <span className="text-2xl leading-none">{r.emoji}</span>
+              <span className="text-[9px] text-white/50 leading-none text-center">{r.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Activity panel (owner only) ──────────────────────────────────────────────
+
+interface ActivityPanelProps {
+  reactions:   StoryReaction[];
+  comments:    StoryComment[];
+  viewerCount: number;
+  onClose:     () => void;
+  onGoProfile: (uid: string) => void;
+}
+
+function ActivityPanel({ reactions, comments, viewerCount, onClose, onGoProfile }: ActivityPanelProps) {
+  // Build combined activity: merge reactions and comments by author
+  const reactionMap = new Map(reactions.map(r => [r.userId, r.reactionType]));
+
+  // All commenters + all reactors as a unified user list
+  const userIds = Array.from(new Set([
+    ...reactions.map(r => r.userId),
+    ...comments.map(c => c.authorId),
+  ]));
+
+  // Group comments by author
+  const commentsByAuthor = new Map<string, StoryComment[]>();
+  for (const c of comments) {
+    if (!commentsByAuthor.has(c.authorId)) commentsByAuthor.set(c.authorId, []);
+    commentsByAuthor.get(c.authorId)!.push(c);
+  }
+
+  // Build display rows: prefer to show comment author info; fallback to reaction-only users
+  interface ActivityRow {
+    uid: string;
+    name: string;
+    avatar: string;
+    reaction: string | null;
+    latestComment: StoryComment | null;
+  }
+
+  const rows: ActivityRow[] = userIds.map(uid => {
+    const commentList = commentsByAuthor.get(uid) ?? [];
+    const latest = commentList.length > 0 ? commentList[commentList.length - 1] : null;
+    // Try to get name/avatar from comments first, then from reactions
+    const fromComment = comments.find(c => c.authorId === uid);
+    return {
+      uid,
+      name:          fromComment?.authorName      ?? uid,
+      avatar:        fromComment?.authorAvatarUrl ?? '',
+      reaction:      reactionMap.get(uid) ?? null,
+      latestComment: latest,
+    };
+  });
+
+  return (
+    <>
+      {/* Backdrop */}
+      <motion.div
+        key="act-bd"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.5 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 z-[36] bg-black"
+        onPointerDown={e => { e.stopPropagation(); onClose(); }}
+      />
+      {/* Sheet */}
+      <motion.div
+        key="act-sheet"
+        initial={{ y: '100%' }}
+        animate={{ y: 0 }}
+        exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 30, stiffness: 340 }}
+        className="absolute bottom-0 left-0 right-0 z-[37] bg-[#1C1C1E] rounded-t-3xl overflow-hidden"
+        style={{ maxHeight: '70dvh', paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}
+        onPointerDown={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
+          <div className="flex items-center gap-2">
+            <Eye size={16} className="text-white/50" />
+            <span className="text-white font-semibold text-[15px]">{viewerCount} viewer{viewerCount !== 1 ? 's' : ''}</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10 transition-colors">
+            <X size={16} className="text-white/50" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(70dvh - 80px)' }}>
+          {rows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Eye size={32} className="text-white/20" />
+              <p className="text-white/40 text-sm">No reactions or comments yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/[0.06]">
+              {rows.map(row => (
+                <div key={row.uid} className="flex items-start gap-3 px-5 py-3.5">
+                  {/* Avatar → navigate to profile */}
+                  <button
+                    onClick={() => onGoProfile(row.uid)}
+                    className="flex-shrink-0 mt-0.5"
+                  >
+                    <UserAvatar
+                      userId={row.uid}
+                      fallbackName={row.name}
+                      fallbackSrc={row.avatar || undefined}
+                      size={36}
+                      className="ring-[1.5px] ring-white/20"
+                    />
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      {/* Name → navigate to profile */}
+                      <button
+                        onClick={() => onGoProfile(row.uid)}
+                        className="text-white font-semibold text-[13px] hover:underline truncate"
+                      >
+                        {row.name}
+                      </button>
+                      {row.reaction && (
+                        <span className="text-base leading-none" title={getLabelForEmoji(row.reaction)}>
+                          {row.reaction}
+                        </span>
+                      )}
+                    </div>
+                    {row.latestComment && (
+                      <p className="text-white/60 text-[12.5px] leading-relaxed line-clamp-2">
+                        "{row.latestComment.text}"
+                      </p>
+                    )}
+                    {row.latestComment && (
+                      <p className="text-white/30 text-[10px] mt-0.5">
+                        {formatRelativeTime(row.latestComment.createdAt)}
+                      </p>
+                    )}
+                    {!row.latestComment && row.reaction && (
+                      <p className="text-white/40 text-[11px]">{getLabelForEmoji(row.reaction)}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </>
+  );
 }
 
 // ─── StoryViewer ──────────────────────────────────────────────────────────────
@@ -124,23 +352,39 @@ export function StoryViewer({
   onMarkViewed,
   onDeleteStory,
 }: StoryViewerProps) {
+  const [, navigate] = useLocation();
+  const { currentUser } = useAuth();
+
   const [groupIdx, setGroupIdx] = useState(Math.min(initialGroupIdx, Math.max(0, groups.length - 1)));
   const [storyIdx, setStoryIdx] = useState(0);
   const [paused,   setPaused]   = useState(false);
   const [segDurMs, setSegDurMs] = useState(PHOTO_DURATION_MS);
 
-  // Menu + delete state
+  // Owner menu / delete
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [confirmDel,  setConfirmDel]  = useState(false);
   const [deleting,    setDeleting]    = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Reactions + comments (real-time)
+  const [reactions,         setReactions]         = useState<StoryReaction[]>([]);
+  const [comments,          setComments]          = useState<StoryComment[]>([]);
+  const [showReactionTray,  setShowReactionTray]  = useState(false);
+  const [showActivity,      setShowActivity]      = useState(false);
+  const [commentText,       setCommentText]       = useState('');
+  const [inputFocused,      setInputFocused]      = useState(false);
+  const [sendingComment,    setSendingComment]    = useState(false);
+
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const wasHeld   = useRef(false);
   const videoRef  = useRef<HTMLVideoElement>(null);
+  const inputRef  = useRef<HTMLInputElement>(null);
 
   const group = groups[groupIdx];
   const story = group?.stories[storyIdx];
+  const isOwner = Boolean(currentUserId && story?.authorId === currentUserId);
+
+  const myReaction = reactions.find(r => r.userId === currentUserId) ?? null;
 
   // ── Guard against stale indices after groups change (e.g. after delete) ──
   useEffect(() => {
@@ -161,32 +405,44 @@ export function StoryViewer({
       }
       return;
     }
-    if (storyIdx >= g.stories.length) {
-      setStoryIdx(g.stories.length - 1);
-    }
+    if (storyIdx >= g.stories.length) setStoryIdx(g.stories.length - 1);
   }, [groups]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mark viewed on story change
+  // Mark viewed on story change; reset overlays
   useEffect(() => {
     if (story) onMarkViewed?.(story.id);
     setMenuOpen(false);
     setConfirmDel(false);
     setDeleteError(null);
+    setShowReactionTray(false);
+    setShowActivity(false);
+    setCommentText('');
+    setReactions([]);
+    setComments([]);
   }, [story?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset duration when story changes
   useEffect(() => { setSegDurMs(PHOTO_DURATION_MS); }, [groupIdx, storyIdx]);
 
-  // Pause when menu/confirm is open
+  // Subscribe to reactions + comments for the current story
   useEffect(() => {
-    if (menuOpen || confirmDel) {
+    if (!story || !isFirebaseConfigured) return;
+    const unsubR = subscribeStoryReactions(story.id, setReactions);
+    const unsubC = subscribeStoryComments(story.id, setComments);
+    return () => { unsubR(); unsubC(); };
+  }, [story?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pause when any overlay blocks interaction
+  useEffect(() => {
+    const blocked = menuOpen || confirmDel || showReactionTray || showActivity || inputFocused;
+    if (blocked) {
       setPaused(true);
       videoRef.current?.pause();
     } else {
       setPaused(false);
       videoRef.current?.play().catch(() => {});
     }
-  }, [menuOpen, confirmDel]);
+  }, [menuOpen, confirmDel, showReactionTray, showActivity, inputFocused]);
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
@@ -215,7 +471,7 @@ export function StoryViewer({
   // ── Hold-to-pause ─────────────────────────────────────────────────────────
 
   function startHold() {
-    if (menuOpen || confirmDel) return;
+    if (menuOpen || confirmDel || showReactionTray || showActivity) return;
     wasHeld.current = false;
     holdTimer.current = setTimeout(() => {
       wasHeld.current = true;
@@ -257,8 +513,6 @@ export function StoryViewer({
     try {
       await onDeleteStory(story.id);
       setConfirmDel(false);
-      // Immediately advance — Firestore subscription will remove the deleted story
-      // and the guard useEffect above will reconcile indices
       goNext();
     } catch {
       setDeleteError('Could not delete story. Please try again.');
@@ -267,11 +521,89 @@ export function StoryViewer({
     }
   }
 
+  // ── Reaction toggle ───────────────────────────────────────────────────────
+
+  async function handleReact(emoji: string) {
+    if (!currentUserId || !story) return;
+    setShowReactionTray(false);
+
+    const wasMyReaction = myReaction?.reactionType === emoji;
+
+    // Optimistic update
+    setReactions(prev => {
+      const without = prev.filter(r => r.userId !== currentUserId);
+      if (wasMyReaction) return without; // toggle off
+      return [...without, { userId: currentUserId, reactionType: emoji, createdAt: new Date() }];
+    });
+
+    if (isFirebaseConfigured) {
+      fsToggleReaction(story.id, currentUserId, emoji).catch(console.error);
+      // Notify the author when adding a new reaction (not to own story)
+      if (!isOwner && !wasMyReaction && currentUser) {
+        writeNotification(
+          story.authorId,
+          'story_reaction',
+          currentUser as unknown as User,
+          {
+            storyId: story.id,
+            emoji,
+            message: `${currentUser.displayName} reacted ${emoji} to your story`,
+          },
+        ).catch(console.error);
+      }
+    }
+  }
+
+  // ── Comment submit ────────────────────────────────────────────────────────
+
+  async function handleSendComment() {
+    const text = commentText.trim();
+    if (!text || !currentUser || !story) return;
+    setCommentText('');
+    setSendingComment(true);
+
+    // Optimistic comment — shown to commenter immediately
+    const optimistic: StoryComment = {
+      id:              `opt-${Date.now()}`,
+      authorId:        currentUser.id,
+      authorName:      currentUser.displayName,
+      authorAvatarUrl: currentUser.avatarUrl ?? '',
+      text,
+      createdAt:       new Date(),
+    };
+    setComments(prev => [...prev, optimistic]);
+
+    if (isFirebaseConfigured) {
+      try {
+        await fsAddComment(story.id, currentUser as unknown as User, text);
+        writeNotification(
+          story.authorId,
+          'story_reply',
+          currentUser as unknown as User,
+          {
+            storyId:  story.id,
+            message:  `${currentUser.displayName} replied to your story`,
+          },
+        ).catch(console.error);
+      } catch (e) {
+        console.error('[StoryViewer] comment error', e);
+        setComments(prev => prev.filter(c => c.id !== optimistic.id));
+      }
+    }
+    setSendingComment(false);
+  }
+
+  // ── Navigate to author profile ────────────────────────────────────────────
+
+  function goToProfile(uid: string) {
+    onClose();
+    navigate(`/profile/${uid}`);
+  }
+
   // ── Early return ──────────────────────────────────────────────────────────
 
   if (!group || !story) return null;
 
-  const isOwner  = Boolean(currentUserId && story.authorId === currentUserId);
   const cssFilt  = story.filterName ? filterCSS(story.filterName) : 'none';
   const mediaSrc = story.mediaType === 'video' && story.trimData
     ? `${story.mediaUrl}#t=${story.trimData.start},${story.trimData.end}`
@@ -286,6 +618,18 @@ export function StoryViewer({
     ...cropStyle(story.cropData),
   };
 
+  // Viewer count = total unique viewers who have reacted or commented (proxy;
+  // true view count requires server-side counting or counting viewerIds)
+  const uniqueInteractors = new Set([
+    ...reactions.map(r => r.userId),
+    ...comments.map(c => c.authorId),
+  ]).size;
+
+  // My last submitted comment (shown inline below the input for non-owners)
+  const myLastComment = !isOwner
+    ? [...comments].reverse().find(c => c.authorId === currentUserId)
+    : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 1.02 }}
@@ -295,7 +639,11 @@ export function StoryViewer({
       drag="y"
       dragConstraints={{ top: 0, bottom: 0 }}
       dragElastic={{ top: 0, bottom: 0.25 }}
-      onDragEnd={(_, info) => { if (info.offset.y > 120 && !menuOpen && !confirmDel) onClose(); }}
+      onDragEnd={(_, info) => {
+        if (info.offset.y > 120 && !menuOpen && !confirmDel && !showActivity && !showReactionTray) {
+          onClose();
+        }
+      }}
       className="fixed inset-0 z-[80] bg-black flex flex-col select-none touch-none overflow-hidden"
     >
       {/* ── Media ── */}
@@ -351,11 +699,32 @@ export function StoryViewer({
           ))}
         </div>
 
-        {/* Author row */}
+        {/* Author row — avatar + name are clickable to navigate to profile */}
         <div className="flex items-center gap-2.5 pointer-events-auto">
-          <UserAvatar userId={group.authorId} fallbackName={group.authorName} fallbackSrc={group.authorAvatarUrl || undefined} size={36} />
+          {/* Avatar — clickable */}
+          <button
+            aria-label={`View ${group.authorName}'s profile`}
+            onClick={() => goToProfile(group.authorId)}
+            className="flex-shrink-0 rounded-full active:opacity-70 transition-opacity"
+          >
+            <UserAvatar
+              userId={group.authorId}
+              fallbackName={group.authorName}
+              fallbackSrc={group.authorAvatarUrl || undefined}
+              size={36}
+              className="ring-2 ring-white/40"
+            />
+          </button>
+
+          {/* Name + timestamp — name clickable */}
           <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm leading-tight truncate">{group.authorName}</p>
+            <button
+              aria-label={`View ${group.authorName}'s profile`}
+              onClick={() => goToProfile(group.authorId)}
+              className="text-white font-semibold text-sm leading-tight hover:underline block text-left"
+            >
+              {group.authorName}
+            </button>
             <p className="text-white/60 text-xs">{relativeTime(story.createdAt)}</p>
           </div>
 
@@ -382,28 +751,150 @@ export function StoryViewer({
       {/* ── Caption ── */}
       {story.caption && story.layers.length === 0 && (
         <div
-          className="absolute bottom-10 left-0 right-0 px-5 pb-4 pointer-events-none z-10"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)' }}
+          className="absolute left-0 right-0 px-5 pb-4 pointer-events-none z-10"
+          style={{
+            bottom: 88,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)',
+          }}
         >
           <p className="text-white text-sm font-medium text-center drop-shadow">{story.caption}</p>
         </div>
       )}
 
-      {/* ── Tap areas ── */}
-      <div className="absolute left-0 top-28 bottom-0 w-1/3 z-20"
+      {/* ── Tap areas (stop 88 px from bottom to leave room for bottom bar) ── */}
+      <div className="absolute left-0 top-28 z-20" style={{ bottom: 88, width: '33%' }}
            onPointerDown={startHold}
            onPointerUp={() => endHold(goPrev)}
            onPointerLeave={cancelHold} />
-      <div className="absolute right-0 top-28 bottom-0 w-2/3 z-20"
+      <div className="absolute right-0 top-28 z-20" style={{ bottom: 88, width: '67%' }}
            onPointerDown={startHold}
            onPointerUp={() => endHold(goNext)}
            onPointerLeave={cancelHold} />
+
+      {/* ── Bottom bar (z-25, above tap areas) ── */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-[25] pointer-events-auto"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
+        onPointerDown={e => e.stopPropagation()}
+      >
+        {/* My latest comment preview (non-owner, shown above the input) */}
+        {myLastComment && (
+          <div className="px-4 mb-1.5">
+            <div className="bg-white/10 rounded-2xl px-3.5 py-2">
+              <p className="text-white/90 text-[12.5px] leading-relaxed line-clamp-2">
+                "{myLastComment.text}"
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2.5 px-4 pt-2">
+          {/* Reaction pill */}
+          <button
+            onPointerDown={e => {
+              e.stopPropagation();
+              // Long-press logic is handled by the tray toggle
+            }}
+            onClick={() => setShowReactionTray(v => !v)}
+            className={[
+              'flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all',
+              myReaction
+                ? 'bg-white/25 ring-1 ring-white/30'
+                : 'bg-black/40 hover:bg-black/60',
+            ].join(' ')}
+            aria-label="React to story"
+          >
+            <span className="text-xl leading-none">
+              {myReaction ? myReaction.reactionType : '😊'}
+            </span>
+            {myReaction && (
+              <span className="text-white text-[11px] font-semibold leading-none">
+                {getLabelForEmoji(myReaction.reactionType)}
+              </span>
+            )}
+          </button>
+
+          {isOwner ? (
+            // Owner: show unique interactor count + activity button
+            <>
+              <button
+                onClick={() => setShowActivity(true)}
+                className="flex items-center gap-1.5 flex-1 bg-black/40 hover:bg-black/60 rounded-full px-4 py-2 transition-all"
+                aria-label="View story activity"
+              >
+                <Eye size={15} className="text-white/70 flex-shrink-0" />
+                <span className="text-white/80 text-[13px]">
+                  {story.viewerIds?.length ?? 0} viewer{(story.viewerIds?.length ?? 0) !== 1 ? 's' : ''}
+                </span>
+                {uniqueInteractors > 0 && (
+                  <span className="ml-auto text-white/50 text-[11px]">
+                    {reactions.length > 0 && `${reactions.length} reaction${reactions.length !== 1 ? 's' : ''}`}
+                    {reactions.length > 0 && comments.length > 0 && ' · '}
+                    {comments.length > 0 && `${comments.length} comment${comments.length !== 1 ? 's' : ''}`}
+                  </span>
+                )}
+              </button>
+            </>
+          ) : (
+            // Viewer: comment input + send
+            <>
+              <input
+                ref={inputRef}
+                type="text"
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                placeholder={`Reply to ${group.authorName}…`}
+                className="flex-1 bg-black/40 text-white placeholder:text-white/40 text-[13px] rounded-full px-4 py-2 outline-none border border-white/10 focus:border-white/30 transition-colors"
+              />
+              <button
+                onClick={handleSendComment}
+                disabled={!commentText.trim() || sendingComment}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 active:scale-90 disabled:opacity-40 transition-all flex-shrink-0"
+                aria-label="Send reply"
+              >
+                <Send size={15} className="text-white" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Reaction tray ── */}
+      <AnimatePresence>
+        {showReactionTray && (
+          <StoryReactionTray
+            myReaction={myReaction?.reactionType ?? null}
+            onPick={handleReact}
+            onClose={() => setShowReactionTray(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Activity panel (owner only) ── */}
+      <AnimatePresence>
+        {showActivity && (
+          <ActivityPanel
+            reactions={reactions}
+            comments={comments}
+            viewerCount={story.viewerIds?.length ?? 0}
+            onClose={() => setShowActivity(false)}
+            onGoProfile={uid => { setShowActivity(false); goToProfile(uid); }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Owner menu sheet ── */}
       <AnimatePresence>
         {menuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="menu-bd"
               initial={{ opacity: 0 }}
@@ -412,7 +903,6 @@ export function StoryViewer({
               className="absolute inset-0 z-30 bg-black/50"
               onClick={() => setMenuOpen(false)}
             />
-            {/* Sheet */}
             <motion.div
               key="menu-sheet"
               initial={{ y: '100%' }}
@@ -444,6 +934,17 @@ export function StoryViewer({
                   <Download size={18} className="text-white/80" />
                 </div>
                 <span className="text-white font-semibold text-[15px]">Save to Device</span>
+              </button>
+
+              {/* View Activity (owner) */}
+              <button
+                onClick={() => { setMenuOpen(false); setShowActivity(true); }}
+                className="w-full flex items-center gap-3 px-6 py-4 active:bg-white/5 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                  <Eye size={18} className="text-white/80" />
+                </div>
+                <span className="text-white font-semibold text-[15px]">View Activity</span>
               </button>
 
               {/* Cancel */}

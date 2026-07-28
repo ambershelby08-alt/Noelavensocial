@@ -1711,7 +1711,14 @@ export default function Chat() {
               <div key={`grp-${si}`} className={cn('flex gap-2.5 px-4 my-3', isMe ? 'justify-end' : 'justify-start')}>
                 {!isMe && (
                   <div className="flex-shrink-0 self-end mb-6">
-                    <UserAvatar userId={group.senderId} fallbackName={senderName} fallbackSrc={sender ? (sender as any).avatarUrl || undefined : undefined} size={30} />
+                    {/* Avatar links to sender's profile in both DM and group chats */}
+                    <Link
+                      href={`/profile/${group.senderId}`}
+                      aria-label={`View ${senderName}'s profile`}
+                      className="block rounded-full"
+                    >
+                      <UserAvatar userId={group.senderId} fallbackName={senderName} fallbackSrc={sender ? (sender as any).avatarUrl || undefined : undefined} size={30} />
+                    </Link>
                   </div>
                 )}
                 <div className={cn('flex flex-col gap-1 max-w-[72%]', isMe ? 'items-end' : 'items-start')}>
