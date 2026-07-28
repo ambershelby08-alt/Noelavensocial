@@ -58,12 +58,16 @@ export function useStories() {
       setLoading(false);
       return;
     }
+    // Re-subscribe when the signed-in user changes so that any stale
+    // listener from the previous account is torn down before new data
+    // starts arriving for the current account.
+    setLoading(true);
     const unsub = subscribeStories(s => {
       setStories(s);
       setLoading(false);
     });
     return unsub;
-  }, []);
+  }, [currentUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const followingIds = useFollowingIds(currentUser?.id);
 

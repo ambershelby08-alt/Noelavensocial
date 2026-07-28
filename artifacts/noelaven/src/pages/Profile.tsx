@@ -282,21 +282,26 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
   async function handleSave() {
     const trimmedName   = displayName.trim();
     const trimmedHandle = handle.trim();
-    // Require display name ≥ 2 chars; allow handle to be unchanged (empty input kept as-is)
-    if (!trimmedName || trimmedName.length < 2) return;
-    if (trimmedHandle && trimmedHandle.length < 2) return;
+    // Both fields must be at least 2 characters — never allow clearing either.
+    if (trimmedName.length < 2) return;
+    if (trimmedHandle.length < 2) return;
 
     setSaving(true);
     setSaveError(null);
 
-    // Build a partial update — only include fields that actually changed so that
-    // editing the display name never silently clears a previously set @handle.
+    // Build a partial update — only include fields whose value actually changed.
+    // This ensures that editing the display name never silently overwrites the
+    // @handle and vice versa.  Each field is independent.
     const updates: Partial<User> = {};
-    updates.displayName = trimmedName;
-    updates.handle      = trimmedHandle || user.handle; // fall back to existing if cleared
-    updates.bio         = bio.trim();
-    updates.interests   = interests;
-    if (avatarUrl !== (user.avatarUrl ?? '')) updates.avatarUrl = avatarUrl;
+    if (trimmedName !== user.displayName)     updates.displayName = trimmedName;
+    if (trimmedHandle !== user.handle)         updates.handle      = trimmedHandle;
+    if (bio.trim() !== (user.bio ?? ''))       updates.bio         = bio.trim();
+    // Interests comparison is order-sensitive by design; re-write only if different.
+    if (JSON.stringify(interests) !== JSON.stringify(user.interests)) updates.interests = interests;
+    if (avatarUrl !== (user.avatarUrl ?? '')) updates.avatarUrl   = avatarUrl;
+
+    // Nothing changed — just close without a Firestore round-trip.
+    if (Object.keys(updates).length === 0) { onClose(); return; }
 
     try {
       // Await the full Firestore write — close only after it confirms.
@@ -332,7 +337,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleSave}
-            disabled={displayName.trim().length < 2 || saving}
+            disabled={displayName.trim().length < 2 || handle.trim().length < 2 || saving}
             className="px-5 py-2 rounded-full text-[14px] font-bold text-white disabled:opacity-50 flex items-center gap-1.5"
             style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.35)' }}
           >
@@ -421,7 +426,11 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
           {/* Handle */}
           <div>
             <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Username</label>
-            <div className="flex items-center bg-white border border-black/[0.08] rounded-2xl px-4 py-3.5 gap-2 focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100 transition-all">
+            <div className={`flex items-center bg-white border rounded-2xl px-4 py-3.5 gap-2 focus-within:ring-2 transition-all ${
+              handle.trim().length > 0 && handle.trim().length < 2
+                ? 'border-red-400 focus-within:border-red-400 focus-within:ring-red-100'
+                : 'border-black/[0.08] focus-within:border-purple-400 focus-within:ring-purple-100'
+            }`}>
               <AtSign size={16} className="text-purple-400 flex-shrink-0" />
               <input
                 value={handle}
@@ -432,6 +441,12 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
               />
               <span className="text-[12px] text-gray-400">{handle.length}/30</span>
             </div>
+            {handle.trim().length > 0 && handle.trim().length < 2 && (
+              <p className="text-[12px] text-red-500 font-medium mt-1.5 ml-1">Username must be at least 2 characters</p>
+            )}
+            {handle.trim().length === 0 && (
+              <p className="text-[12px] text-red-500 font-medium mt-1.5 ml-1">Username cannot be empty</p>
+            )}
           </div>
 
           {/* Bio */}

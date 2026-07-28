@@ -22,6 +22,12 @@ export function useFeed() {
   // Ref so callbacks always see the latest posts without re-creating
   const postsRef = useRef<Post[]>(posts);
   useEffect(() => { postsRef.current = posts; }, [posts]);
+  // Ref that always holds the current user — prevents stale closures in
+  // async callbacks that were dispatched before an account switch completed.
+  // Callbacks read currentUserRef.current at execution time, not at the time
+  // they were created, so they always act on behalf of the right account.
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
   // Guard against rapid double-taps: track which posts have a reaction in-flight
   const pendingReactions = useRef<Set<string>>(new Set());
 
@@ -76,7 +82,10 @@ export function useFeed() {
    * Same emoji = toggle off; different emoji = switch; new = add.
    */
   const toggleReaction = useCallback(async (postId: string, emoji: string) => {
-    if (!currentUser) return;
+    // Read from ref so that if the account switched while a reaction was
+    // being submitted, we abort rather than writing under the wrong UID.
+    const user = currentUserRef.current;
+    if (!user) return;
     if (pendingReactions.current.has(postId)) return; // debounce rapid taps
     const post = postsRef.current.find(p => p.id === postId);
     if (!post) return;
@@ -94,13 +103,13 @@ export function useFeed() {
       }
       // Remove from previous emoji
       if (prevEmoji && newReactions[prevEmoji]) {
-        newReactions[prevEmoji] = newReactions[prevEmoji].filter(id => id !== currentUser.id);
+        newReactions[prevEmoji] = newReactions[prevEmoji].filter(id => id !== user.id);
       }
       // Add to new emoji (unless toggling off)
       if (!toggledOff) {
         newReactions[emoji] = [
-          ...(newReactions[emoji] ?? []).filter(id => id !== currentUser.id),
-          currentUser.id,
+          ...(newReactions[emoji] ?? []).filter(id => id !== user.id),
+          user.id,
         ];
       }
       const newTotal = Object.values(newReactions).reduce((n, arr) => n + arr.length, 0);
@@ -116,7 +125,7 @@ export function useFeed() {
     if (isFirebaseConfigured) {
       pendingReactions.current.add(postId);
       try {
-        await fsTogglePostReaction(postId, currentUser.id, emoji, currentUser);
+        await fsTogglePostReaction(postId, user.id, emoji, user);
       } catch {
         // Revert on error
         setPosts(prev => prev.map(p =>
@@ -128,7 +137,7 @@ export function useFeed() {
         pendingReactions.current.delete(postId);
       }
     }
-  }, [currentUser]);
+  }, []);
 
   // Legacy alias — toggling 🌊 Vibe is equivalent to the old "like"
   const toggleLike = useCallback(async (_postId: string, _currentlyLiked: boolean) => {
@@ -136,24 +145,26 @@ export function useFeed() {
   }, [toggleReaction]);
 
   const toggleSave = useCallback(async (postId: string, currentlySaved: boolean) => {
-    if (!currentUser) return;
+    const user = currentUserRef.current;
+    if (!user) return;
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, saved: !currentlySaved } : p));
     if (isFirebaseConfigured) {
       try {
-        await togglePostSave(postId, currentUser.id, currentlySaved);
+        await togglePostSave(postId, user.id, currentlySaved);
       } catch {
         setPosts(prev => prev.map(p => p.id === postId ? { ...p, saved: currentlySaved } : p));
       }
     }
-  }, [currentUser]);
+  }, []);
 
   const deletePost = useCallback(async (postId: string) => {
-    if (!currentUser) return;
+    const user = currentUserRef.current;
+    if (!user) return;
     setPosts(prev => prev.filter(p => p.id !== postId));
     if (isFirebaseConfigured) {
-      fsDeletePost(postId, currentUser.id).catch(console.error);
+      fsDeletePost(postId, user.id).catch(console.error);
     }
-  }, [currentUser]);
+  }, []);
 
   const updatePost = useCallback(async (postId: string, content: string, imageUrl?: string | null) => {
     setPosts(prev => prev.map(p =>
