@@ -12,14 +12,14 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
+import { normalizeDate } from '@/lib/timestamp';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtTime(raw: unknown): string {
-  // Conversation timestamps arrive as Firestore Timestamps at runtime
-  // even though the type says Date — normalize before any date-fns calls.
-  const d: Date = (raw as { toDate?: () => Date })?.toDate?.()
-    ?? (raw instanceof Date ? raw : new Date(0));
+  // Use normalizeDate so Firestore Timestamps, plain Dates, and epoch numbers
+  // all resolve safely — avoids .getTime() on an unresolved server timestamp.
+  const d = normalizeDate(raw) ?? new Date(0);
   if (isToday(d))     return format(d, 'h:mm a');
   if (isYesterday(d)) return 'Yesterday';
   const days = Math.floor((Date.now() - d.getTime()) / 86400000);

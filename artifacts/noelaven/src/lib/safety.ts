@@ -6,9 +6,10 @@
 import {
   collection, doc, setDoc, deleteDoc, getDocs, addDoc,
   onSnapshot, serverTimestamp, query, where, orderBy, limit,
-  Timestamp, updateDoc, getDoc,
+  updateDoc, getDoc,
   type Unsubscribe,
 } from 'firebase/firestore';
+import { safeGetTime } from '@/lib/timestamp';
 import { db, isFirebaseConfigured } from './firebase';
 import { FOUNDER_UID } from './founder';
 import type {
@@ -276,8 +277,14 @@ export async function submitReport(input: ReportInput): Promise<void> {
 function firestoreToReport(id: string, d: Record<string, unknown>): Report {
   function toDateOrNull(v: unknown): Date | null {
     if (!v) return null;
-    if (v instanceof Timestamp) return v.toDate();
-    if (typeof v === 'string') return new Date(v);
+    // Duck-type instead of instanceof Timestamp — safe across split bundles.
+    if (typeof v === 'object' && v !== null && typeof (v as { toDate?: unknown }).toDate === 'function') {
+      try { return (v as { toDate: () => Date }).toDate(); } catch { return null; }
+    }
+    if (typeof v === 'string' || typeof v === 'number') {
+      const d = new Date(v as string | number);
+      return isNaN(d.getTime()) ? null : d;
+    }
     return null;
   }
   return {
@@ -310,11 +317,7 @@ export async function getUserReports(userId: string): Promise<Report[]> {
       const snap = await getDocs(q);
       return snap.docs
         .map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>))
-        .sort((a, b) => {
-          const bMs = (b.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
-          const aMs = (a.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
-          return bMs - aMs;
-        });
+        .sort((a, b) => safeGetTime(b.createdAt) - safeGetTime(a.createdAt));
     } catch (err: unknown) {
       rethrowIfIndexError(err);
       throw err;
@@ -357,11 +360,7 @@ export function subscribeReports(
   return onSnapshot(q, snap => {
     const sorted = snap.docs
       .map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>))
-      .sort((a, b) => {
-        const bMs = (b.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
-        const aMs = (a.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
-        return bMs - aMs;
-      });
+      .sort((a, b) => safeGetTime(b.createdAt) - safeGetTime(a.createdAt));
     onData(sorted);
   }, err => {
     console.error('[subscribeReports]', err.code, err.message);
@@ -382,11 +381,7 @@ export async function getPendingReports(statusFilter: ReportStatus | 'all' = 'pe
       const snap = await getDocs(q);
       return snap.docs
         .map(d => firestoreToReport(d.id, d.data() as Record<string, unknown>))
-        .sort((a, b) => {
-          const bMs = (b.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (b.createdAt instanceof Date ? b.createdAt.getTime() : 0);
-          const aMs = (a.createdAt as unknown as { toDate?: () => Date })?.toDate?.()?.getTime() ?? (a.createdAt instanceof Date ? a.createdAt.getTime() : 0);
-          return bMs - aMs;
-        });
+        .sort((a, b) => safeGetTime(b.createdAt) - safeGetTime(a.createdAt));
     } catch (err: unknown) {
       rethrowIfIndexError(err);
       throw err;

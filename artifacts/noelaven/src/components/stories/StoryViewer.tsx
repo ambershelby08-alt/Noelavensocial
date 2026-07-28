@@ -19,6 +19,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { filterCSS } from '@/components/stories/editor/filters';
 import type { StoryGroup, Story } from '@/lib/stories';
 import type { EditorLayer, TextLayer, CropData } from '@/components/stories/editor/types';
+import { formatRelativeTime } from '@/lib/timestamp';
 
 const PHOTO_DURATION_MS = 5000;
 
@@ -79,18 +80,11 @@ function cropStyle(cropData: CropData | null): React.CSSProperties {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function relativeTime(date: unknown): string {
-  // Use duck-typed normalisation — story timestamps may arrive as Firestore
-  // Timestamp objects even though the type annotation says Date.
-  const ms = (date as { toDate?: () => Date })?.toDate
-    ? ((date as { toDate: () => Date }).toDate()).getTime()
-    : date instanceof Date ? date.getTime() : 0;
-  const diff = Date.now() - ms;
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1)  return 'just now';
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
+  // Delegate to the shared timestamp utility — handles Firestore Timestamps,
+  // plain Dates, ISO strings, and epoch numbers safely via duck-typing.
+  const result = formatRelativeTime(date);
+  // formatRelativeTime returns e.g. "3m ago" — strip " ago" for compact display.
+  return result.replace(' ago', '');
 }
 
 async function saveMediaToDevice(story: Story) {

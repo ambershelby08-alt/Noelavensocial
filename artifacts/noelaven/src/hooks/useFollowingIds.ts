@@ -26,7 +26,10 @@ export function useFollowingIds(userId: string | undefined): Set<string> {
     const unsub = onSnapshot(
       ref,
       (snap) => setIds(new Set(snap.docs.map(d => d.id))),
-      () => setIds(new Set()) // non-critical; fail silently
+      (err) => {
+        console.error('[useFollowingIds]', err.code, err.message);
+        setIds(new Set());
+      }
     );
 
     return unsub;

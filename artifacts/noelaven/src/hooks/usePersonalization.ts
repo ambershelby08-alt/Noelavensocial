@@ -3,6 +3,7 @@
  */
 import { useState } from 'react';
 import type { Post } from '@/lib/mockData';
+import { safeGetTime } from '@/lib/timestamp';
 
 export interface PersonalizationSignals {
   interests: string[];
@@ -80,11 +81,8 @@ export function usePersonalization() {
       .map(post => {
         let score = 0;
         // Recency: lose 1 pt per 8 h, floor at 0
-        // post.createdAt is typed as Date but may arrive as a Firestore Timestamp.
-        // Use duck-typed extraction so the hook never crashes on .getTime().
-        const rawMs = (post.createdAt as unknown as { toDate?: () => Date })?.toDate
-          ? (post.createdAt as unknown as { toDate: () => Date }).toDate().getTime()
-          : post.createdAt instanceof Date ? post.createdAt.getTime() : Date.now();
+        // safeGetTime handles Firestore Timestamps, plain Dates, and numbers safely.
+        const rawMs = safeGetTime(post.createdAt) || Date.now();
         const ageH = (Date.now() - rawMs) / 3_600_000;
         score += Math.max(0, 10 - ageH / 8);
         // Engagement (0–8)

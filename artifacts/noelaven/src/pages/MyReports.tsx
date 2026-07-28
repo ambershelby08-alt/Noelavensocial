@@ -13,18 +13,20 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserReports, IndexBuildingError } from '@/lib/safety';
 import type { Report, ReportStatus, ReportType, ReportReason } from '@/lib/mockData';
+import { normalizeDate, safeGetTime } from '@/lib/timestamp';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function relDate(raw: unknown): string {
-  const d: Date = (raw as { toDate?: () => Date })?.toDate?.()
-    ?? (raw instanceof Date ? raw : new Date(0));
-  const diff = Date.now() - d.getTime();
+  const ms = safeGetTime(raw);
+  if (ms === 0) return '';
+  const diff = Date.now() - ms;
   if (diff < 60000) return 'Just now';
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const d = normalizeDate(raw);
+  return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
 }
 
 const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {

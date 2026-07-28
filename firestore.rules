@@ -226,6 +226,15 @@ service cloud.firestore {
       allow write: if isAuthenticated() && request.auth.uid == followerId;
     }
 
+    // ── User warnings (issued by moderators) ─────────────────────────────────
+    match /userWarnings/{warningId} {
+      // Warned user can read their own warnings; moderators see all
+      allow read:   if isAuthenticated()
+          && (resource.data.userId == request.auth.uid || isModerator());
+      // Only moderators may issue, update, or delete warnings
+      allow create, update, delete: if isModerator();
+    }
+
     // ── Calls (WebRTC signaling) ───────────────────────────────────────────────
     match /calls/{callId} {
       allow read: if isAuthenticated()
@@ -242,14 +251,28 @@ service cloud.firestore {
           && (resource.data.callerId == request.auth.uid
               || resource.data.calleeId == request.auth.uid);
 
-      // ICE candidates subcollections — each side writes their own candidates
+      // ICE candidates subcollections — each side writes only their own candidates
       match /callerCandidates/{candidateId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
+        allow read: if isAuthenticated()
+            && (resource.data == null
+                || get(/databases/$(database)/documents/calls/$(callId)).data.callerId == request.auth.uid
+                || get(/databases/$(database)/documents/calls/$(callId)).data.calleeId == request.auth.uid);
+        // Only the caller may add their own ICE candidates
+        allow create: if isAuthenticated()
+            && get(/databases/$(database)/documents/calls/$(callId)).data.callerId == request.auth.uid;
+        allow delete: if isAuthenticated()
+            && get(/databases/$(database)/documents/calls/$(callId)).data.callerId == request.auth.uid;
       }
       match /calleeCandidates/{candidateId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
+        allow read: if isAuthenticated()
+            && (resource.data == null
+                || get(/databases/$(database)/documents/calls/$(callId)).data.callerId == request.auth.uid
+                || get(/databases/$(database)/documents/calls/$(callId)).data.calleeId == request.auth.uid);
+        // Only the callee may add their own ICE candidates
+        allow create: if isAuthenticated()
+            && get(/databases/$(database)/documents/calls/$(callId)).data.calleeId == request.auth.uid;
+        allow delete: if isAuthenticated()
+            && get(/databases/$(database)/documents/calls/$(callId)).data.calleeId == request.auth.uid;
       }
     }
 
