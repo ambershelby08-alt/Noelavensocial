@@ -53,14 +53,18 @@ export async function sendPushNotification(payload: PushPayload): Promise<void> 
     }
 
     // 2. Respect per-type notification preferences
-    const prefSnap = await adminDb
-      .doc(`users/${recipientId}/preferences/notifications`)
+    //    Prefs are stored on the user doc under notificationPrefs (client key names).
+    const recipientSnap = await adminDb
+      .doc(`users/${recipientId}`)
       .get()
       .catch(() => null);
-    const prefs = (prefSnap?.data() ?? {}) as Record<string, unknown>;
+    const userPrefs = (recipientSnap?.data()?.notificationPrefs ?? {}) as Record<string, unknown>;
 
     const prefKey = typeToPrefKey(type);
-    if (prefKey && prefs[prefKey] === false) return;
+    if (prefKey && userPrefs[prefKey] === false) {
+      logger.info({ recipientId, type, prefKey }, '[FCM] suppressed by recipient pref');
+      return;
+    }
 
     // 3. Fetch enabled device tokens
     const devicesSnap = await adminDb
@@ -69,13 +73,19 @@ export async function sendPushNotification(payload: PushPayload): Promise<void> 
       .get()
       .catch(() => null);
 
-    if (!devicesSnap || devicesSnap.empty) return;
+    if (!devicesSnap || devicesSnap.empty) {
+      logger.info({ recipientId, type }, '[FCM] no enabled device tokens — skipping push');
+      return;
+    }
 
     const tokens: string[] = devicesSnap.docs
       .map(d => (d.data() as { token?: string }).token ?? '')
       .filter(Boolean);
 
-    if (!tokens.length) return;
+    if (!tokens.length) {
+      logger.info({ recipientId, type }, '[FCM] device docs exist but tokens are empty strings');
+      return;
+    }
 
     // 4. Send
     const deepLink = buildDeepLink(type, data);
@@ -127,19 +137,26 @@ export async function sendPushNotification(payload: PushPayload): Promise<void> 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Maps notification type → user preference key */
+/**
+ * Maps notification type → the key used in users/{uid}.notificationPrefs.
+ * These MUST stay in sync with notifTypeToPrefKey() in noelaven/src/lib/firestore.ts.
+ */
 function typeToPrefKey(type: string): string | null {
   const map: Record<string, string> = {
-    message:      'messages',
-    reaction:     'reactions',
-    like:         'reactions',
-    comment:      'comments',
-    reply:        'comments',
-    follow:       'follows',
-    mention:      'mentions',
-    story_reply:  'comments',
-    spark_reaction: 'reactions',
-    story_reaction: 'reactions',
+    like:              'likes',       // was 'reactions' — now matches client
+    reaction:          'reactions',
+    comment:           'comments',
+    reply:             'replies',     // was 'comments' — now matches client
+    like_comment:      'replies',
+    follow:            'followers',   // was 'follows' — now matches client
+    message:           'messages',
+    mention:           'mentions',
+    story_reaction:    'storyReplies',
+    story_reply:       'storyReplies',
+    story_view:        'storyViews',
+    spark_reaction:    'reactions',
+    daily_spark:       'dailySpark',
+    community_invite:  'communityInvites',
   };
   return map[type] ?? null;
 }

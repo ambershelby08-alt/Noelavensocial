@@ -20,8 +20,10 @@ import { app, db, isFirebaseConfigured } from './firebase';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEVICE_ID_KEY   = 'nlv_device_id';
-const TOKEN_CACHE_KEY = 'nlv_fcm_token';
 const VAPID_KEY       = import.meta.env.VITE_FCM_VAPID_KEY as string | undefined;
+
+/** UID-scoped cache key — prevents multi-account token-skip bug */
+function tokenCacheKey(uid: string) { return `nlv_fcm_token_${uid}`; }
 
 // ─── Stable device ID ─────────────────────────────────────────────────────────
 
@@ -52,11 +54,11 @@ export async function registerFCMToken(uid: string): Promise<string | null> {
     const token = await getToken(messaging, { vapidKey: VAPID_KEY });
     if (!token) return null;
 
-    // Skip if unchanged since last save
-    const cached = localStorage.getItem(TOKEN_CACHE_KEY);
+    // Skip if unchanged since last save (cache is UID-scoped to handle multi-account)
+    const cached = localStorage.getItem(tokenCacheKey(uid));
     if (cached !== token) {
       await saveTokenToFirestore(uid, token);
-      localStorage.setItem(TOKEN_CACHE_KEY, token);
+      localStorage.setItem(tokenCacheKey(uid), token);
     }
     return token;
   } catch (err: unknown) {
@@ -99,7 +101,7 @@ export async function unregisterFCMToken(uid: string): Promise<void> {
     await deleteToken(messaging);
   } catch { /* ignore — token may already be expired */ }
   await deleteDoc(doc(db, 'users', uid, 'devices', deviceId)).catch(console.error);
-  localStorage.removeItem(TOKEN_CACHE_KEY);
+  localStorage.removeItem(tokenCacheKey(uid));
 }
 
 // ─── Service worker registration ──────────────────────────────────────────────

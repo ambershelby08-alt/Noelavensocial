@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   User, Bell, Lock, Shield, AlertTriangle, LogOut,
   ChevronRight, Paintbrush, FileText, HelpCircle, Check, Camera,
   X, ChevronDown, Sun, Moon, Monitor, Eye, EyeOff, Send,
   UserPlus, UserCheck, Settings2, ArrowLeftRight, Trash2,
-  Crown, Download, Mail,
+  Crown, Download, Mail, BellOff,
 } from 'lucide-react';
 import { FounderBadge } from '@/components/ui/FounderBadge';
 import { auth } from '@/lib/firebase';
@@ -16,6 +16,7 @@ import { removeSavedAccount, getSavedAccounts } from '@/lib/accountStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { isFirebaseConfigured } from '@/lib/firebase';
+import { registerFCMToken, registerMessagingServiceWorker } from '@/lib/fcmToken';
 import { cn } from '@/lib/utils';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -149,6 +150,38 @@ export default function Settings() {
 
   // Notifications
   const [notifPrefs, setNotifPrefs] = useState(loadNotifPrefs);
+
+  // Push notification permission state (re-check on mount and after enabling)
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+  const [enablingPush, setEnablingPush] = useState(false);
+
+  useEffect(() => {
+    if (typeof Notification !== 'undefined') {
+      setPushPermission(Notification.permission);
+    }
+  }, [activePanel]);
+
+  async function handleEnablePush() {
+    if (!currentUser || !isFirebaseConfigured) return;
+    setEnablingPush(true);
+    try {
+      await registerMessagingServiceWorker();
+      const permission = await Notification.requestPermission();
+      setPushPermission(permission);
+      if (permission === 'granted') {
+        // Clear the "dismissed" key so the prompt won't fight with this
+        localStorage.removeItem('nlv_notif_prompt_dismissed');
+        await registerFCMToken(currentUser.id);
+        showToast('Push notifications enabled!', 'success');
+      }
+    } catch (err) {
+      console.error('[FCM] enable push failed:', err);
+    } finally {
+      setEnablingPush(false);
+    }
+  }
 
   // Sign out confirmation
   const [signOutConfirmOpen, setSignOutConfirmOpen] = useState(false);
@@ -821,6 +854,35 @@ export default function Settings() {
                         {/* ── Notifications ── */}
                         {item.key === 'notifications' && (
                           <div className="pt-1 space-y-3">
+                            {/* Push permission banner — shown when permission not yet granted */}
+                            {isFirebaseConfigured && pushPermission !== 'granted' && (
+                              <div className="rounded-2xl bg-purple-50 border border-purple-100 p-3.5 flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-[10px] bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                  <BellOff size={17} className="text-purple-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[13px] font-semibold text-gray-900">
+                                    {pushPermission === 'denied'
+                                      ? 'Notifications blocked by browser'
+                                      : 'Push notifications off'}
+                                  </p>
+                                  <p className="text-[11.5px] text-gray-500 leading-snug">
+                                    {pushPermission === 'denied'
+                                      ? 'Enable them in your browser/OS settings, then reload.'
+                                      : "You won't receive alerts when the app is closed."}
+                                  </p>
+                                </div>
+                                {pushPermission !== 'denied' && (
+                                  <button
+                                    onClick={handleEnablePush}
+                                    disabled={enablingPush}
+                                    className="flex-shrink-0 px-3 py-1.5 rounded-xl text-[12.5px] font-bold text-white bg-purple-500 hover:bg-purple-600 transition-colors disabled:opacity-60"
+                                  >
+                                    {enablingPush ? '…' : 'Enable'}
+                                  </button>
+                                )}
+                              </div>
+                            )}
                             {([
                               { key: 'reactions',       label: 'Reactions',           desc: 'When someone reacts to your posts or comments' },
                               { key: 'comments',        label: 'Comments & replies',  desc: 'When someone comments or replies to you' },
