@@ -912,8 +912,14 @@ export default function Profile() {
       if (wasFollowing) {
         if (isFirebaseConfigured) await fsUnfollow(currentUser.id, user.id);
       } else {
-        if (isFirebaseConfigured) await fsFollow(currentUser.id, user.id);
-        notifyFollow(user.id, currentUser).catch(console.error);
+        if (isFirebaseConfigured) {
+          // Pass currentUser as actor so fsFollow's internal writeNotification fires.
+          // No separate notifyFollow call needed — that would create a duplicate.
+          await fsFollow(currentUser.id, user.id, currentUser as unknown as import('@/lib/mockData').User);
+        } else {
+          // Demo mode: fsFollow is a no-op, so write the demo localStorage notification.
+          notifyFollow(user.id, currentUser).catch(console.error);
+        }
       }
     } catch {
       // Revert optimistic update on failure — the subscription will also

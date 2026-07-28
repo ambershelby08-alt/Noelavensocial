@@ -184,10 +184,8 @@ function FollowButton({
         setFollowing(false);
       } else {
         if (isFirebaseConfigured) {
-          await fsFollow(currentUserId, userId);
-          if (currentUser) {
-            fsWriteNotification(userId, 'follow', currentUser, { message: `${currentUser.displayName} started following you` }).catch(() => {});
-          }
+          // fsFollow already calls writeNotification internally when actor is provided.
+          await fsFollow(currentUserId, userId, currentUser ?? undefined);
         }
         setFollowing(true);
       }

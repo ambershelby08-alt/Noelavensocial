@@ -28,7 +28,6 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { subscribeUnreadNotificationCount } from '@/lib/firestore';
 import { demoGetUserNotifs } from '@/lib/notifications';
-import { mockNotifications } from '@/lib/mockData';
 
 // ─── Already-Answered Sheet ───────────────────────────────────────────────────
 // Shown when the user taps the Spark button after already answering today.
@@ -100,11 +99,11 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
   const [showAnsweredSheet, setShowAnsweredSheet] = useState(false);
 
   const navItems = [
-    { icon: Home,          path: '/',            label: 'Home'     },
-    { icon: Compass,       path: '/discover',    label: 'Discover' },
-    { icon: Sparkles,      path: '/?spark=1',    label: 'Spark',   special: true },
-    { icon: Users,         path: '/communities', label: 'Circles'  },
-    { icon: MessageCircle, path: '/messages',    label: 'Chats'    },
+    { icon: Home,          path: '/',               label: 'Home'   },
+    { icon: Compass,       path: '/discover',        label: 'Discover' },
+    { icon: Sparkles,      path: '/?spark=1',        label: 'Spark', special: true },
+    { icon: Bell,          path: '/notifications',   label: 'Alerts' },
+    { icon: MessageCircle, path: '/messages',        label: 'Chats'  },
   ];
 
   return (
@@ -156,8 +155,8 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
-                {/* Unread notification badge */}
-                {item.path === '/' && notifUnreadCount > 0 && (
+                {/* Unread notification badge — sits on the Bell (Alerts) icon */}
+                {item.path === '/notifications' && notifUnreadCount > 0 && (
                   <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full bg-purple-500 ring-[1.5px] ring-white flex items-center justify-center text-[8px] font-black text-white px-1">
                     {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
                   </span>
@@ -399,10 +398,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isFirebaseConfigured) {
       return subscribeUnreadNotificationCount(currentUser.id, setNotifUnreadCount);
     }
-    // Demo mode: count from demo + mock data
+    // Demo mode: only count notifications this user actually triggered via
+    // interactions (stored in localStorage). Static mockNotifications are
+    // pre-seeded demo data that are always unread — including them inflates
+    // the badge with fake counts the user never actually received.
     const demoUnread = demoGetUserNotifs(currentUser.id).filter((n: { read: boolean }) => !n.read).length;
-    const mockUnread = mockNotifications.filter(n => !n.read).length;
-    setNotifUnreadCount(demoUnread + mockUnread);
+    setNotifUnreadCount(demoUnread);
     return undefined;
   }, [currentUser?.id]);
   // FCM push notifications — token registration + foreground suppression
