@@ -103,7 +103,7 @@ function Step1({ displayName, isGoogleUser, handle, setHandle, handleError, onNe
           )}
           <div
             className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-md"
-            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', width: 32, height: 32, borderRadius: '50%', border: '3px solid white' }}
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', width: 32, height: 32, borderRadius: '50%', border: '3px solid white' }}
           >
             {avatarUrl ? <Check size={14} className="text-white" /> : <Camera size={14} className="text-white" />}
           </div>
@@ -156,7 +156,7 @@ function Step1({ displayName, isGoogleUser, handle, setHandle, handleError, onNe
         whileTap={{ scale: 0.98 }}
         onClick={onNext}
         className="w-full text-white font-bold py-4 rounded-2xl text-[15px] flex items-center justify-center gap-2"
-        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
+        style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 20px rgba(124,58,237,0.45)' }}
       >
         Continue
         <ChevronRight size={18} strokeWidth={2.5} />
@@ -210,7 +210,7 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
           onChange={e => setBio(e.target.value)}
           maxLength={160}
           rows={3}
-          className="w-full bg-[#111] backdrop-blur-sm border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14.5px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
+          className="w-full bg-[#111] backdrop-blur-sm border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14.5px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all"
         />
         <p className="text-[12px] text-[rgba(255,255,255,0.45)] mt-1 ml-1 text-right">{bio.length}/160</p>
       </div>
@@ -238,7 +238,7 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
                     : 'bg-[#111] text-[#BDBDBD] border-[#2a2a2a] hover:border-[rgba(245,197,66,0.25)]'
                 )}
                 style={selected ? {
-                  background: 'linear-gradient(135deg, #C9982A, #F5C542)',
+                  background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)',
                   boxShadow: '0 3px 10px rgba(245,197,66,0.30)',
                 } : {}}
               >
@@ -268,7 +268,7 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
             !canSubmit && 'opacity-50'
           )}
           style={{
-            background: 'linear-gradient(135deg, #C9982A, #F5C542)',
+            background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)',
             boxShadow: canSubmit ? '0 4px 18px rgba(245,197,66,0.35)' : 'none',
           }}
         >

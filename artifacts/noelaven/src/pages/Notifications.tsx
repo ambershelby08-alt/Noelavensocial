@@ -121,7 +121,7 @@ function AvatarStack({ notif }: { notif: GroupedNotification }) {
       {/* Overflow count bubble */}
       {groupCount > 2 && (
         <div
-          className="absolute right-0 bottom-0 min-w-[20px] h-5 rounded-full bg-[#F5C542] ring-2 ring-white flex items-center justify-center text-[9px] font-black text-white px-1"
+          className="absolute right-0 bottom-0 min-w-[20px] h-5 rounded-full bg-[#7C3AED] ring-2 ring-black flex items-center justify-center text-[9px] font-black text-white px-1"
           style={{ transform: 'translate(4px, 4px)' }}
         >
           +{Math.min(groupCount - 2, 99)}
@@ -195,7 +195,7 @@ function NotifItem({
         <motion.span
           whileTap={{ scale: 0.92 }}
           className="flex-shrink-0 self-center inline-flex items-center gap-1 px-3 py-1.5 text-white rounded-full text-[11.5px] font-black shadow-md"
-          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+          style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
         >
           <Sparkles size={11} />
           Respond
@@ -315,7 +315,7 @@ export default function Notifications() {
                 ? 'text-white shadow-sm'
                 : 'bg-[#1a1a1a] text-[#BDBDBD] hover:bg-[#222]'
             )}
-            style={filter === f ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+            style={filter === f ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
           >
             {f}
           </button>

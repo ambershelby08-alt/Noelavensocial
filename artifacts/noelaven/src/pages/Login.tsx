@@ -68,12 +68,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col" style={{ background: '#000' }}>
-      {/* Subtle gold glow top-right */}
+      {/* Brand glow — rainbow top-right */}
       <div className="absolute top-[-10%] right-[-15%] w-[60%] h-[60%] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(245,197,66,0.08) 0%, transparent 70%)' }} />
-      {/* Subtle rainbow glow bottom-left */}
+        style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.07) 0%, rgba(124,58,237,0.05) 50%, transparent 70%)' }} />
+      {/* Brand glow — bottom-left */}
       <div className="absolute bottom-[-15%] left-[-15%] w-[60%] h-[60%] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.06) 0%, rgba(236,72,153,0.04) 40%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.07) 0%, rgba(6,182,212,0.04) 50%, transparent 70%)' }} />
 
       <div className="relative z-10 flex-1 flex flex-col px-6 pt-16 pb-8 max-w-sm mx-auto w-full">
         <motion.div
@@ -86,7 +86,7 @@ export default function Login() {
             {addingAccount ? 'Add account' : 'Welcome back'}
           </h1>
           <p className="text-[13px] font-semibold tracking-widest uppercase mt-1.5"
-            style={{ color: '#F5C542', letterSpacing: '0.12em' }}>
+            style={{ color: 'rgba(255,255,255,0.5)', letterSpacing: '0.12em' }}>
             {addingAccount ? 'Sign in to another account' : 'Connect. Create. Belong.'}
           </p>
         </motion.div>
@@ -123,7 +123,7 @@ export default function Login() {
 
           <div className="flex justify-end">
             <Link href="/forgot-password" className="text-[13px] font-semibold transition-colors"
-              style={{ color: '#F5C542' }}>
+              style={{ color: 'rgba(255,255,255,0.55)' }}>
               Forgot password?
             </Link>
           </div>
@@ -132,11 +132,11 @@ export default function Login() {
             type="submit"
             disabled={isLoading}
             whileTap={{ scale: 0.98 }}
-            className="w-full font-bold py-4 rounded-2xl text-[15px] transition-all disabled:opacity-70 flex items-center justify-center mt-2 text-black"
-            style={{ background: '#F5C542', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
+            className="w-full font-bold py-4 rounded-2xl text-[15px] transition-all disabled:opacity-70 flex items-center justify-center mt-2 text-white"
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 24px rgba(124,58,237,0.45)' }}
           >
             {isLoading
-              ? <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+              ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
               : 'Sign In'}
           </motion.button>
         </motion.form>
@@ -149,7 +149,7 @@ export default function Login() {
           style={{ color: '#BDBDBD' }}
         >
           New to Noelaven?{' '}
-          <Link href="/signup" className="font-bold transition-colors" style={{ color: '#F5C542' }}>
+          <Link href="/signup" className="font-bold transition-colors gradient-text">
             Create an account →
           </Link>
         </motion.p>

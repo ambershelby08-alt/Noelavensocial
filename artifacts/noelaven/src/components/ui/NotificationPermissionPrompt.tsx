@@ -91,7 +91,7 @@ export function NotificationPermissionPrompt() {
             {/* Icon */}
             <div
               className="w-16 h-16 rounded-[22px] flex items-center justify-center mb-4 mx-auto"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
             >
               <Bell size={28} className="text-white" />
             </div>
@@ -107,9 +107,9 @@ export function NotificationPermissionPrompt() {
             {/* Benefits */}
             <div className="space-y-3 mb-7">
               {[
-                { icon: MessageCircle, color: '#F5C542', label: 'New messages and replies' },
-                { icon: Heart,         color: '#F5C542', label: 'Reactions to your posts' },
-                { icon: UserPlus,      color: '#F5C542', label: 'New followers and mentions' },
+                { icon: MessageCircle, color: '#EC4899', label: 'New messages and replies' },
+                { icon: Heart,         color: '#7C3AED', label: 'Reactions to your posts' },
+                { icon: UserPlus,      color: '#2563EB', label: 'New followers and mentions' },
               ].map(({ icon: Icon, color, label }) => (
                 <div key={label} className="flex items-center gap-3">
                   <div
@@ -128,7 +128,7 @@ export function NotificationPermissionPrompt() {
               onClick={enable}
               disabled={loading}
               className="w-full py-4 rounded-2xl font-black text-[15px] text-white mb-3 flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 20px rgba(124,58,237,0.45)' }}
             >
               {loading
                 ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

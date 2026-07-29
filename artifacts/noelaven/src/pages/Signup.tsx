@@ -69,7 +69,7 @@ export default function Signup() {
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col" style={{ background: '#000' }}>
       <div className="absolute top-[-10%] right-[-15%] w-[60%] h-[60%] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(245,197,66,0.07) 0%, transparent 70%)' }} />
+        style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.07) 0%, rgba(124,58,237,0.05) 50%, transparent 70%)' }} />
       <div className="absolute bottom-[-15%] left-[-15%] w-[60%] h-[60%] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%)' }} />
 
@@ -84,7 +84,7 @@ export default function Signup() {
           <NoelavenLogo variant="mark" size="lg" className="mb-3" />
           <h1 className="text-[26px] font-black text-white tracking-tight">Join Noelaven</h1>
           <p className="text-[13px] font-semibold tracking-widest uppercase mt-1"
-            style={{ color: '#F5C542', letterSpacing: '0.12em' }}>
+            style={{ color: 'rgba(255,255,255,0.5)', letterSpacing: '0.12em' }}>
             Be real. Be seen. Belong.
           </p>
         </motion.div>
@@ -130,30 +130,30 @@ export default function Signup() {
           <div className="flex items-start gap-3 pt-1">
             <button type="button" onClick={() => setAgreed(v => !v)}
               className="mt-0.5 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all"
-              style={{ background: agreed ? '#F5C542' : '#111', border: `2px solid ${agreed ? '#F5C542' : '#333'}` }}>
+              style={{ background: agreed ? 'linear-gradient(135deg,#EC4899,#7C3AED)' : '#111', border: `2px solid ${agreed ? '#7C3AED' : '#333'}` }}>
               {agreed && <span className="text-black text-[11px] font-black">✓</span>}
             </button>
             <p className="text-[12.5px] leading-relaxed" style={{ color: '#BDBDBD' }}>
               I agree to Noelaven's{' '}
-              <Link href="/privacy" className="font-semibold" style={{ color: '#F5C542' }}>Privacy Policy</Link>
+              <Link href="/privacy" className="font-semibold gradient-text">Privacy Policy</Link>
               {' '}and{' '}
-              <a href="#" className="font-semibold" style={{ color: '#F5C542' }}>Terms of Service</a>
+              <a href="#" className="font-semibold gradient-text">Terms of Service</a>
             </p>
           </div>
           {errors.terms && <p className="text-[12px] font-medium" style={{ color: '#ef4444' }}>{errors.terms}</p>}
 
           <motion.button type="submit" disabled={isLoading || submitting} whileTap={{ scale: 0.98 }}
-            className="w-full font-bold py-4 rounded-2xl text-[15px] transition-all disabled:opacity-70 flex items-center justify-center mt-2 text-black"
-            style={{ background: '#F5C542', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}>
+            className="w-full font-bold py-4 rounded-2xl text-[15px] transition-all disabled:opacity-70 flex items-center justify-center mt-2 text-white"
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 24px rgba(124,58,237,0.45)' }}>
             {(isLoading || submitting)
-              ? <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+              ? <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
               : 'Create Account'}
           </motion.button>
         </motion.form>
 
         <p className="text-center text-[14px] mt-6" style={{ color: '#BDBDBD' }}>
           Already have an account?{' '}
-          <Link href="/login" className="font-bold" style={{ color: '#F5C542' }}>Sign in →</Link>
+          <Link href="/login" className="font-bold gradient-text">Sign in →</Link>
         </p>
       </div>
     </div>

@@ -244,7 +244,7 @@ export default function SafetySettings() {
             <div
               className={cn(
                 'w-11 h-6 rounded-full relative transition-colors duration-200 flex-shrink-0',
-                settings.allowFollows ? 'bg-[#F5C542]' : 'bg-[#222]'
+                settings.allowFollows ? 'bg-[#7C3AED]' : 'bg-[#222]'
               )}
             >
               <motion.div

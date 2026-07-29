@@ -80,7 +80,7 @@ function QuickComposer({
             onFocus={() => setFocused(true)}
             placeholder={`Share something with ${communityName}…`}
             rows={focused ? 3 : 1}
-            className="w-full bg-[#111] rounded-xl px-3.5 py-2.5 text-[14px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed transition-all focus:bg-[#111] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)]"
+            className="w-full bg-[#111] rounded-xl px-3.5 py-2.5 text-[14px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed transition-all focus:bg-[#111] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)]"
           />
           <AnimatePresence>
             {focused && (
@@ -110,7 +110,7 @@ function QuickComposer({
                     onClick={handlePost}
                     disabled={!text.trim() || posting}
                     className="px-5 py-1.5 rounded-full text-[13px] font-black text-white disabled:opacity-40 flex items-center gap-1.5"
-                    style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 2px 10px rgba(245,197,66,0.3)' }}
+                    style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 2px 10px rgba(124,58,237,0.35)' }}
                   >
                     {posting
                       ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -192,7 +192,7 @@ function MemberCard({ user, currentUserId }: { user: User; currentUserId?: strin
             'flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[12.5px] font-bold flex-shrink-0 transition-all disabled:opacity-60',
             following ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white shadow-sm'
           )}
-          style={!following ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 2px 10px rgba(107,115,255,0.25)' } : {}}
+          style={!following ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 2px 10px rgba(107,115,255,0.25)' } : {}}
         >
           {loading
             ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -212,7 +212,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
           className="fixed bottom-28 md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-[13.5px] shadow-xl whitespace-nowrap"
-          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+          style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
         >
           <Check size={15} /> {message}
         </motion.div>
@@ -588,7 +588,7 @@ export default function CommunityFeed() {
                   value={memberSearch}
                   onChange={e => setMemberSearch(e.target.value)}
                   placeholder="Search members…"
-                  className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-4 py-3 text-[14px] placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all shadow-sm"
+                  className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-4 py-3 text-[14px] placeholder:text-[#555] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all shadow-sm"
                 />
                 {memberSearch && (
                   <button onClick={() => setMemberSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">

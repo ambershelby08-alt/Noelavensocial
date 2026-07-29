@@ -144,7 +144,7 @@ function ConfirmModal({
               : 'Brief reason for this action…'
             }
             rows={3}
-            className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[13.5px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111] resize-none"
+            className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[13.5px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111] resize-none"
           />
         </div>
 
@@ -689,7 +689,7 @@ export default function ModerationDashboard() {
               <input
                 value={search} onChange={e => { setSearch(e.target.value); setHandleInput(''); setResolvedUid(null); }}
                 placeholder="Search by reason, content, or user UID…"
-                className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13.5px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
+                className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13.5px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all"
               />
             </div>
             {/* Handle-to-UID resolver */}
@@ -699,7 +699,7 @@ export default function ModerationDashboard() {
                 value={handleInput}
                 onChange={e => { setHandleInput(e.target.value); setSearch(''); }}
                 placeholder="Filter by @handle…"
-                className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
+                className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all"
               />
               {handleInput.trim() && (
                 <button onClick={() => { setHandleInput(''); setResolvedUid(null); setHandleLookupState('idle'); }}

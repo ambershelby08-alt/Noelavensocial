@@ -202,7 +202,7 @@ function FollowButton({
         size === 'sm' ? 'px-3 py-1 text-[11px]' : 'px-3.5 py-1.5 text-[12.5px]',
         following ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white',
       )}
-      style={!following ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+      style={!following ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
     >
       {loading ? <Loader2 size={11} className="animate-spin" />
         : following ? <><UserCheck size={11} />Following</>
@@ -315,7 +315,7 @@ function CommunityRow({ community, index }: { community: DiscoverCommunity; inde
           'flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-black transition-all',
           joined ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white',
         )}
-        style={!joined ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+        style={!joined ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
       >
         {joined ? '✓' : '+'}
       </motion.button>
@@ -563,7 +563,7 @@ function SparkCard({ prompt, count }: { prompt: string; count: number }) {
     >
       <div
         className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+        style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
       >
         <Sparkles size={16} className="text-white" />
       </div>
@@ -596,7 +596,7 @@ function CategoryChips({
               'flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12.5px] font-bold transition-all',
               isActive ? 'text-white shadow-md' : 'bg-[#111] text-[#BDBDBD] border border-black/[0.07] hover:border-[rgba(245,197,66,0.25)]',
             )}
-            style={isActive ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+            style={isActive ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
           >
             <span className="text-[14px]">{cat.emoji}</span>
             <span>{cat.label}</span>
@@ -1107,7 +1107,7 @@ function SuggestedView({
                     ? 'text-white border-transparent shadow-md'
                     : 'bg-[#111] text-[#BDBDBD] border-black/[0.07] hover:border-[rgba(245,197,66,0.25)]',
                 )}
-                style={selected ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+                style={selected ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
               >
                 <span className="text-[13px]">{cat.emoji}</span>
                 <span>{cat.label}</span>
@@ -1335,7 +1335,7 @@ export default function Discover() {
                   }
                   if (e.key === 'Escape') dismissSearch();
                 }}
-                className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-10 py-3 text-[14.5px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all shadow-sm"
+                className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-10 py-3 text-[14.5px] text-white placeholder:text-[#555] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all shadow-sm"
               />
               {searchQuery && (
                 <button

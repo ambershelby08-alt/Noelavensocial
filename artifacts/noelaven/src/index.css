@@ -8,16 +8,22 @@
   to   { width: 100% }
 }
 
-/* Gold shimmer animation */
-@keyframes gold-shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+/* Rainbow shimmer animation */
+@keyframes rainbow-shimmer {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-/* Gold pulse */
-@keyframes gold-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245,197,66,0.4); }
-  50%       { box-shadow: 0 0 0 8px rgba(245,197,66,0); }
+/* Rainbow spin for loading ring */
+@keyframes rainbow-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Pulse for glow effects */
+@keyframes nlv-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
 }
 
 @plugin "@tailwindcss/typography";
@@ -83,7 +89,10 @@
   --radius-full: 9999px;
 }
 
-/* ── Premium Black & Gold Theme ───────────────────────────────────── */
+/* ── Noelaven Brand Theme ──────────────────────────────────────────────────────
+   Black backgrounds. White typography. Rainbow gradient as primary accent.
+   Gold ONLY for: lighthouse heart, lighthouse beam, streak badges, tiny icons.
+   ─────────────────────────────────────────────────────────────────────────── */
 :root {
   /* Backgrounds */
   --background: 0 0% 0%;          /* #000000 pure black */
@@ -92,32 +101,32 @@
   /* Cards */
   --card: 0 0% 7%;                /* #111111 */
   --card-foreground: 0 0% 100%;
-  --card-border: 0 0% 12%;        /* subtle dark border */
+  --card-border: 0 0% 12%;
 
   /* Popovers / sheets */
   --popover: 0 0% 9%;             /* #181818 */
   --popover-foreground: 0 0% 100%;
   --popover-border: 0 0% 14%;
 
-  /* Gold accent as primary */
-  --primary: 43 90% 61%;          /* #F5C542 gold */
-  --primary-foreground: 0 0% 0%;  /* black text on gold */
-  --primary-border: #F5C542;
+  /* Primary — white text; gradient applied via .btn-primary utility */
+  --primary: 0 0% 100%;
+  --primary-foreground: 0 0% 0%;
+  --primary-border: rgba(255,255,255,0.3);
 
   /* Secondary surface */
-  --secondary: 0 0% 11%;          /* #1C1C1C */
+  --secondary: 0 0% 11%;
   --secondary-foreground: 0 0% 100%;
   --secondary-border: #2a2a2a;
 
   /* Muted */
-  --muted: 0 0% 10%;              /* #1A1A1A */
+  --muted: 0 0% 10%;
   --muted-foreground: 0 0% 74%;   /* #BDBDBD */
   --muted-border: #222222;
 
-  /* Accent (gold, same as primary) */
-  --accent: 43 90% 61%;
-  --accent-foreground: 0 0% 0%;
-  --accent-border: #F5C542;
+  /* Accent */
+  --accent: 0 0% 14%;
+  --accent-foreground: 0 0% 100%;
+  --accent-border: #2a2a2a;
 
   /* Destructive */
   --destructive: 0 84% 60%;
@@ -127,19 +136,19 @@
   /* Borders / inputs */
   --border: 0 0% 14%;             /* #242424 */
   --input: 0 0% 14%;
-  --ring: 43 90% 61%;             /* gold focus ring */
+  --ring: 270 60% 60%;            /* soft purple focus ring */
 
   /* Sidebar */
-  --sidebar: 0 0% 4%;             /* #0A0A0A */
+  --sidebar: 0 0% 4%;
   --sidebar-foreground: 0 0% 100%;
   --sidebar-border: 0 0% 12%;
-  --sidebar-primary: 43 90% 61%;
+  --sidebar-primary: 0 0% 100%;
   --sidebar-primary-foreground: 0 0% 0%;
-  --sidebar-primary-border: #F5C542;
+  --sidebar-primary-border: rgba(255,255,255,0.2);
   --sidebar-accent: 0 0% 10%;
   --sidebar-accent-foreground: 0 0% 100%;
   --sidebar-accent-border: #222;
-  --sidebar-ring: 43 90% 61%;
+  --sidebar-ring: 270 60% 60%;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
@@ -147,15 +156,15 @@
   --radius: 1rem;
 
   /* Brand tokens */
-  --gold: #F5C542;
+  --gold: #F5C542;                /* lighthouse heart, beam, streak only */
   --gold-dim: #C9982A;
+  --rainbow: linear-gradient(135deg, #EC4899, #7C3AED, #2563EB, #06B6D4, #F59E0B);
+  --rainbow-ring: linear-gradient(135deg, #EC4899 0%, #7C3AED 25%, #2563EB 50%, #06B6D4 70%, #F5C542 100%);
   --surface-card: #111111;
   --surface-secondary: #181818;
   --text-primary: #FFFFFF;
   --text-secondary: #BDBDBD;
 }
-
-/* No separate dark block needed — the app is always dark */
 
 @layer base {
   * {
@@ -168,42 +177,55 @@
   }
 }
 
-/* ── Utility classes ───────────────────────────────────────────────── */
+/* ── Utility classes ───────────────────────────────────────────────────────── */
 
-/* Gold gradient text */
+/* Rainbow gradient — primary brand accent */
 .gradient-text {
-  background: linear-gradient(135deg, #F5C542, #FFE08A, #F5C542);
+  background: linear-gradient(135deg, #EC4899, #7C3AED, #2563EB, #06B6D4, #F59E0B);
+  background-size: 200% 200%;
+  animation: rainbow-shimmer 4s ease infinite;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Gold gradient background */
+/* Rainbow gradient background — for primary buttons, active states */
 .gradient-bg {
-  background: linear-gradient(135deg, #F5C542, #C9982A);
+  background: linear-gradient(135deg, #EC4899, #7C3AED, #2563EB, #06B6D4, #F59E0B);
 }
 
-/* Rainbow ring — only for logo / story rings */
+/* Rainbow ring — for story rings, logo ring, active progress */
 .rainbow-ring {
   background: conic-gradient(#EC4899, #7C3AED, #2563EB, #06B6D4, #10B981, #F59E0B, #EC4899);
 }
 
-/* Gold shimmer effect */
+/* Gold accent — ONLY for lighthouse heart, streak badges, tiny icons */
 .gold-shimmer {
   background: linear-gradient(90deg, #C9982A 0%, #F5C542 40%, #FFE08A 50%, #F5C542 60%, #C9982A 100%);
   background-size: 200% auto;
-  animation: gold-shimmer 3s linear infinite;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Card shadow — subtle dark */
+/* Rainbow loading spinner */
+.rainbow-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: #EC4899;
+  border-right-color: #7C3AED;
+  border-bottom-color: #2563EB;
+  animation: rainbow-spin 0.8s linear infinite;
+}
+
+/* Card shadow */
 .card-shadow {
   box-shadow: 0 2px 16px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.3);
 }
 
-/* Gold glow */
-.gold-glow {
-  box-shadow: 0 0 20px rgba(245,197,66,0.35), 0 0 60px rgba(245,197,66,0.12);
+/* Rainbow glow — for active buttons */
+.rainbow-glow {
+  box-shadow: 0 4px 24px rgba(124,58,237,0.4), 0 2px 8px rgba(236,72,153,0.3);
 }

@@ -264,7 +264,7 @@ function ConvItem({
           {unread && (
             <div
               className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black text-white px-1"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
             >
               {conv.unreadCount}
             </div>
@@ -292,7 +292,7 @@ function ConvItem({
 
         {/* Unread dot */}
         {unread && !isMuted && (
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }} />
+          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }} />
         )}
       </motion.div>
     </Link>
@@ -355,7 +355,7 @@ function ComposeDrawer({
               onChange={e => setSearch(e.target.value)}
               placeholder="Search people…"
               autoFocus
-              className="w-full bg-[#111] border border-[#2a2a2a] rounded-xl pl-9 pr-4 py-2.5 text-[14px] placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
+              className="w-full bg-[#111] border border-[#2a2a2a] rounded-xl pl-9 pr-4 py-2.5 text-[14px] placeholder:text-[#555] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all"
             />
           </div>
         </div>
@@ -386,7 +386,7 @@ function ComposeDrawer({
               </div>
               <span
                 className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-bold text-white"
-                style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
               >
                 Start Chat
               </span>
@@ -452,7 +452,7 @@ export default function Messages() {
               {totalUnread > 0 && (
                 <span
                   className="text-[11px] font-black text-white px-2 py-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                 >
                   {totalUnread}
                 </span>
@@ -464,7 +464,7 @@ export default function Messages() {
             whileTap={{ scale: 0.92 }}
             onClick={() => setCompose(true)}
             className="w-11 h-11 rounded-full flex items-center justify-center shadow-md text-white"
-            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(245,197,66,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 12px rgba(124,58,237,0.4)' }}
           >
             <PenSquare size={18} />
           </motion.button>
@@ -477,7 +477,7 @@ export default function Messages() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-10 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all shadow-sm"
+            className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-10 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all shadow-sm"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -513,7 +513,7 @@ export default function Messages() {
                 <button
                   onClick={() => setCompose(true)}
                   className="mt-6 px-6 py-3 rounded-full text-[14px] font-black text-white"
-                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                 >
                   + New Message
                 </button>

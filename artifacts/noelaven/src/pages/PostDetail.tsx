@@ -216,7 +216,7 @@ export default function PostDetail() {
         <button
           onClick={() => setLocation('/')}
           className="px-6 py-2.5 rounded-full text-[14px] font-black text-white"
-          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+          style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
         >
           Back to Home
         </button>
@@ -317,7 +317,7 @@ export default function PostDetail() {
               onClick={handleSend}
               disabled={!text.trim() || sending}
               className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white mb-0.5 disabled:opacity-40 transition-opacity"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
             >
               {sending
                 ? <Loader2 size={15} className="animate-spin" />

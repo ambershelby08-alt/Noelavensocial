@@ -429,7 +429,7 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                     'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all',
                     text.trim() ? 'text-white shadow-md' : 'bg-[#222] text-[rgba(255,255,255,0.45)]'
                   )}
-                  style={text.trim() ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(107,115,255,0.4)' } : {}}
+                  style={text.trim() ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 12px rgba(107,115,255,0.4)' } : {}}
                 >
                   <Send size={14} />
                 </motion.button>
@@ -629,7 +629,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
             <div className="flex items-center gap-2">
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
               >
                 <Sparkles size={13} className="text-white" />
               </div>
@@ -756,7 +756,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
                 )}
                 style={
                   canPost && !imageUploading
-                    ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }
+                    ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 20px rgba(124,58,237,0.45)' }
                     : {}
                 }
               >
@@ -1073,7 +1073,7 @@ function CommunityReveal({
       >
         <div
           className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+          style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
         >
           <Sparkles size={18} className="text-white" />
         </div>
@@ -1131,7 +1131,7 @@ function CommunityReveal({
                 'px-2.5 py-1 rounded-full text-[11px] font-bold transition-all',
                 sort === t.key ? 'text-white' : 'text-[rgba(255,255,255,0.45)] bg-[#1a1a1a] hover:bg-[#222]'
               )}
-              style={sort === t.key ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+              style={sort === t.key ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
             >
               {t.label}
             </button>
@@ -1160,7 +1160,7 @@ function CommunityReveal({
             <button
               onClick={retry}
               className="px-6 py-2.5 rounded-full text-[13px] font-bold text-white mt-1"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
             >
               Retry
             </button>
@@ -1429,7 +1429,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
                   )}
                   style={
                     canPost && !imageUploading
-                      ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', color: '#fff', boxShadow: '0 4px 14px rgba(245,197,66,0.35)' }
+                      ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', color: '#fff', boxShadow: '0 4px 14px rgba(245,197,66,0.35)' }
                       : {}
                   }
                 >
@@ -1765,7 +1765,7 @@ function EditPostSheet({ post, onSave, onClose }: EditPostSheetProps) {
                 'px-4 py-1.5 rounded-full text-[13px] font-bold transition-all',
                 canSave && !imageUploading ? 'text-white' : 'bg-[#1a1a1a] text-[rgba(255,255,255,0.45)]'
               )}
-              style={canSave && !imageUploading ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+              style={canSave && !imageUploading ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
             >
               Save
             </motion.button>
@@ -2205,7 +2205,7 @@ export default function Home() {
             <p className="text-[13px] font-semibold text-[rgba(255,255,255,0.45)] mb-0.5">{greeting} 👋</p>
             <h1 className="text-[24px] font-black tracking-tight text-white leading-tight">
               Hey,{' '}
-              <span style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              <span style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                 {firstName}
               </span>
             </h1>

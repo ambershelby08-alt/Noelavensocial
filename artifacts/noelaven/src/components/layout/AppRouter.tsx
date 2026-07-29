@@ -55,7 +55,7 @@ function AuthenticatedApp() {
             <a
               href="/"
               className="px-7 py-3 rounded-full text-[14.5px] font-black text-white"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 16px rgba(245,197,66,0.35)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 20px rgba(124,58,237,0.45)' }}
             >
               Back to Home
             </a>
@@ -73,7 +73,7 @@ function LoadingScreen() {
     <div className="min-h-screen flex items-center justify-center bg-black">
       <div
         className="w-14 h-14 rounded-2xl animate-pulse"
-        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+        style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
       />
     </div>
   );

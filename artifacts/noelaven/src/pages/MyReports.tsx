@@ -176,7 +176,7 @@ export default function MyReports() {
                   ? 'text-white shadow-sm'
                   : 'bg-[#111] text-[#BDBDBD] border border-[#222]'
               )}
-              style={activeFilter === f.value ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+              style={activeFilter === f.value ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
             >
               {f.label}
             </button>
@@ -209,7 +209,7 @@ export default function MyReports() {
             <button
               onClick={() => window.location.reload()}
               className="px-6 py-2.5 rounded-full font-bold text-[13.5px] text-white"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
             >
               Retry
             </button>

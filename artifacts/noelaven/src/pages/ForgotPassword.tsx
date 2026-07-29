@@ -84,7 +84,7 @@ export default function ForgotPassword() {
                   disabled={loading}
                   whileTap={{ scale: 0.98 }}
                   className="w-full text-white font-bold py-4 rounded-2xl text-[15px] transition-all disabled:opacity-70 flex items-center justify-center mt-2"
-                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 20px rgba(124,58,237,0.45)' }}
                 >
                   {loading
                     ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -134,7 +134,7 @@ export default function ForgotPassword() {
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   className="px-8 py-3.5 rounded-2xl font-bold text-[15px] text-white shadow-md"
-                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 16px rgba(245,197,66,0.30)' }}
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 16px rgba(124,58,237,0.40)' }}
                 >
                   Back to Sign In
                 </motion.button>

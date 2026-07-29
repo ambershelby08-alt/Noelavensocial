@@ -272,7 +272,7 @@ function CreateCircleDrawer({
               onClick={handleCreate}
               disabled={saving}
               className="px-5 py-2 rounded-full text-[14px] font-black text-white flex items-center gap-1.5 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(245,197,66,0.35)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 12px rgba(124,58,237,0.4)' }}
             >
               {saving
                 ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -285,7 +285,7 @@ function CreateCircleDrawer({
               onClick={() => step1Valid && setStep(2)}
               disabled={!step1Valid}
               className="px-5 py-2 rounded-full text-[14px] font-black text-white disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
             >
               Next →
             </motion.button>
@@ -318,7 +318,7 @@ function CreateCircleDrawer({
                     onChange={e => setName(e.target.value)}
                     maxLength={50}
                     placeholder="e.g. Midnight Readers"
-                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder:text-[#555] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all"
                   />
                   <p className="text-[11px] text-[rgba(255,255,255,0.45)] mt-1 ml-1">{name.length}/50</p>
                 </div>
@@ -332,7 +332,7 @@ function CreateCircleDrawer({
                     maxLength={300}
                     rows={3}
                     placeholder="What's this circle about? Who should join?"
-                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all"
                   />
                   <p className="text-[11px] text-[rgba(255,255,255,0.45)] mt-1 ml-1">{description.length}/300</p>
                 </div>
@@ -375,7 +375,7 @@ function CreateCircleDrawer({
                     onClick={() => setIsPrivate(v => !v)}
                     className={cn(
                       'w-12 h-6.5 rounded-full relative transition-colors flex-shrink-0',
-                      isPrivate ? 'bg-[#F5C542]' : 'bg-[#222]'
+                      isPrivate ? 'bg-[#7C3AED]' : 'bg-[#222]'
                     )}
                     style={{ height: 26 }}
                   >
@@ -444,13 +444,13 @@ function CreateCircleDrawer({
                         onKeyDown={e => e.key === 'Enter' && addRule()}
                         placeholder="Add a rule…"
                         maxLength={100}
-                        className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-xl px-4 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
+                        className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-xl px-4 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all"
                       />
                       <button
                         onClick={addRule}
                         disabled={!newRule.trim()}
                         className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-40 flex-shrink-0 self-center"
-                        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                        style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                       >
                         <Plus size={16} className="text-white" />
                       </button>
@@ -477,7 +477,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
           className="fixed bottom-28 md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-[13.5px] shadow-xl whitespace-nowrap"
-          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+          style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
         >
           <Check size={15} /> {message}
         </motion.div>
@@ -543,7 +543,7 @@ export default function Communities() {
             whileTap={{ scale: 0.92 }}
             onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13.5px] font-black text-white shadow-md"
-            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 14px rgba(245,197,66,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 14px rgba(124,58,237,0.4)' }}
           >
             <Plus size={15} /> Create
           </motion.button>
@@ -556,7 +556,7 @@ export default function Communities() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search circles…"
-            className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-4 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all shadow-sm"
+            className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-4 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all shadow-sm"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -628,7 +628,7 @@ export default function Communities() {
                 <button
                   onClick={() => setCreateOpen(true)}
                   className="mt-6 px-6 py-3 rounded-full text-[14px] font-black text-white"
-                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                 >
                   + Create Circle
                 </button>

@@ -223,7 +223,7 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
                       'flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold transition-all flex-shrink-0 disabled:opacity-60',
                       isFollowing ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white shadow-sm'
                     )}
-                    style={!isFollowing ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 2px 10px rgba(245,197,66,0.30)' } : {}}
+                    style={!isFollowing ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 2px 10px rgba(245,197,66,0.30)' } : {}}
                   >
                     {loadingId === u.id
                       ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
@@ -357,7 +357,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
             onClick={handleSave}
             disabled={displayName.trim().length < 2 || handle.trim().length < 2 || saving}
             className="px-5 py-2 rounded-full text-[14px] font-bold text-white disabled:opacity-50 flex items-center gap-1.5"
-            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(245,197,66,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 12px rgba(124,58,237,0.4)' }}
           >
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Check size={14} /> Save</>}
           </motion.button>
@@ -405,7 +405,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
               ) : null}
               <div
                 className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-md"
-                style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
               >
                 <Camera size={14} className="text-white" />
               </div>
@@ -433,7 +433,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
               className={`w-full bg-[#111] border rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder:text-[#555] outline-none focus:ring-2 transition-all ${
                 displayName.trim().length > 0 && displayName.trim().length < 2
                   ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-                  : 'border-[#2a2a2a] focus:border-[#F5C542] focus:ring-[rgba(245,197,66,0.15)]'
+                  : 'border-[#2a2a2a] focus:border-[#7C3AED] focus:ring-[rgba(124,58,237,0.2)]'
               }`}
             />
             {displayName.trim().length > 0 && displayName.trim().length < 2 && (
@@ -476,7 +476,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
               maxLength={160}
               rows={4}
               placeholder="Tell the world what makes you, you… ✨"
-              className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14.5px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
+              className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14.5px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all"
             />
             <p className="text-[12px] text-[rgba(255,255,255,0.45)] text-right mt-1 mr-1">{bio.length}/160</p>
           </div>
@@ -625,7 +625,7 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
       >
         <div
           className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+          style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
         >
           <Sparkles size={12} className="text-white" />
         </div>
@@ -1061,7 +1061,7 @@ export default function Profile() {
             <button
               onClick={() => setEditOpen(true)}
               className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center border-2 border-black shadow-md"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
             >
               <Camera size={12} className="text-white" />
             </button>
@@ -1088,7 +1088,7 @@ export default function Profile() {
                   'px-5 py-2.5 rounded-full font-bold text-[13.5px] transition-all flex items-center gap-1.5 disabled:opacity-70',
                   isFollowing ? 'bg-[#111] border border-[#2a2a2a] text-[#BDBDBD] shadow-sm' : 'text-white shadow-md'
                 )}
-                style={!isFollowing ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 14px rgba(245,197,66,0.35)' } : {}}
+                style={!isFollowing ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 14px rgba(124,58,237,0.4)' } : {}}
               >
                 {followLoading
                   ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />

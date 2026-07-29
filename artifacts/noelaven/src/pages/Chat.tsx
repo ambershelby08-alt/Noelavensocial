@@ -807,7 +807,7 @@ function VoiceRecordingUI({ duration, onStop, onCancel }: {
       </button>
       <button onClick={onStop}
         className="px-4 py-2 rounded-full text-white text-[13.5px] font-bold transition-all"
-        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}>
+        style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
         Send
       </button>
     </motion.div>
@@ -1858,7 +1858,7 @@ export default function Chat() {
               className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all mb-0.5',
                 attachOpen ? 'text-white shadow-md' : 'text-[rgba(255,255,255,0.45)] hover:text-[#F5C542] hover:bg-[rgba(245,197,66,0.08)]'
               )}
-              style={attachOpen ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
+              style={attachOpen ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
             >
               {uploadingMedia ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={21} />}
             </motion.button>
@@ -1891,7 +1891,7 @@ export default function Chat() {
                   whileTap={{ scale: 0.88 }}
                   onClick={handleSend}
                   className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md mb-0.5 text-white"
-                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(107,115,255,0.40)' }}
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 12px rgba(107,115,255,0.40)' }}
                 >
                   {editingMsg ? <Check size={18} /> : <Send size={17} className="ml-0.5 -mt-0.5" />}
                 </motion.button>
@@ -1968,7 +1968,7 @@ export default function Chat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-2 px-5 py-3 rounded-full shadow-xl text-white text-[13.5px] font-semibold pointer-events-none"
-            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 6px 24px rgba(245,197,66,0.45)' }}
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 6px 24px rgba(245,197,66,0.45)' }}
           >
             <CheckCircle size={15} />
             Forwarded to {forwardDone} chat{forwardDone !== 1 ? 's' : ''}

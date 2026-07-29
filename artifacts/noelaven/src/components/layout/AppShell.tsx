@@ -54,15 +54,15 @@ function AlreadyAnsweredSheet({ prompt, onClose }: { prompt: string; onClose: ()
           <div className="w-10 h-1 rounded-full mb-5" style={{ background: '#333' }} />
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-            style={{ background: '#000', border: '2px solid #F5C542', boxShadow: '0 0 20px rgba(245,197,66,0.3)' }}
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 0 24px rgba(124,58,237,0.4)' }}
           >
-            <Sparkles size={26} style={{ color: '#F5C542' }} />
+            <Sparkles size={26} style={{ color: '#fff' }} />
           </div>
           <h2 className="font-black text-[20px] text-white mb-2">
             Already Sparked Today! ✨
           </h2>
           {prompt && (
-            <p className="text-[13px] font-semibold mb-3 leading-relaxed max-w-xs italic" style={{ color: '#F5C542' }}>
+            <p className="text-[13px] font-semibold mb-3 leading-relaxed max-w-xs italic" style={{ color: '#BDBDBD' }}>
               "{prompt}"
             </p>
           )}
@@ -72,8 +72,8 @@ function AlreadyAnsweredSheet({ prompt, onClose }: { prompt: string; onClose: ()
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => { setLocation('/'); onClose(); }}
-            className="w-full py-3.5 rounded-2xl text-black font-bold text-[15px] mb-3"
-            style={{ background: '#F5C542', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
+            className="w-full py-3.5 rounded-2xl text-white font-bold text-[15px] mb-3"
+            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 20px rgba(124,58,237,0.45)' }}
           >
             View Community Sparks
           </motion.button>
@@ -131,13 +131,12 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                 }
                 className="flex flex-col items-center justify-center w-12 h-12 rounded-[18px] cursor-pointer"
                 style={{
-                  background: '#000',
-                  border: '2px solid #F5C542',
-                  boxShadow: '0 0 16px rgba(245,197,66,0.4)',
+                  background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)',
+                  boxShadow: '0 0 18px rgba(124,58,237,0.5)',
                 }}
               >
-                <item.icon size={20} strokeWidth={2.5} style={{ color: '#F5C542' }} />
-                <span className="text-[8px] font-black uppercase tracking-wide mt-0.5" style={{ color: '#F5C542' }}>{item.label}</span>
+                <item.icon size={20} strokeWidth={2.5} style={{ color: '#fff' }} />
+                <span className="text-[8px] font-black uppercase tracking-wide mt-0.5" style={{ color: '#fff' }}>{item.label}</span>
               </motion.button>
             );
           }
@@ -148,26 +147,32 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                 <item.icon
                   size={22}
                   strokeWidth={isActive ? 2.5 : 2}
-                  style={{ color: isActive ? '#F5C542' : 'rgba(255,255,255,0.6)' }}
+                  style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.5)' }}
                   className="transition-colors duration-200"
                 />
+                {isActive && (
+                  <span
+                    className="absolute inset-0 rounded-xl opacity-10"
+                    style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
+                  />
+                )}
                 {/* Unread message badge */}
                 {item.path === '/messages' && totalUnread > 0 && (
-                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full ring-[1.5px] flex items-center justify-center text-[8px] font-black px-1"
-                    style={{ background: '#F5C542', color: '#000', ringColor: '#000' }}>
+                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
+                    style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED)' }}>
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
                 {/* Unread notification badge */}
                 {item.path === '/notifications' && notifUnreadCount > 0 && (
-                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-black px-1"
-                    style={{ background: '#F5C542' }}>
+                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
+                    style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED)' }}>
                     {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
                   </span>
                 )}
                 <span
                   className="text-[10px] font-semibold transition-colors duration-200"
-                  style={{ color: isActive ? '#F5C542' : 'rgba(255,255,255,0.45)' }}
+                  style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.4)' }}
                 >
                   {item.label}
                 </span>
@@ -175,7 +180,7 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                   <motion.div
                     layoutId="navActiveBar"
                     className="absolute -bottom-2 w-5 h-[3px] rounded-full"
-                    style={{ background: '#F5C542' }}
+                    style={{ background: 'linear-gradient(90deg, #EC4899, #7C3AED, #2563EB)' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -244,21 +249,21 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
                 'flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-200 group relative',
               )}
               style={{
-                background: isActive ? 'rgba(245,197,66,0.1)' : 'transparent',
-                color: isActive ? '#F5C542' : 'rgba(255,255,255,0.6)',
+                background: isActive ? 'rgba(124,58,237,0.12)' : 'transparent',
+                color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
               }}
             >
               <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="transition-transform duration-200 group-hover:scale-110" />
               <span className="text-[15px] font-semibold">{item.label}</span>
               {item.path === '/messages' && totalUnread > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-black text-black px-1"
-                  style={{ background: '#F5C542' }}>
+                <span className="ml-auto min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-black text-white px-1"
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED)' }}>
                   {totalUnread > 9 ? '9+' : totalUnread}
                 </span>
               )}
               {item.path === '/notifications' && notifUnreadCount > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-black text-black px-1"
-                  style={{ background: '#F5C542' }}>
+                <span className="ml-auto min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-black text-white px-1"
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED)' }}>
                   {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
                 </span>
               )}
@@ -266,7 +271,7 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
                 <motion.div
                   layoutId="sidebarIndicator"
                   className="absolute left-0 w-1 h-7 rounded-r-full"
-                  style={{ background: '#F5C542' }}
+                  style={{ background: 'linear-gradient(180deg, #EC4899, #7C3AED, #2563EB)' }}
                 />
               )}
             </Link>
@@ -276,8 +281,8 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
 
       <button
         onClick={() => hasAnsweredToday ? setShowAnsweredSheet(true) : setLocation('/?spark=1')}
-        className="mt-auto w-full font-bold py-3.5 rounded-2xl transition-opacity hover:opacity-90 active:scale-95 duration-200 flex items-center justify-center gap-2 text-black"
-        style={{ background: '#F5C542', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
+        className="mt-auto w-full font-bold py-3.5 rounded-2xl transition-opacity hover:opacity-90 active:scale-95 duration-200 flex items-center justify-center gap-2 text-white"
+        style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 4px 20px rgba(124,58,237,0.45)' }}
       >
         <Sparkles size={18} />
         <span>{hasAnsweredToday ? 'Sparked Today ✨' : 'New Spark'}</span>
@@ -437,22 +442,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-5" style={{ background: '#000' }}>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6" style={{ background: '#000' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="flex flex-col items-center gap-4"
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="flex flex-col items-center gap-5"
         >
-          <NoelavenLogo variant="mark" size="xl" />
-          <NoelavenLogo variant="full" size="md" />
-          <p className="text-[11.5px] font-bold tracking-[0.18em] uppercase" style={{ color: '#F5C542' }}>
-            Connect. Create. Belong.
-          </p>
+          {/* Official brand loading screen logo */}
+          <img
+            src="/noelaven-logo.png"
+            alt="Noelaven"
+            style={{ width: 120, height: 120, objectFit: 'contain' }}
+          />
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[28px] font-black text-white tracking-tight">Noelaven</span>
+            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              Connect. Create. Belong.
+            </p>
+          </div>
         </motion.div>
-        {/* Gold spinner */}
-        <div className="w-6 h-6 rounded-full border-2 animate-spin"
-          style={{ borderColor: 'rgba(245,197,66,0.2)', borderTopColor: '#F5C542' }} />
+        {/* Rainbow spinner */}
+        <div className="rainbow-spinner" />
       </div>
     );
   }

@@ -52,7 +52,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   return (
     <button
       onClick={() => onChange(!on)}
-      className={cn('relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0', on ? 'bg-[#F5C542]' : 'bg-[#222]')}
+      className={cn('relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0', on ? 'bg-[#7C3AED]' : 'bg-[#222]')}
     >
       <motion.span
         animate={{ x: on ? 20 : 2 }}
@@ -521,7 +521,7 @@ export default function Settings() {
           <Link href={`/profile/${currentUser.id}`}>
             <motion.button whileTap={{ scale: 0.93 }}
               className="px-4 py-2 rounded-full text-[13px] font-bold text-white flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(245,197,66,0.30)' }}>
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 12px rgba(245,197,66,0.30)' }}>
               View
             </motion.button>
           </Link>
@@ -639,7 +639,7 @@ export default function Settings() {
                                 value={displayName}
                                 onChange={e => setDisplayName(e.target.value)}
                                 maxLength={50}
-                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111]"
+                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111]"
                               />
                             </div>
                             <div>
@@ -650,7 +650,7 @@ export default function Settings() {
                                   value={handle}
                                   onChange={e => setHandle(e.target.value.replace(/[^a-zA-Z0-9_.]/g, ''))}
                                   maxLength={30}
-                                  className="w-full pl-7 pr-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111]"
+                                  className="w-full pl-7 pr-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111]"
                                 />
                               </div>
                             </div>
@@ -661,7 +661,7 @@ export default function Settings() {
                                 onChange={e => setBio(e.target.value)}
                                 maxLength={160}
                                 rows={3}
-                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111] resize-none"
+                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111] resize-none"
                               />
                               <p className="text-right text-[11px] text-[rgba(255,255,255,0.45)] mt-0.5">{bio.length}/160</p>
                             </div>
@@ -670,7 +670,7 @@ export default function Settings() {
                               onClick={handleSaveInfo}
                               disabled={savingInfo}
                               className="w-full py-3 rounded-xl font-bold text-[14px] text-white transition-opacity disabled:opacity-60"
-                              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                             >
                               {savingInfo ? 'Saving…' : 'Save Changes'}
                             </motion.button>
@@ -693,7 +693,7 @@ export default function Settings() {
                                   value={currentPw}
                                   onChange={e => setCurrentPw(e.target.value)}
                                   placeholder="Enter current password"
-                                  className="w-full px-3.5 pr-10 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111]"
+                                  className="w-full px-3.5 pr-10 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111]"
                                 />
                                 <button type="button" onClick={() => setShowPw(v => !v)}
                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]">
@@ -708,7 +708,7 @@ export default function Settings() {
                                 value={newPw}
                                 onChange={e => setNewPw(e.target.value)}
                                 placeholder="At least 6 characters"
-                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111]"
+                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111]"
                               />
                             </div>
                             <div>
@@ -718,7 +718,7 @@ export default function Settings() {
                                 value={confirmPw}
                                 onChange={e => setConfirmPw(e.target.value)}
                                 placeholder="Repeat new password"
-                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111]"
+                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111]"
                               />
                             </div>
                             <motion.button
@@ -726,7 +726,7 @@ export default function Settings() {
                               onClick={handleChangePassword}
                               disabled={savingPw || !isFirebaseConfigured}
                               className="w-full py-3 rounded-xl font-bold text-[14px] text-white transition-opacity disabled:opacity-50"
-                              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                             >
                               {savingPw ? 'Changing…' : 'Change Password'}
                             </motion.button>
@@ -746,14 +746,14 @@ export default function Settings() {
                                 value={newEmail}
                                 onChange={e => setNewEmail(e.target.value)}
                                 placeholder="New email address"
-                                className="w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111]"
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111]"
                               />
                               <motion.button
                                 whileTap={{ scale: 0.97 }}
                                 onClick={handleChangeEmail}
                                 disabled={savingEmail || !isFirebaseConfigured || !newEmail.trim()}
                                 className="mt-2 w-full py-3 rounded-xl font-bold text-[14px] text-white transition-opacity disabled:opacity-50"
-                                style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                                style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                               >
                                 {savingEmail ? 'Updating…' : 'Update Email'}
                               </motion.button>
@@ -773,7 +773,7 @@ export default function Settings() {
                               onClick={handleDownloadData}
                               disabled={downloadingData}
                               className="w-full py-3 rounded-xl font-bold text-[14px] text-white transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-                              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                             >
                               <Download size={15} />
                               {downloadingData ? 'Exporting…' : 'Download My Data'}
@@ -944,7 +944,7 @@ export default function Settings() {
                               <select
                                 value={reportCategory}
                                 onChange={e => setReportCategory(e.target.value)}
-                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] bg-[#111] appearance-none"
+                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] bg-[#111] appearance-none"
                               >
                                 <option value="bug">Bug or glitch</option>
                                 <option value="content">Inappropriate content</option>
@@ -959,7 +959,7 @@ export default function Settings() {
                                 onChange={e => setReportText(e.target.value)}
                                 rows={4}
                                 placeholder="Describe what happened…"
-                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111] resize-none"
+                                className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111] resize-none"
                               />
                             </div>
                             <motion.button
@@ -967,7 +967,7 @@ export default function Settings() {
                               onClick={handleSendReport}
                               disabled={sendingReport || !reportText.trim()}
                               className="w-full py-3 rounded-xl font-bold text-[14px] text-white flex items-center justify-center gap-2 disabled:opacity-50"
-                              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                             >
                               <Send size={15} />
                               {sendingReport ? 'Sending…' : 'Send Report'}
@@ -1105,7 +1105,7 @@ export default function Settings() {
                 whileTap={{ scale: 0.97 }}
                 onClick={() => { setSwitcherOpen(false); startAddAccount(); }}
                 className="w-full py-3.5 rounded-2xl mb-3 font-bold text-[15px] text-white flex items-center justify-center gap-2"
-                style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
+                style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
               >
                 <UserPlus size={17} />
                 Add another account
