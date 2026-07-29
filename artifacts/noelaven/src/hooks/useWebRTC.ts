@@ -57,6 +57,8 @@ export interface CallState {
   remoteStream: MediaStream | null;
   /** True if getUserMedia was denied — shown as a warning in CallScreen. */
   mediaPermissionDenied: boolean;
+  /** Non-null while a camera-switch error message should be displayed (auto-clears). */
+  switchCameraError: string | null;
 }
 
 /** Format seconds as M:SS */
@@ -73,6 +75,7 @@ const INITIAL: CallState = {
   isRinging: false, isActive: false, isMinimized: false, swapped: false,
   localStream: null, remoteStream: null,
   mediaPermissionDenied: false,
+  switchCameraError: null,
 };
 
 // ─── Timeouts ─────────────────────────────────────────────────────────────────
@@ -95,9 +98,11 @@ export function useWebRTC() {
   const { currentUser } = useAuth();
   const [call, setCall]  = useState<CallState>(INITIAL);
 
-  const pcRef     = useRef<RTCPeerConnection | null>(null);
-  const localRef  = useRef<MediaStream | null>(null);
-  const remoteRef = useRef<MediaStream | null>(null);
+  const pcRef              = useRef<RTCPeerConnection | null>(null);
+  const localRef           = useRef<MediaStream | null>(null);
+  const remoteRef          = useRef<MediaStream | null>(null);
+  /** Prevents concurrent camera-switch attempts. */
+  const isSwitchingCameraRef = useRef(false);
   const timers    = useRef<{
     interval:   ReturnType<typeof setInterval>  | null;
     demo:       ReturnType<typeof setTimeout>   | null;
@@ -688,11 +693,21 @@ export function useWebRTC() {
     setCall(s => ({ ...s, swapped: !s.swapped }));
   }, []);
 
-  /** Switch between front and rear camera. No-ops safely when:
-   *  • no active call, • only one camera, • getUserMedia is denied, or
-   *  • the PC/stream becomes null during the async gap. */
+  /**
+   * Switch between front and rear cameras during an active video call.
+   *
+   * Strategy:
+   *  1. Mobile-first: toggle facingMode (front ↔ rear) — works on all mobile
+   *     browsers without reliable enumerateDevices support.
+   *  2. Desktop fallback: rotate by deviceId from enumerateDevices.
+   *  3. No-switch detection: if the new track has the same deviceId as the old
+   *     one, the device has only one camera — surface an error toast.
+   *  4. Concurrent-switch guard: isSwitchingCameraRef prevents re-entrance.
+   *  5. Error feedback: sets switchCameraError (auto-cleared after 3 s).
+   */
   const switchCamera = useCallback(async () => {
-    // Guard 1 — must have an active call with a live peer connection and stream.
+    if (isSwitchingCameraRef.current) return;
+
     const pc    = pcRef.current;
     const local = localRef.current;
     if (!pc || !local) return;
@@ -700,78 +715,101 @@ export function useWebRTC() {
     const videoTrack = local.getVideoTracks()[0];
     if (!videoTrack) return;
 
-    // Guard 2 — enumerate cameras; skip silently if only one is available.
-    let videoDevices: MediaDeviceInfo[] = [];
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      videoDevices = (devices ?? []).filter(d => d.kind === 'videoinput');
-    } catch {
-      console.info('[WebRTC] switchCamera: enumerateDevices unavailable');
-      return;
-    }
-    if (videoDevices.length < 2) {
-      console.info('[WebRTC] switchCamera: only one camera available, skipping');
-      return;
-    }
+    isSwitchingCameraRef.current = true;
 
-    // Primary strategy: rotate by deviceId.
-    // getSettings().deviceId is reliable on all browsers; facingMode is not.
-    const currentDeviceId = videoTrack.getSettings().deviceId ?? '';
-    const currentIdx = videoDevices.findIndex(d => d.deviceId === currentDeviceId);
-    const nextIdx    = (currentIdx + 1) % videoDevices.length;
-    const nextDevice = videoDevices[nextIdx];
-
-    // Fallback strategy (mobile): use facingMode hint without 'exact' so the
-    // browser picks the best matching camera rather than throwing OverconstrainedError.
-    const settings      = videoTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
-    const currentFacing = settings.facingMode;
-    const nextFacing    = currentFacing === 'user' ? 'environment'
-                        : currentFacing === 'environment' ? 'user'
-                        : undefined;
-
-    // Build the video constraint: prefer deviceId when known, facingMode as hint.
-    const videoConstraint: MediaTrackConstraints = nextDevice?.deviceId
-      ? { deviceId: { exact: nextDevice.deviceId } }
-      : nextFacing
-        ? { facingMode: nextFacing }
-        : true as unknown as MediaTrackConstraints;
+    const showError = (msg: string) => {
+      setCall(s => ({ ...s, switchCameraError: msg }));
+      setTimeout(() => setCall(s => ({ ...s, switchCameraError: null })), 3000);
+    };
 
     try {
+      const settings       = videoTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
+      const currentFacing  = settings.facingMode;
+      const currentDeviceId = settings.deviceId ?? '';
+
+      // ── Enumerate video devices (best-effort; often returns empty IDs on mobile) ──
+      let videoDevices: MediaDeviceInfo[] = [];
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices();
+        videoDevices = all.filter(d => d.kind === 'videoinput' && d.deviceId !== '');
+      } catch { /* ignore — fall through to facingMode path */ }
+
+      // ── Choose constraint ─────────────────────────────────────────────────────
+      // Mobile-first: facingMode toggle. On Android/iOS, facingMode is populated
+      // by the browser and 'ideal' never throws OverconstrainedError even on a
+      // single-camera device (we detect the no-switch below by comparing deviceIds).
+      // Desktop: rotate by deviceId from enumerateDevices.
+      let videoConstraint: MediaTrackConstraints;
+
+      if (currentFacing || videoDevices.length === 0) {
+        // Mobile path: toggle facing mode
+        const nextFacing = currentFacing === 'environment' ? 'user' : 'environment';
+        videoConstraint = { facingMode: { ideal: nextFacing } };
+      } else if (videoDevices.length < 2) {
+        showError('Only one camera available');
+        return;
+      } else {
+        // Desktop path: rotate through deviceIds
+        const currentIdx = videoDevices.findIndex(d => d.deviceId === currentDeviceId);
+        const nextIdx    = (currentIdx + 1) % videoDevices.length;
+        videoConstraint  = { deviceId: { exact: videoDevices[nextIdx].deviceId } };
+      }
+
+      // ── Acquire new video stream ──────────────────────────────────────────────
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: videoConstraint,
         audio: false,
       });
 
-      // Guard 3 — track must exist in the new stream.
       const newTrack = newStream.getVideoTracks()[0];
       if (!newTrack) {
         newStream.getTracks().forEach(t => t.stop());
+        showError('Camera switch failed — no video track returned');
         return;
       }
 
-      // Guard 4 — PC may have been replaced during the async getUserMedia gap.
+      // ── Detect no-switch (single-camera device) ───────────────────────────────
+      const newDeviceId = newTrack.getSettings().deviceId ?? '';
+      if (newDeviceId && currentDeviceId && newDeviceId === currentDeviceId) {
+        newTrack.stop();
+        showError('Only one camera available');
+        return;
+      }
+
+      // ── Guard: PC may have been replaced during the async gap ─────────────────
       if (!pcRef.current || !localRef.current) {
         newTrack.stop();
         return;
       }
 
-      // Replace the track in the peer connection without renegotiation.
+      // ── Replace in peer connection (no ICE renegotiation needed) ─────────────
       const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
       if (sender) await sender.replaceTrack(newTrack);
 
-      // Swap track in the local stream.
+      // ── Swap track in the local MediaStream ───────────────────────────────────
       localRef.current.removeTrack(videoTrack);
       localRef.current.addTrack(newTrack);
       videoTrack.stop();
 
-      // New MediaStream reference triggers re-render in CallScreen.
+      // New object reference triggers callback-ref re-bind in CallScreen
       const updated = new MediaStream(localRef.current.getTracks());
       localRef.current = updated;
-      setCall(s => ({ ...s, localStream: updated }));
+      setCall(s => ({ ...s, localStream: updated, switchCameraError: null }));
 
-      console.info('[WebRTC] switchCamera → device', nextDevice?.label || nextDevice?.deviceId || 'unknown');
-    } catch (err) {
-      console.warn('[WebRTC] switchCamera failed:', err);
+      console.info('[WebRTC] switchCamera → facing:', newTrack.getSettings().facingMode || 'unknown',
+        '| device:', newTrack.label || newDeviceId || 'unknown');
+
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[WebRTC] switchCamera failed:', msg);
+      const friendly = /overconstrained|notfound|not found/i.test(msg)
+        ? 'Only one camera available'
+        : /permission|denied/i.test(msg)
+          ? 'Camera permission denied'
+          : 'Failed to switch camera';
+      showError(friendly);
+    } finally {
+      isSwitchingCameraRef.current = false;
     }
   }, []);
 

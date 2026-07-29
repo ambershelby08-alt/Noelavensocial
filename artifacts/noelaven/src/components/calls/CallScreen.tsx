@@ -11,8 +11,9 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   PhoneOff, Mic, MicOff, Volume2, VolumeX, Phone,
-  VideoOff, MessageSquare, RotateCcw, MoreHorizontal,
-  Shield, Grid3X3, UserPlus, CheckCircle2,
+  Video, VideoOff, MessageSquare, RotateCcw, MoreHorizontal,
+  Shield, Grid3X3, UserPlus, CheckCircle2, Minimize2,
+  AlertCircle,
 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
@@ -117,14 +118,19 @@ interface Props {
   onMinimize: () => void;
   onSwitchCamera: () => void;
   onToggleSwap: () => void;
+  /** Navigate to the conversation thread without ending the call. */
+  onOpenChat?: () => void;
 }
 
 export function CallScreen({
-  call, onEnd, onToggleMute, onToggleCamera, onToggleSpeaker, onMinimize, onSwitchCamera, onToggleSwap,
+  call, onEnd, onToggleMute, onToggleCamera, onToggleSpeaker,
+  onMinimize, onSwitchCamera, onToggleSwap, onOpenChat,
 }: Props) {
-  const screenRef = useRef<HTMLDivElement>(null);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const screenRef     = useRef<HTMLDivElement>(null);
+  const hideTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const largeVideoRef = useRef<HTMLVideoElement | null>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [showMoreMenu, setShowMoreMenu]        = useState(false);
   const swapped = call.swapped;
 
   const isVideo   = call.type === 'video';
@@ -142,12 +148,36 @@ export function CallScreen({
   }, [call.localStream]);
 
   const setLargeVideo = useCallback((el: HTMLVideoElement | null) => {
+    largeVideoRef.current = el;
     if (el) el.srcObject = largeStream ?? null;
   }, [largeStream]);
 
   const setPipVideo   = useCallback((el: HTMLVideoElement | null) => {
     if (el) el.srcObject = pipStream ?? null;
   }, [pipStream]);
+
+  // ── Speaker routing via setSinkId (best-effort — silently degrades) ─────────
+  // When the user toggles speaker, attempt to route the remote audio to the
+  // correct output device. Only Chrome 110+ / desktop supports setSinkId; on
+  // Android the call to enumerateDevices may not expose named audio outputs, so
+  // we fall back gracefully without breaking the call.
+  useEffect(() => {
+    const el = largeVideoRef.current;
+    if (!el || !('setSinkId' in el)) return;
+
+    (async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const outputs = devices.filter((d: MediaDeviceInfo) => d.kind === 'audiooutput');
+        // isSpeakerOn = true → '' = system default (usually loudspeaker on desktop)
+        // isSpeakerOn = false → first non-default output (earpiece on mobile)
+        const targetId = call.isSpeakerOn
+          ? ''
+          : (outputs.find((o: MediaDeviceInfo) => o.deviceId !== 'default' && o.deviceId !== '')?.deviceId ?? '');
+        await (el as HTMLVideoElement & { setSinkId(id: string): Promise<void> }).setSinkId(targetId);
+      } catch { /* setSinkId unsupported or permission denied — degrade silently */ }
+    })();
+  }, [call.isSpeakerOn]);
 
   // ── Auto-hide controls on video call ───────────────────────────────────────
   const resetHideTimer = useCallback(() => {
@@ -419,14 +449,22 @@ export function CallScreen({
             </div>
             {/* Right: flip + more */}
             <div className="flex gap-2">
-              <motion.button whileTap={{ scale: 0.88 }} onClick={onSwitchCamera}
+              <motion.button
+                whileTap={{ scale: 0.88 }}
+                onClick={() => { onSwitchCamera(); resetHideTimer(); }}
                 className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
+                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
+                aria-label="Switch camera"
+              >
                 <RotateCcw size={17} className="text-white" />
               </motion.button>
-              <motion.button whileTap={{ scale: 0.88 }} onClick={onMinimize}
+              <motion.button
+                whileTap={{ scale: 0.88 }}
+                onClick={() => { setShowMoreMenu(true); resetHideTimer(); }}
                 className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
+                style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}
+                aria-label="More options"
+              >
                 <MoreHorizontal size={17} className="text-white" />
               </motion.button>
             </div>
@@ -475,13 +513,38 @@ export function CallScreen({
             style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.80) 0%, transparent 100%)' }}
           >
             <div className="flex items-end justify-between">
-              <CtrlBtn icon={call.isMuted ? MicOff : Mic} label={call.isMuted ? 'Unmute' : 'Mute'}
-                active={call.isMuted} onPress={onToggleMute} />
-              <CtrlBtn icon={VideoOff} label="Camera Off" active={call.isCameraOff} onPress={onToggleCamera} />
+              {/* 🎤 Mute — toggles mic track enabled state */}
+              <CtrlBtn
+                icon={call.isMuted ? MicOff : Mic}
+                label={call.isMuted ? 'Unmute' : 'Mute'}
+                active={call.isMuted}
+                onPress={onToggleMute}
+              />
+              {/* 📷 Camera — toggles video track enabled state; icon reflects current state */}
+              <CtrlBtn
+                icon={call.isCameraOff ? VideoOff : Video}
+                label={call.isCameraOff ? 'Camera Off' : 'Camera'}
+                active={call.isCameraOff}
+                onPress={onToggleCamera}
+              />
+              {/* ☎️ End Call */}
               <CtrlBtn icon={PhoneOff} label="End Call" danger large onPress={onEnd} />
-              <CtrlBtn icon={call.isSpeakerOn ? Volume2 : VolumeX} label="Speaker"
-                active={call.isSpeakerOn} onPress={onToggleSpeaker} />
-              <CtrlBtn icon={MessageSquare} label="Open Chat" onPress={onMinimize} />
+              {/* 🔊 Speaker — routes audio output (best-effort via setSinkId) */}
+              <CtrlBtn
+                icon={call.isSpeakerOn ? Volume2 : VolumeX}
+                label="Speaker"
+                active={call.isSpeakerOn}
+                onPress={onToggleSpeaker}
+              />
+              {/* 💬 Open Chat — minimises call to PiP and navigates to conversation */}
+              <CtrlBtn
+                icon={MessageSquare}
+                label="Open Chat"
+                onPress={() => {
+                  if (onOpenChat) onOpenChat();
+                  else onMinimize();
+                }}
+              />
             </div>
           </motion.div>
         )}
@@ -499,6 +562,111 @@ export function CallScreen({
           </p>
         </motion.div>
       )}
+
+      {/* ── Camera-switch error toast ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {call.switchCameraError && (
+          <motion.div
+            key="switch-err"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="absolute bottom-36 inset-x-6 rounded-[14px] px-4 py-2.5 flex items-center gap-2.5 z-20"
+            style={{ background: 'rgba(30,20,40,0.92)', border: '1px solid rgba(236,72,153,0.3)', backdropFilter: 'blur(12px)' }}
+          >
+            <AlertCircle size={15} className="text-[#EC4899] flex-shrink-0" />
+            <p className="text-white text-[12.5px] font-semibold">{call.switchCameraError}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── More menu sheet ───────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showMoreMenu && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="more-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[210]"
+              style={{ background: 'rgba(0,0,0,0.55)' }}
+              onClick={() => setShowMoreMenu(false)}
+            />
+            {/* Sheet */}
+            <motion.div
+              key="more-sheet"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+              className="absolute bottom-0 inset-x-0 z-[220] rounded-t-[24px] overflow-hidden pb-10"
+              style={{
+                background: 'rgba(12,10,22,0.97)',
+                border: '1.5px solid rgba(236,72,153,0.2)',
+                backdropFilter: 'blur(20px)',
+              }}
+            >
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-4">
+                <div className="w-10 h-1 rounded-full bg-[#333]" />
+              </div>
+
+              <p className="text-[13px] font-bold text-white/40 px-5 mb-3 uppercase tracking-widest">
+                Call Options
+              </p>
+
+              {/* Minimize */}
+              <button
+                onClick={() => { setShowMoreMenu(false); onMinimize(); }}
+                className="w-full flex items-center gap-4 px-5 py-4 active:bg-white/5 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <Minimize2 size={18} className="text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-semibold text-[15px]">Minimize</p>
+                  <p className="text-white/45 text-[12px]">Continue call in picture-in-picture</p>
+                </div>
+              </button>
+
+              {/* Switch Camera */}
+              <button
+                onClick={() => { setShowMoreMenu(false); onSwitchCamera(); }}
+                className="w-full flex items-center gap-4 px-5 py-4 active:bg-white/5 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <RotateCcw size={18} className="text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-semibold text-[15px]">Flip Camera</p>
+                  <p className="text-white/45 text-[12px]">Switch between front and rear camera</p>
+                </div>
+              </button>
+
+              {/* Open Chat */}
+              {onOpenChat && (
+                <button
+                  onClick={() => { setShowMoreMenu(false); onOpenChat(); }}
+                  className="w-full flex items-center gap-4 px-5 py-4 active:bg-white/5 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ background: 'rgba(255,255,255,0.08)' }}>
+                    <MessageSquare size={18} className="text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-semibold text-[15px]">Open Chat</p>
+                    <p className="text-white/45 text-[12px]">View conversation while on the call</p>
+                  </div>
+                </button>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

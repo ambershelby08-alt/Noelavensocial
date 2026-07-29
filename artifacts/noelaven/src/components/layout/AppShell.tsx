@@ -396,7 +396,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     toggleMinimize, toggleSwapped, switchCamera,
     incomingCall, answerIncoming, declineIncoming,
   } = useCall();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const totalUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
 
   const [notifUnreadCount, setNotifUnreadCount] = useState(0);
@@ -517,6 +517,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onMinimize={toggleMinimize}
             onSwitchCamera={switchCamera}
             onToggleSwap={toggleSwapped}
+            onOpenChat={call.conversationId ? () => {
+              toggleMinimize();
+              setLocation(`/messages/${call.conversationId}`);
+            } : undefined}
           />
         )}
       </AnimatePresence>
