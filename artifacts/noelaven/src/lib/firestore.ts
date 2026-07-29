@@ -948,6 +948,26 @@ function docToMessage(id: string, data: DocumentData): Message {
   };
 }
 
+// ── Structured Firestore error logger ────────────────────────────────────────
+// Called from every subscription error callback so the browser console always
+// shows the operation name, the collection path, and the Firebase error code
+// together.  The stack is almost always empty for Firestore permission errors
+// because Firebase creates the Error object asynchronously on the server; that
+// is expected behaviour, not a logging bug.
+export function logFsError(
+  operation: string,
+  err: unknown,
+  ctx?: Record<string, string | undefined>
+): void {
+  const e = err as { code?: string; message?: string; stack?: string } | null;
+  console.error(`[Firestore:${operation}]`, {
+    code:    e?.code    ?? 'unknown',
+    message: e?.message ?? String(err),
+    stack:   e?.stack   || '(empty — typical for server-side permission errors)',
+    ...ctx,
+  });
+}
+
 export function subscribeConversations(userId: string, onData: (convs: Conversation[]) => void): Unsubscribe {
   if (!db) return () => {};
   const q = query(
@@ -957,7 +977,7 @@ export function subscribeConversations(userId: string, onData: (convs: Conversat
   );
   return onSnapshot(q, snap => {
     onData(snap.docs.map(d => docToConversation(d.id, d.data(), userId)));
-  }, err => console.error('[subscribeConversations]', err.code, err.message));
+  }, err => logFsError('subscribeConversations', err, { userId }));
 }
 
 /**
@@ -972,7 +992,8 @@ export function subscribeConversations(userId: string, onData: (convs: Conversat
 export function subscribeMessages(
   convId: string,
   onData: (msgs: Message[], oldestDoc?: QueryDocumentSnapshot) => void,
-  pageSize = 50
+  pageSize = 50,
+  onError?: (err: { code: string; message: string }) => void
 ): Unsubscribe {
   if (!db) return () => {};
   const q = query(
@@ -986,7 +1007,10 @@ export function subscribeMessages(
     // The oldest document is the last in the desc-sorted snapshot
     const oldestDoc = snap.docs.length >= pageSize ? snap.docs[snap.docs.length - 1] : undefined;
     onData(msgs, oldestDoc);
-  }, err => console.error('[subscribeMessages]', err.code, err.message));
+  }, err => {
+    logFsError('subscribeMessages', err, { convId });
+    onError?.({ code: err.code, message: err.message });
+  });
 }
 
 /**
@@ -1127,13 +1151,17 @@ export async function markConversationRead(convId: string, userId: string): Prom
 export async function subscribeConversation(
   convId: string,
   onData: (conv: Conversation | null) => void,
-  currentUserId?: string
+  currentUserId?: string,
+  onError?: (err: { code: string; message: string }) => void
 ): Promise<Unsubscribe> {
   if (!db) return () => {};
   return onSnapshot(doc(db, 'conversations', convId), snap => {
     if (!snap.exists()) { onData(null); return; }
     onData(docToConversation(snap.id, snap.data(), currentUserId));
-  }, err => console.error('[subscribeConversation]', err.code, err.message));
+  }, err => {
+    logFsError('subscribeConversation', err, { convId, currentUserId });
+    onError?.({ code: err.code, message: err.message });
+  });
 }
 
 export async function getOrCreateDirectConversation(
@@ -1359,16 +1387,24 @@ export async function setTypingStatus(
   if (!db) return;
   const ref = doc(db, 'conversations', convId, 'typing', userId);
   if (isTyping) {
-    await setDoc(ref, { userId, typingAt: serverTimestamp() });
+    // Typing indicator writes are fire-and-forget — log on failure but never throw.
+    // A failed write means the remote user doesn't see the "typing…" bubble; that
+    // is cosmetic and must not propagate as an unhandled rejection.
+    await setDoc(ref, { userId, typingAt: serverTimestamp() }).catch(err =>
+      logFsError('setTypingStatus:set', err, { convId, userId })
+    );
   } else {
-    await deleteDoc(ref).catch(() => {});
+    await deleteDoc(ref).catch(err =>
+      logFsError('setTypingStatus:delete', err, { convId, userId })
+    );
   }
 }
 
 export function subscribeTypingStatus(
   convId: string,
   currentUserId: string,
-  onData: (typingUserIds: string[]) => void
+  onData: (typingUserIds: string[]) => void,
+  onError?: (err: { code: string; message: string }) => void
 ): Unsubscribe {
   if (!db) return () => {};
   return onSnapshot(
@@ -1384,7 +1420,10 @@ export function subscribeTypingStatus(
         .map(d => d.id);
       onData(ids);
     },
-    err => console.error('[subscribeTypingStatus]', err.code, err.message)
+    err => {
+      logFsError('subscribeTypingStatus', err, { convId, currentUserId });
+      onError?.({ code: err.code, message: err.message });
+    }
   );
 }
 

@@ -1056,6 +1056,7 @@ export default function Chat() {
     deleteForEveryone: hookDeleteForEveryone, toggleReaction: hookToggleReaction,
     typingUserIds, hasOlderMessages, loadingOlder, loadOlderMessages,
     notifyTyping, stopTyping,
+    subscriptionError, clearSubscriptionError,
   } = useMessages(convId);
 
   const { conversations, muteConversation } = useConversations();
@@ -1488,17 +1489,32 @@ export default function Chat() {
 
   async function handleBlock() {
     if (!other) return;
-    if (isFirebaseConfigured) await fsBlockUser(cu.id, other.id);
-    setLocation('/messages');
+    try {
+      if (isFirebaseConfigured) await fsBlockUser(cu.id, other.id);
+      setLocation('/messages');
+    } catch (err) {
+      const e = err as { code?: string; message?: string };
+      console.error('[Chat:handleBlock]', { code: e?.code, message: e?.message });
+    }
   }
 
   async function handleReport() {
-    if (isFirebaseConfigured) await fsReport(convId, cu.id, 'Reported by user');
+    try {
+      if (isFirebaseConfigured) await fsReport(convId, cu.id, 'Reported by user');
+    } catch (err) {
+      const e = err as { code?: string; message?: string };
+      console.error('[Chat:handleReport]', { code: e?.code, message: e?.message });
+    }
   }
 
   async function handleLeave() {
-    if (isFirebaseConfigured) await fsLeave(convId, cu.id);
-    setLocation('/messages');
+    try {
+      if (isFirebaseConfigured) await fsLeave(convId, cu.id);
+      setLocation('/messages');
+    } catch (err) {
+      const e = err as { code?: string; message?: string };
+      console.error('[Chat:handleLeave]', { code: e?.code, message: e?.message });
+    }
   }
 
   async function handleRetry(msg: LocalMsg) {
@@ -1542,9 +1558,14 @@ export default function Chat() {
     };
 
     if (isFirebaseConfigured) {
-      await Promise.all(convIds.map(cid =>
-        fsSendMessage(cid, cu.id, content, forwardMsg.type ?? 'text', fwdOpts)
-      ));
+      try {
+        await Promise.all(convIds.map(cid =>
+          fsSendMessage(cid, cu.id, content, forwardMsg.type ?? 'text', fwdOpts)
+        ));
+      } catch (err) {
+        const e = err as { code?: string; message?: string };
+        console.error('[Chat:handleForwardSend]', { code: e?.code, message: e?.message });
+      }
     } else {
       // Demo mode: inject the forwarded message into mockMessages for each target
       // conversation so it appears when the user navigates there, and update local
@@ -1630,6 +1651,37 @@ export default function Chat() {
       className="flex flex-col bg-black fixed inset-0 z-[60] md:relative md:inset-auto md:z-auto"
       style={{ height: '100dvh' } as React.CSSProperties}
     >
+
+      {/* ── Subscription error banner ────────────────────────────────────────── */}
+      {/* Shown instead of (or alongside) the Vite runtime overlay when Firestore
+          returns a permission error. Gives the user an actionable message and
+          logs enough context in the console for developers to diagnose. */}
+      {subscriptionError && (
+        <div
+          className="flex-shrink-0 flex items-start gap-3 px-4 py-3 z-20"
+          style={{ background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.25)' }}
+        >
+          <span className="text-red-400 mt-0.5 flex-shrink-0">⚠</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-red-300 text-[12.5px] font-semibold leading-snug">
+              Couldn't load conversation
+            </p>
+            <p className="text-red-400/70 text-[11px] mt-0.5 leading-snug">
+              {subscriptionError.includes('permission-denied')
+                ? 'You may not have access to this conversation, or it was removed.'
+                : 'A network or permission error occurred. Check the console for details.'}
+            </p>
+            <p className="text-red-500/50 text-[10px] mt-1 font-mono break-all">
+              {subscriptionError}
+            </p>
+          </div>
+          <button
+            onClick={clearSubscriptionError}
+            className="text-red-400/60 hover:text-red-300 flex-shrink-0 text-[18px] leading-none mt-0.5"
+            aria-label="Dismiss error"
+          >×</button>
+        </div>
+      )}
 
       {/* ── Header — flex-shrink-0 keeps it pinned; no sticky needed ── */}
       <header className="flex-shrink-0 flex items-center gap-3 px-3 py-3 bg-black/95 backdrop-blur-xl border-b border-[#1a1a1a] shadow-sm z-10">

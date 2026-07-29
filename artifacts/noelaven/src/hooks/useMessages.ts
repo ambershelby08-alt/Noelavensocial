@@ -12,6 +12,7 @@ import {
   setTypingStatus as fsSetTyping,
   subscribeTypingStatus as fsSubTyping,
   fetchOlderMessages as fsFetchOlder,
+  logFsError,
 } from '@/lib/firestore';
 import { mockConversations, mockMessages } from '@/lib/mockData';
 import type { Message, Conversation } from '@/lib/mockData';
@@ -39,6 +40,13 @@ export function useMessages(convId: string | undefined) {
   const [typingUserIds, setTypingUserIds] = useState<string[]>([]);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  /**
+   * Surface Firestore permission / network errors to the Chat UI so the user
+   * sees a friendly in-page message instead of the Vite runtime-error overlay.
+   * Cleared automatically when the user navigates away (convId changes).
+   */
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const clearSubscriptionError = useCallback(() => setSubscriptionError(null), []);
   // Cursor pointing to the oldest loaded document — passed to fetchOlderMessages
   const oldestDocRef = useRef<QueryDocumentSnapshot | undefined>(undefined);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,17 +77,41 @@ export function useMessages(convId: string | undefined) {
     let unsubMsgs: (() => void) | undefined;
     let unsubTyping: (() => void) | undefined;
 
+    // Clear any previous subscription error when opening a new conversation.
+    setSubscriptionError(null);
+
+    // ── Error handler shared by all subscriptions ─────────────────────────────
+    // Firebase strips the stack from server-side permission errors, so we log
+    // the operation name + convId + code from logFsError (inside firestore.ts)
+    // and also surface a friendly message in the Chat UI via subscriptionError.
+    function handleSubError(op: string) {
+      return (err: { code: string; message: string }) => {
+        // 'permission-denied' is the most common case — usually a rules misconfiguration
+        // or a race condition where the conversation is being created. Log it with full
+        // context so developers can trace the exact operation and conversation.
+        logFsError(op, err, { convId });
+        if (err.code === 'permission-denied') {
+          setSubscriptionError(
+            'You don\'t have permission to read this conversation. ' +
+            `(${op}: ${err.code})`
+          );
+        } else {
+          setSubscriptionError(`Failed to load messages. (${op}: ${err.code})`);
+        }
+      };
+    }
+
     // subscribeConversation is async — store the unsub once resolved, but if
     // the component unmounts before the Promise resolves, unsubscribe immediately.
     subscribeConversation(convId, conv => {
       setConversation(conv);
-    }, currentUser?.id).then(fn => {
+    }, currentUser?.id, handleSubError('subscribeConversation')).then(fn => {
       if (mounted) {
         unsubConv = fn;
       } else {
         fn(); // component already unmounted — tear down the listener immediately
       }
-    }).catch(() => {});
+    }).catch(err => logFsError('subscribeConversation:promise', err, { convId }));
 
     unsubMsgs = subscribeMessages(convId, (msgs, oldestDoc) => {
       setMessages(msgs);
@@ -93,16 +125,20 @@ export function useMessages(convId: string | undefined) {
       } else {
         setHasOlderMessages(false);
       }
-    });
+    }, 50, handleSubError('subscribeMessages'));
 
     unsubTyping = fsSubTyping(convId, currentUser?.id ?? '', ids => {
       setTypingUserIds(ids);
-    });
+    }, handleSubError('subscribeTypingStatus'));
 
     if (currentUser) {
-      markConversationRead(convId, currentUser.id).catch(console.error);
+      markConversationRead(convId, currentUser.id).catch(err =>
+        logFsError('markConversationRead', err, { convId, userId: currentUser.id })
+      );
       // Also clear any unread message-type notifications for this conversation
-      clearMessageNotificationsForConv(convId, currentUser.id).catch(console.error);
+      clearMessageNotificationsForConv(convId, currentUser.id).catch(err =>
+        logFsError('clearMessageNotificationsForConv', err, { convId, userId: currentUser.id })
+      );
     }
 
     return () => {
@@ -228,17 +264,19 @@ export function useMessages(convId: string | undefined) {
   /** Debounced typing indicator — call on every keystroke */
   const notifyTyping = useCallback(() => {
     if (!convId || !currentUser || !isFirebaseConfigured) return;
-    fsSetTyping(convId, currentUser.id, true).catch(() => {});
+    // Typing indicator is cosmetic — errors are logged inside setTypingStatus
+    // (via logFsError) and must never propagate as unhandled rejections.
+    void fsSetTyping(convId, currentUser.id, true);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      fsSetTyping(convId!, currentUser!.id, false).catch(() => {});
+      void fsSetTyping(convId!, currentUser!.id, false);
     }, 4000);
   }, [convId, currentUser]);
 
   const stopTyping = useCallback(() => {
     if (!convId || !currentUser || !isFirebaseConfigured) return;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    fsSetTyping(convId, currentUser.id, false).catch(() => {});
+    void fsSetTyping(convId, currentUser.id, false);
   }, [convId, currentUser]);
 
   const loadOlderMessages = useCallback(async () => {
@@ -269,6 +307,10 @@ export function useMessages(convId: string | undefined) {
     typingUserIds,
     hasOlderMessages,
     loadingOlder,
+    /** Non-null when a Firestore subscription failed (permission denied, offline, etc).
+     *  Cleared automatically when convId changes; also clearable by the UI. */
+    subscriptionError,
+    clearSubscriptionError,
     sendMessage,
     editMessage,
     deleteForMe,

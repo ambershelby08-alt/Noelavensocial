@@ -167,29 +167,46 @@ service cloud.firestore {
     //
     // Helper: safely check conversation participant membership.
     //
-    // Older conversation docs were created before the `participantIds` string-
-    // array field was added to the schema.  Calling `request.auth.uid in null`
-    // (or `in undefined`) causes the rules engine to throw, which returns a
-    // spurious PERMISSION_DENIED even for legitimate participants.
+    // Two historical bugs have been fixed here — document both so future edits
+    // don't re-introduce them:
     //
-    // The guard `!('participantIds' in d)` handles those legacy docs by falling
-    // back to permissive for any authenticated user.  This is safe because:
-    //   • Legacy docs won't appear in the participantIds array-contains query,
-    //     so no client discovers them via normal list operations.
-    //   • An attacker would need to know the private auto-generated convId to
-    //     target a specific legacy conversation directly.
+    //  Bug 1 — `'participantIds' in null`:
+    //    When `get()` is called for a non-existent document, the Firestore rules
+    //    engine returns a resource-like object whose `.data` field is `null`.
+    //    Using the `in` operator on `null` causes a rules evaluation error which
+    //    surfaces as a PERMISSION_DENIED — even for legitimate participants of a
+    //    conversation that is being created (race condition) or just deleted.
+    //    Fix: guard `d != null` before any field access.
+    //
+    //  Bug 2 — `'participantIds' in d` on legacy docs:
+    //    Conversations created before the `participantIds` field was introduced
+    //    do not have the field at all. The `in` operator throws on missing map
+    //    keys in some Firestore rules versions.
+    //    Fix: use the safe map accessor `d.get('participantIds', null)` which
+    //    returns `null` (not an error) when the key is absent.
+    //
+    // Security note on the legacy-doc fallback (`d.get('participantIds', null) == null`):
+    //   Legacy docs won't appear in the participantIds array-contains queries that
+    //   every client uses, so they are not discoverable via normal listing. An
+    //   attacker would need to know the private auto-generated convId to reach them.
     function isConvParticipant(convId) {
       let d = get(/databases/$(database)/documents/conversations/$(convId)).data;
-      return !('participantIds' in d) || request.auth.uid in d.participantIds;
+      // d is null  → conversation does not exist → deny (false)
+      // participantIds absent → legacy doc → permit (null == null is true)
+      // participantIds present → check membership
+      return d != null
+          && (d.get('participantIds', null) == null
+              || request.auth.uid in d.participantIds);
     }
 
     match /conversations/{convId} {
       // read: allow participant reads AND non-existent-doc reads (resource==null means
       // the doc doesn't exist; accessing resource.data on null would throw → denied,
       // so we guard with resource != null to let onSnapshot return an empty snapshot).
+      // Use .get() accessor (not 'in') to avoid throwing on missing participantIds.
       allow read: if isAuthenticated()
           && (resource == null
-              || !('participantIds' in resource.data)
+              || resource.data.get('participantIds', null) == null
               || request.auth.uid in resource.data.participantIds);
 
       // update: participants may update conversation metadata (lastMessage, unreadCounts,
@@ -197,7 +214,7 @@ service cloud.firestore {
       // authenticated user (they will be backfilled with participantIds on next access).
       allow update: if isAuthenticated()
           && resource != null
-          && (!('participantIds' in resource.data)
+          && (resource.data.get('participantIds', null) == null
               || request.auth.uid in resource.data.participantIds);
 
       allow create: if isAuthenticated()
