@@ -1057,6 +1057,7 @@ export default function Chat() {
     typingUserIds, hasOlderMessages, loadingOlder, loadOlderMessages,
     notifyTyping, stopTyping,
     subscriptionError, clearSubscriptionError,
+    messageActionError, clearMessageActionError,
   } = useMessages(convId);
 
   const { conversations, muteConversation } = useConversations();
@@ -1432,7 +1433,11 @@ export default function Chat() {
 
   function handleReact(msgId: string, emoji: string) {
     if (isFirebaseConfigured) {
-      hookToggleReaction(msgId, emoji);
+      // hookToggleReaction is async — apply optimistic update immediately inside
+      // the hook; errors are caught there, logged, and reverted automatically.
+      // We must not leave the Promise unhandled (causes the Vite overlay), so
+      // we explicitly void-cast it (errors are handled inside toggleReaction).
+      void hookToggleReaction(msgId, emoji);
     } else {
       setMessages(prev => prev.map(m => {
         if (m.id !== msgId) return m;
@@ -1471,7 +1476,13 @@ export default function Chat() {
 
   async function handleDeleteForMe(msg: LocalMsg) {
     if (isFirebaseConfigured) {
-      await hookDeleteForMe(msg.id);
+      try {
+        await hookDeleteForMe(msg.id);
+      } catch (err) {
+        // Error is already logged + messageActionError set inside the hook.
+        // Swallow here so the UI doesn't see an unhandled rejection.
+        void err;
+      }
     } else {
       setMessages(prev => prev.filter(m => m.id !== msg.id));
     }
@@ -1479,7 +1490,11 @@ export default function Chat() {
 
   async function handleDeleteForEveryone(msg: LocalMsg) {
     if (isFirebaseConfigured) {
-      await hookDeleteForEveryone(msg.id);
+      try {
+        await hookDeleteForEveryone(msg.id);
+      } catch (err) {
+        void err;
+      }
     } else {
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, deletedForEveryone: true } : m));
     }
@@ -1651,6 +1666,24 @@ export default function Chat() {
       className="flex flex-col bg-black fixed inset-0 z-[60] md:relative md:inset-auto md:z-auto"
       style={{ height: '100dvh' } as React.CSSProperties}
     >
+
+      {/* ── Message action error toast ───────────────────────────────────────── */}
+      {/* Shown when a reaction, edit, or delete fails — replaces the Vite overlay.
+          Auto-dismissed after 5 s so it doesn't linger when the user keeps chatting. */}
+      {messageActionError && (
+        <div
+          className="absolute top-16 left-1/2 -translate-x-1/2 z-50 flex items-start gap-2 px-4 py-2.5 rounded-xl shadow-lg max-w-xs w-[90%]"
+          style={{ background: 'rgba(30,10,10,0.97)', border: '1px solid rgba(239,68,68,0.35)' }}
+        >
+          <span className="text-red-400 flex-shrink-0 mt-0.5 text-[14px]">⚠</span>
+          <p className="text-red-300 text-[12px] leading-snug flex-1">{messageActionError}</p>
+          <button
+            onClick={clearMessageActionError}
+            className="text-red-400/60 hover:text-red-300 flex-shrink-0 text-[16px] leading-none -mt-0.5"
+            aria-label="Dismiss"
+          >×</button>
+        </div>
+      )}
 
       {/* ── Subscription error banner ────────────────────────────────────────── */}
       {/* Shown instead of (or alongside) the Vite runtime overlay when Firestore

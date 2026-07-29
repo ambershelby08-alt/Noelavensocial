@@ -41,12 +41,19 @@ export function useMessages(convId: string | undefined) {
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   /**
-   * Surface Firestore permission / network errors to the Chat UI so the user
-   * sees a friendly in-page message instead of the Vite runtime-error overlay.
-   * Cleared automatically when the user navigates away (convId changes).
+   * Surface Firestore subscription errors (permission denied, offline, etc.)
+   * to the Chat UI instead of the Vite runtime-error overlay.
+   * Cleared automatically when convId changes.
    */
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
   const clearSubscriptionError = useCallback(() => setSubscriptionError(null), []);
+
+  /**
+   * Surface message action errors (reaction toggle, edit, delete) so the user
+   * sees a friendly dismissable error instead of a silent revert or overlay.
+   */
+  const [messageActionError, setMessageActionError] = useState<string | null>(null);
+  const clearMessageActionError = useCallback(() => setMessageActionError(null), []);
   // Cursor pointing to the oldest loaded document — passed to fetchOlderMessages
   const oldestDocRef = useRef<QueryDocumentSnapshot | undefined>(undefined);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -190,7 +197,18 @@ export function useMessages(convId: string | undefined) {
       ));
       return;
     }
-    await fsEdit(convId, msgId, newContent);
+    try {
+      await fsEdit(convId, msgId, newContent);
+    } catch (err) {
+      logFsError('editMessage', err, { convId, msgId });
+      const code = (err as { code?: string })?.code ?? '';
+      setMessageActionError(
+        code === 'permission-denied'
+          ? 'Edit failed — you can only edit your own messages.'
+          : `Edit failed. (${code || 'unknown error'})`
+      );
+      throw err; // let doSaveEdit in Chat.tsx know it failed
+    }
   }, [convId]);
 
   const deleteForMe = useCallback(async (msgId: string) => {
@@ -201,17 +219,24 @@ export function useMessages(convId: string | undefined) {
       ));
       return;
     }
-    await fsDeleteForMe(convId, msgId, currentUser.id);
-    // Patch local state + cache immediately so navigating away before the
-    // Firestore subscription fires never flashes the deleted message.
-    const uid = currentUser.id;
-    setMessages(prev => {
-      const updated = prev.map(m =>
-        m.id === msgId ? { ...m, deletedFor: [...(m.deletedFor ?? []), uid] } : m
-      );
-      cacheMessages(uid, convId, updated);
-      return updated;
-    });
+    try {
+      await fsDeleteForMe(convId, msgId, currentUser.id);
+      // Patch local state + cache immediately so navigating away before the
+      // Firestore subscription fires never flashes the deleted message.
+      const uid = currentUser.id;
+      setMessages(prev => {
+        const updated = prev.map(m =>
+          m.id === msgId ? { ...m, deletedFor: [...(m.deletedFor ?? []), uid] } : m
+        );
+        cacheMessages(uid, convId, updated);
+        return updated;
+      });
+    } catch (err) {
+      logFsError('deleteMessageForMe', err, { convId, msgId, userId: currentUser.id });
+      const code = (err as { code?: string })?.code ?? '';
+      setMessageActionError(`Couldn't delete message. (${code || 'unknown error'})`);
+      throw err;
+    }
   }, [currentUser, convId]);
 
   const deleteForEveryone = useCallback(async (msgId: string) => {
@@ -222,43 +247,77 @@ export function useMessages(convId: string | undefined) {
       ));
       return;
     }
-    await fsDeleteForEveryone(convId, msgId);
-    // Patch local state + cache immediately — same reason as deleteForMe above.
-    if (currentUser) {
-      const uid = currentUser.id;
-      setMessages(prev => {
-        const updated = prev.map(m =>
-          m.id === msgId
-            ? { ...m, deletedForEveryone: true, mediaUrl: undefined, editedContent: undefined }
-            : m
-        );
-        cacheMessages(uid, convId, updated);
-        return updated;
-      });
+    try {
+      await fsDeleteForEveryone(convId, msgId);
+      // Patch local state + cache immediately — same reason as deleteForMe above.
+      if (currentUser) {
+        const uid = currentUser.id;
+        setMessages(prev => {
+          const updated = prev.map(m =>
+            m.id === msgId
+              ? { ...m, deletedForEveryone: true, mediaUrl: undefined, editedContent: undefined }
+              : m
+          );
+          cacheMessages(uid, convId, updated);
+          return updated;
+        });
+      }
+    } catch (err) {
+      logFsError('deleteMessageForEveryone', err, { convId, msgId });
+      const code = (err as { code?: string })?.code ?? '';
+      setMessageActionError(
+        code === 'permission-denied'
+          ? 'Delete failed — you can only delete your own messages for everyone.'
+          : `Couldn't delete message. (${code || 'unknown error'})`
+      );
+      throw err;
     }
   }, [currentUser, convId]);
+
+  // Shared helper — applies one "toggle" of emoji for userId on a messages array.
+  // Calling it twice (optimistic + revert) returns to the original state.
+  function applyReactionToggle(
+    prev: Message[],
+    msgId: string,
+    userId: string,
+    emoji: string
+  ): Message[] {
+    return prev.map(m => {
+      if (m.id !== msgId) return m;
+      const reactions = { ...m.reactions };
+      const users = reactions[emoji] ?? [];
+      if (users.includes(userId)) {
+        const next = users.filter(u => u !== userId);
+        if (next.length === 0) delete reactions[emoji];
+        else reactions[emoji] = next;
+      } else {
+        reactions[emoji] = [...users, userId];
+      }
+      return { ...m, reactions };
+    });
+  }
 
   const toggleReaction = useCallback(async (msgId: string, emoji: string) => {
     if (!currentUser || !convId) return;
 
     // Optimistic update — applied for both demo and Firebase paths so the UI
-    // feels instant. The real-time subscription will reconcile if needed.
-    setMessages(prev => prev.map(m => {
-      if (m.id !== msgId) return m;
-      const reactions = { ...m.reactions };
-      const users = reactions[emoji] ?? [];
-      if (users.includes(currentUser.id)) {
-        const next = users.filter(u => u !== currentUser.id);
-        if (next.length === 0) delete reactions[emoji];
-        else reactions[emoji] = next;
-      } else {
-        reactions[emoji] = [...users, currentUser.id];
-      }
-      return { ...m, reactions };
-    }));
+    // feels instant. The real-time subscription will reconcile if the write succeeds.
+    setMessages(prev => applyReactionToggle(prev, msgId, currentUser.id, emoji));
 
     if (!isFirebaseConfigured) return;
-    await fsToggleReaction(convId, msgId, currentUser.id, emoji);
+    try {
+      await fsToggleReaction(convId, msgId, currentUser.id, emoji);
+    } catch (err) {
+      logFsError('toggleMessageReaction', err, { convId, msgId, userId: currentUser.id, emoji });
+      // Revert the optimistic update — toggling twice is the identity operation.
+      setMessages(prev => applyReactionToggle(prev, msgId, currentUser.id, emoji));
+      const code = (err as { code?: string })?.code ?? '';
+      setMessageActionError(
+        code === 'permission-denied'
+          ? 'Reaction failed — you don\'t have permission to react to this message.'
+          : `Reaction failed. (${code || 'unknown error'})`
+      );
+    }
   }, [currentUser, convId]);
 
   /** Debounced typing indicator — call on every keystroke */
@@ -311,6 +370,10 @@ export function useMessages(convId: string | undefined) {
      *  Cleared automatically when convId changes; also clearable by the UI. */
     subscriptionError,
     clearSubscriptionError,
+    /** Non-null when a message action (reaction, edit, delete) failed.
+     *  Does NOT clear automatically — must be dismissed by the user. */
+    messageActionError,
+    clearMessageActionError,
     sendMessage,
     editMessage,
     deleteForMe,

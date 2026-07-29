@@ -223,8 +223,52 @@ service cloud.firestore {
 
     match /conversations/{convId}/messages/{msgId} {
       allow read: if isAuthenticated() && isConvParticipant(convId);
+
+      // Create: sender must claim their own UID in senderId.
       allow create: if isAuthenticated()
           && request.resource.data.senderId == request.auth.uid;
+
+      // ── Message mutations (previously missing — every update was denied) ─────
+      //
+      // Each branch uses affectedKeys() to allow only the specific fields that a
+      // given client operation touches, so participants cannot freely overwrite
+      // immutable fields like senderId or createdAt.
+      //
+      // Operations covered:
+      //   Emoji reactions  — any participant (tap to add, tap again to remove)
+      //   Delivery/read    — any participant (marked automatically on receipt)
+      //   Delete for me    — any participant (appends own UID to deletedFor)
+      //   Edit content     — only the original sender
+      //   Delete for all   — original sender or moderator (zeroes out content)
+      allow update: if isAuthenticated()
+          && isConvParticipant(convId)
+          && (
+            // Reactions — any participant toggles emoji on any message
+            request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['reactions'])
+
+            // Delivery receipts written automatically by recipient clients
+            || request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['deliveredTo'])
+            || request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['readBy'])
+            || request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['deliveredTo', 'readBy'])
+
+            // "Delete for me" — appends own UID to deletedFor; does not affect others
+            || request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['deletedFor'])
+
+            // Edit — only the original sender may change their own message text
+            || (request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['editedContent', 'editedAt'])
+                && resource.data.senderId == request.auth.uid)
+
+            // "Delete for everyone" — sender (or moderator) nullifies content/media
+            || (request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['deletedForEveryone', 'editedContent', 'mediaUrl'])
+                && (resource.data.senderId == request.auth.uid || isModerator()))
+          );
     }
 
     // Typing indicators — participants only
