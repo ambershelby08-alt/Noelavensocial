@@ -110,11 +110,9 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
 
   return (
     <>
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-      <div
-        className="flex justify-around items-center h-[60px] px-1"
-        style={{ background: '#000', borderTop: '1px solid #1a1a1a' }}
-      >
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+      style={{ background: '#000', borderTop: '1px solid #1a1a1a' }}>
+      <div className="flex justify-around items-center h-[60px] px-1">
         {navItems.map((item) => {
           const isActive = location === item.path || (item.path === '/' && location === '/');
 
@@ -180,6 +178,8 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
           );
         })}
       </div>
+      {/* Safe-area spacer — fills the iPhone home-indicator zone */}
+      <div style={{ height: 'env(safe-area-inset-bottom)' }} />
     </nav>
     <AnimatePresence>
       {showAnsweredSheet && (

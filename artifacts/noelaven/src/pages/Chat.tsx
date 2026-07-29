@@ -1643,7 +1643,7 @@ export default function Chat() {
           {isGroup ? (
             <div className="relative w-10 h-10">
               {(conversation?.participants.filter(p => p.id !== cu.id) ?? []).slice(0, 2).map((p, i) => (
-                <div key={p.id} className="absolute border-2 border-white rounded-full"
+                <div key={p.id} className="absolute border-2 border-black rounded-full"
                   style={i === 0 ? { bottom: 0, left: 0 } : { top: 0, right: 0 }}>
                   <UserAvatar userId={p.id} fallbackName={p.displayName} fallbackSrc={(p as any).avatarUrl || undefined} size={28} />
                 </div>
@@ -1653,7 +1653,7 @@ export default function Chat() {
             <Link href={`/profile/${other.id}`} className="flex contents">
               <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={(other as any).avatarUrl || undefined} size={40} />
               {otherPresence.isOnline && (
-                <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+                <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-black" />
               )}
             </Link>
           ) : null}

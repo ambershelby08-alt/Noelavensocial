@@ -60,29 +60,6 @@ function ActiveUsersRow({ users, currentUser: me }: { users: OnlineUser[]; curre
   return (
     <div className="mb-4">
       <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-none">
-        {/* My Note / own avatar */}
-        <Link href="/profile">
-          <motion.div whileTap={{ scale: 0.93 }} className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0">
-            <div className="relative">
-              {/* Rainbow ring */}
-              <div className="p-[2.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
-                <div className="p-[2px] rounded-full bg-black">
-                  <UserAvatar
-                    userId={currentUser?.id ?? ''}
-                    fallbackName={currentUser?.displayName ?? 'Me'}
-                    fallbackSrc={currentUser?.avatarUrl || undefined}
-                    size={52}
-                  />
-                </div>
-              </div>
-              {/* + badge */}
-              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-black text-white text-[11px] font-black"
-                style={{ background: '#EC4899' }}>+</div>
-            </div>
-            <span className="text-[11px] text-[#BDBDBD] font-medium truncate max-w-[56px] text-center">My Note</span>
-          </motion.div>
-        </Link>
-
         {/* Active contacts */}
         {users.map(user => (
           <Link key={user.id} href={`/profile/${user.id}`}>

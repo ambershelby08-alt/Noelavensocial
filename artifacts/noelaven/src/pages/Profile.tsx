@@ -1052,10 +1052,9 @@ export default function Profile() {
       </div>
 
       {/* ── Profile header ──────────────────────────────────────────────── */}
-      <div className="px-4 -mt-10">
-        {/* Two-column: avatar LEFT + name/handle/bio RIGHT */}
-        <div className="flex items-center gap-4 mb-5">
-          {/* Avatar with rainbow ring */}
+      <div className="px-4">
+        {/* Avatar row — negative margin pulls it up to overlap the cover bottom */}
+        <div className="flex items-end justify-between" style={{ marginTop: '-52px', marginBottom: '14px' }}>
           <div className="relative flex-shrink-0">
             <div className="p-[3px] rounded-full"
               style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
@@ -1079,31 +1078,31 @@ export default function Profile() {
               </button>
             )}
           </div>
+        </div>
 
-          {/* Name / handle / FOUNDER / bio */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-              <h1 className="text-[19px] font-black text-white tracking-tight leading-tight">{user.displayName}</h1>
-              <CheckCircle2 size={17} style={{ color: '#3B82F6' }} />
-            </div>
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="text-[13px] text-[rgba(255,255,255,0.45)]">@{user.handle}</span>
-              <FounderBadge userId={user.id} size="sm" showLabel />
-            </div>
-            {user.bio ? (
-              <p className="text-[13px] text-[#BDBDBD] leading-relaxed line-clamp-3 mb-2">{user.bio}</p>
-            ) : isOwnProfile ? (
-              <button onClick={() => setEditOpen(true)}
-                className="flex items-center gap-1 text-[13px] text-[#EC4899] font-semibold mb-2">
-                <Plus size={13} /> Add a bio
-              </button>
-            ) : null}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
-              <span className="text-[12px] text-[rgba(255,255,255,0.4)]">📍 Atlanta, GA</span>
-              <div className="flex items-center gap-1 text-[12px] text-[rgba(255,255,255,0.4)]">
-                <Calendar size={11} />
-                <span>Joined {format(user.joinedAt, 'MMM yyyy')}</span>
-              </div>
+        {/* Stacked info: Display Name → @handle → Founder badge → bio → location + join date */}
+        <div className="mb-5">
+          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+            <h1 className="text-[20px] font-black text-white tracking-tight leading-tight">{user.displayName}</h1>
+            <CheckCircle2 size={17} style={{ color: '#3B82F6' }} />
+          </div>
+          <div className="text-[13px] text-[rgba(255,255,255,0.45)] mb-2">@{user.handle}</div>
+          <div className="mb-2">
+            <FounderBadge userId={user.id} size="sm" showLabel />
+          </div>
+          {user.bio ? (
+            <p className="text-[13px] text-[#BDBDBD] leading-relaxed mb-2">{user.bio}</p>
+          ) : isOwnProfile ? (
+            <button onClick={() => setEditOpen(true)}
+              className="flex items-center gap-1 text-[13px] text-[#EC4899] font-semibold mb-2">
+              <Plus size={13} /> Add a bio
+            </button>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            <span className="text-[12px] text-[rgba(255,255,255,0.4)]">📍 Atlanta, GA</span>
+            <div className="flex items-center gap-1 text-[12px] text-[rgba(255,255,255,0.4)]">
+              <Calendar size={11} />
+              <span>Joined {format(user.joinedAt, 'MMM yyyy')}</span>
             </div>
           </div>
         </div>
