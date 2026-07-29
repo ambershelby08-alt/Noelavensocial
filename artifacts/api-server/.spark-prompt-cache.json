@@ -1,3 +1,20 @@
 {
-  "2026-07-29": "What made you smile most yesterday?"
+  "daily": {
+    "2026-07-29": {
+      "prompt": "What made you smile most yesterday?",
+      "categoryKey": "life",
+      "categoryLabel": "🌎 Life",
+      "isGoldenSpark": false,
+      "isSurprise": false
+    }
+  },
+  "recentPrompts": [
+    "What made you smile most yesterday?"
+  ],
+  "lastCategoryKey": "",
+  "goldenSpark": {
+    "weekKey": "2026-W31",
+    "prompt": "What small kindness made your day brighter this week?",
+    "categoryLabel": "🌈 Positive"
+  }
 }

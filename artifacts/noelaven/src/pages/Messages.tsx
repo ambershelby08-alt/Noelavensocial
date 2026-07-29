@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, PenSquare, X, MessageCircle,
+  Search, X, MessageCircle,
   Pin, Archive, BellOff, Bell, Trash2, ChevronDown, ChevronUp,
   Filter, Phone, SlidersHorizontal,
 } from 'lucide-react';
@@ -544,16 +544,10 @@ export default function Messages() {
 
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 bg-black border-b border-[#1a1a1a] px-4 pt-4 pb-3">
-        {/* Top row: compose | logo+name | filter+... */}
+        {/* Top row: spacer | logo+name | filter+... */}
         <div className="flex items-center justify-between mb-3">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setCompose(true)}
-            className="w-9 h-9 rounded-full flex items-center justify-center"
-            style={{ background: '#111', border: '1px solid #2a2a2a' }}
-          >
-            <PenSquare size={16} className="text-white" />
-          </motion.button>
+          {/* Spacer keeps title centred now that the duplicate compose button is removed */}
+          <div className="w-9 h-9" />
 
           {/* Center: logo + wordmark */}
           <div className="flex items-center gap-2">
