@@ -609,7 +609,7 @@ function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCop
         className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl pb-8"
       >
         <div className="flex justify-center pt-3 pb-4">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+          <div className="w-10 h-1 rounded-full bg-[#333]" />
         </div>
         {/* Quick reactions at top */}
         <div className="flex justify-center gap-2 px-5 pb-4 border-b border-[#1a1a1a]">
@@ -688,13 +688,13 @@ function EditBanner({ onCancel }: { onCancel: () => void }) {
       initial={{ height: 0, opacity: 0 }}
       animate={{ height: 'auto', opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
-      className="px-4 py-2.5 bg-amber-50 border-t border-amber-100 flex items-center gap-3"
+      className="px-4 py-2.5 bg-[#111] border-t border-[#1a1a1a] flex items-center gap-3"
     >
-      <Edit2 size={16} className="text-amber-400 flex-shrink-0" />
+      <Edit2 size={16} className="text-[#EC4899] flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="text-[12.5px] font-bold text-amber-600">Editing message</div>
+        <div className="text-[12.5px] font-bold text-[#BDBDBD]">Editing message</div>
       </div>
-      <button onClick={onCancel} className="p-1.5 rounded-full hover:bg-amber-100 transition-colors">
+      <button onClick={onCancel} className="p-1.5 rounded-full hover:bg-[#1a1a1a] transition-colors">
         <X size={15} className="text-[rgba(255,255,255,0.45)]" />
       </button>
     </motion.div>
@@ -851,7 +851,7 @@ function SafetyMenuSheet({ isGroup, isDirect, onMute, onBlock, onReport, onLeave
         className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl pb-8"
       >
         <div className="flex justify-center pt-3 pb-4">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+          <div className="w-10 h-1 rounded-full bg-[#333]" />
         </div>
         <div className="px-5 space-y-1">
           {items.map(a => (
@@ -949,7 +949,7 @@ function ForwardPickerSheet({
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+          <div className="w-10 h-1 rounded-full bg-[#333]" />
         </div>
 
         {/* Header */}
@@ -1029,7 +1029,7 @@ function ForwardPickerSheet({
                 </div>
                 <div className={cn(
                   'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-                  sel ? 'border-[#F5C542] bg-[#F5C542]' : 'border-gray-300'
+                  sel ? 'border-[#F5C542] bg-[#F5C542]' : 'border-[#333]'
                 )}>
                   {sel && <Check size={11} className="text-white" />}
                 </div>
@@ -1627,7 +1627,7 @@ export default function Chat() {
      * sidebar layout without covering it.
      */
     <div
-      className="flex flex-col bg-[#F8F5F2] fixed inset-0 z-[60] md:relative md:inset-auto md:z-auto"
+      className="flex flex-col bg-black fixed inset-0 z-[60] md:relative md:inset-auto md:z-auto"
       style={{ height: '100dvh' } as React.CSSProperties}
     >
 
@@ -1990,7 +1990,7 @@ export default function Chat() {
               style={{ maxHeight: '80vh' }}
             >
               <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-                <div className="w-10 h-1 rounded-full bg-gray-300" />
+                <div className="w-10 h-1 rounded-full bg-[#333]" />
               </div>
               <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
                 <button onClick={() => setMediaGalleryOpen(false)} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">

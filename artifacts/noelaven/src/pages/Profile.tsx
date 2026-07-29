@@ -1054,7 +1054,7 @@ export default function Profile() {
       {/* ── Profile header ──────────────────────────────────────────────── */}
       <div className="px-4 -mt-10">
         {/* Two-column: avatar LEFT + name/handle/bio RIGHT */}
-        <div className="flex items-start gap-4 mb-5">
+        <div className="flex items-center gap-4 mb-5">
           {/* Avatar with rainbow ring */}
           <div className="relative flex-shrink-0">
             <div className="p-[3px] rounded-full"
@@ -1081,7 +1081,7 @@ export default function Profile() {
           </div>
 
           {/* Name / handle / FOUNDER / bio */}
-          <div className="flex-1 min-w-0 pt-2">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
               <h1 className="text-[19px] font-black text-white tracking-tight leading-tight">{user.displayName}</h1>
               <CheckCircle2 size={17} style={{ color: '#3B82F6' }} />

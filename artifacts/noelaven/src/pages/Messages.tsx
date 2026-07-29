@@ -182,7 +182,7 @@ function ConvActionSheet({
         className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl pb-8"
       >
         <div className="flex justify-center pt-3 pb-4">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+          <div className="w-10 h-1 rounded-full bg-[#333]" />
         </div>
         <div className="px-5 space-y-1">
           {actions.map(a => (
@@ -342,11 +342,11 @@ function ComposeDrawer({
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed inset-x-0 bottom-0 z-[75] bg-black rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: '80vh' }}
       >
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+          <div className="w-10 h-1 rounded-full bg-[#333]" />
         </div>
         <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
           <button onClick={onClose} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
@@ -409,6 +409,7 @@ function ComposeDrawer({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Messages() {
+  const [, setLocation] = useLocation();
   const [search, setSearch]         = useState('');
   const [composeOpen, setCompose]   = useState(false);
   const [actionConv, setActionConv] = useState<Conversation | null>(null);
@@ -486,6 +487,7 @@ export default function Messages() {
           {/* Right: filter + more */}
           <div className="flex items-center gap-1.5">
             <motion.button whileTap={{ scale: 0.9 }}
+              onClick={() => setLocation('/settings')}
               className="w-9 h-9 rounded-full flex items-center justify-center"
               style={{ background: '#111', border: '1px solid #2a2a2a' }}>
               <SlidersHorizontal size={15} className="text-white" />
