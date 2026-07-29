@@ -33,7 +33,7 @@ export function StoriesRow({ groups, onAddStory, onViewGroup }: StoriesRowProps)
                   /* Has own story → gradient ring */
                   <div
                     className="p-[2.5px] rounded-full"
-                    style={{ background: 'linear-gradient(135deg, #EC4899, #F5C542, #2563EB)' }}
+                    style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
                   >
                     <div className="p-[2px] bg-black rounded-full">
                       <GradientAvatar
@@ -81,7 +81,7 @@ export function StoriesRow({ groups, onAddStory, onViewGroup }: StoriesRowProps)
                 className="p-[2.5px] rounded-full"
                 style={{
                   background: group.hasUnseen
-                    ? 'linear-gradient(135deg, #EC4899 0%, #F5C542 50%, #2563EB 100%)'
+                    ? 'linear-gradient(135deg, #EC4899 0%, #7C3AED 50%, #2563EB 100%)'
                     : '#333333',
                 }}
               >
