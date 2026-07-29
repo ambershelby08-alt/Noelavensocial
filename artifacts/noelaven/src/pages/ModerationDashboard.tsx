@@ -19,6 +19,7 @@ import {
   removeContent, restoreContent,
   getSuspendedUsers, getBannedUsers, getModerationLog, checkIsAdmin,
 } from '@/lib/safety';
+import { getUserByHandle } from '@/lib/firestore';
 import type {
   Report, ReportStatus, ReportPriority, ModerationLog,
 } from '@/lib/mockData';
@@ -454,6 +455,35 @@ export default function ModerationDashboard() {
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [search, setSearch] = useState('');
+  const [handleInput, setHandleInput] = useState('');
+  const [resolvedUid, setResolvedUid] = useState<string | null>(null);
+  const [resolvedHandle, setResolvedHandle] = useState<string | null>(null);
+  const [handleLookupState, setHandleLookupState] = useState<'idle' | 'looking' | 'found' | 'notfound'>('idle');
+
+  // Debounced handle → UID lookup
+  useEffect(() => {
+    const raw = handleInput.trim().replace(/^@/, '');
+    if (!raw) {
+      setResolvedUid(null);
+      setResolvedHandle(null);
+      setHandleLookupState('idle');
+      return;
+    }
+    setHandleLookupState('looking');
+    const t = setTimeout(async () => {
+      const uid = await getUserByHandle(raw);
+      if (uid) {
+        setResolvedUid(uid);
+        setResolvedHandle(raw);
+        setHandleLookupState('found');
+      } else {
+        setResolvedUid(null);
+        setResolvedHandle(null);
+        setHandleLookupState('notfound');
+      }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [handleInput]);
 
   // Check admin access
   useEffect(() => {
@@ -576,22 +606,30 @@ export default function ModerationDashboard() {
 
   // Filtered content — matches reason, preview, evidence text, AND the reported
   // user's UID / targetOwnerId so moderators can pull all reports against a user
-  // by typing a partial UID into the search bar.
-  const filteredReports = search.trim()
-    ? reports.filter(r => {
-        const q = search.toLowerCase();
-        return (
-          r.reason.toLowerCase().includes(q) ||
-          r.targetPreview?.toLowerCase().includes(q) ||
-          r.evidence?.textSnapshot?.toLowerCase().includes(q) ||
-          r.reportedUserId?.toLowerCase().includes(q) ||
-          r.targetOwnerId?.toLowerCase().includes(q) ||
-          r.reporterId?.toLowerCase().includes(q) ||
-          r.category?.toLowerCase().includes(q) ||
-          r.additionalDetails?.toLowerCase().includes(q)
-        );
-      })
-    : reports;
+  // by typing a partial UID into the search bar.  When a @handle has been resolved
+  // to a UID, that UID is applied as an additional exact-match filter.
+  const filteredReports = reports.filter(r => {
+    if (resolvedUid) {
+      // Handle filter takes precedence — show only reports involving that user.
+      return (
+        r.reportedUserId === resolvedUid ||
+        r.targetOwnerId === resolvedUid ||
+        r.reporterId === resolvedUid
+      );
+    }
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      r.reason.toLowerCase().includes(q) ||
+      r.targetPreview?.toLowerCase().includes(q) ||
+      r.evidence?.textSnapshot?.toLowerCase().includes(q) ||
+      r.reportedUserId?.toLowerCase().includes(q) ||
+      r.targetOwnerId?.toLowerCase().includes(q) ||
+      r.reporterId?.toLowerCase().includes(q) ||
+      r.category?.toLowerCase().includes(q) ||
+      r.additionalDetails?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-[#FDF9F6] pb-32">
@@ -643,15 +681,42 @@ export default function ModerationDashboard() {
           </div>
         </div>
 
-        {/* Search (reports only) */}
+        {/* Search + handle filter (reports only) */}
         {reportTabs.has(activeTab) && (
-          <div className="relative mb-3">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search by reason, content, or user UID…"
-              className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white border border-black/[0.06] text-[13.5px] text-gray-800 outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition-all"
-            />
+          <div className="space-y-2 mb-3">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search} onChange={e => { setSearch(e.target.value); setHandleInput(''); setResolvedUid(null); }}
+                placeholder="Search by reason, content, or user UID…"
+                className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white border border-black/[0.06] text-[13.5px] text-gray-800 outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition-all"
+              />
+            </div>
+            {/* Handle-to-UID resolver */}
+            <div className="relative">
+              <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={handleInput}
+                onChange={e => { setHandleInput(e.target.value); setSearch(''); }}
+                placeholder="Filter by @handle…"
+                className="w-full pl-8 pr-3 py-2 rounded-xl bg-white border border-black/[0.06] text-[13px] text-gray-800 outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition-all"
+              />
+              {handleInput.trim() && (
+                <button onClick={() => { setHandleInput(''); setResolvedUid(null); setHandleLookupState('idle'); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            {handleLookupState === 'found' && resolvedHandle && resolvedUid && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-xl text-[12px] text-purple-700 font-medium">
+                <Check size={12} className="text-purple-500" />
+                @{resolvedHandle} → {resolvedUid.slice(0, 12)}…
+              </div>
+            )}
+            {handleLookupState === 'notfound' && handleInput.trim() && (
+              <p className="text-[12px] text-red-500 pl-1">Handle not found</p>
+            )}
           </div>
         )}
 

@@ -171,6 +171,15 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
     setCommentReplies(prev => prev.map(r => r.id === replyId ? { ...r, reactions: updated } : r));
     if (isFirebaseConfigured) {
       fsToggleReplyReaction(post.id, commentId, replyId, currentUser.id, emoji).catch(console.error);
+      // Notify the reply author (only when adding a reaction, not removing it)
+      if (!hadThis && reply.authorId && reply.authorId !== currentUser.id) {
+        fsWriteNotification(reply.authorId, 'reaction', currentUser as unknown as User, {
+          postId: post.id,
+          commentId,
+          emoji,
+          message: `${currentUser.displayName} reacted ${emoji} to your reply`,
+        }).catch(console.error);
+      }
     }
   }
 

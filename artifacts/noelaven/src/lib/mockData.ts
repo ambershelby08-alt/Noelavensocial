@@ -123,12 +123,15 @@ export interface Conversation {
   pinnedBy?: string[];
   archivedBy?: string[];
   mutedBy?: string[];
+  /** uid → timestamp of when that participant last opened this conversation (seen receipts). */
+  seenBy?: Record<string, Date>;
 }
 
 export type NotificationType =
   | 'like' | 'reaction' | 'comment' | 'reply' | 'like_comment'
   | 'follow' | 'community_invite' | 'daily_spark'
-  | 'mention' | 'message' | 'story_reaction' | 'story_reply' | 'story_view' | 'spark_reaction'
+  | 'mention' | 'message' | 'missed_call'
+  | 'story_reaction' | 'story_reply' | 'story_view' | 'spark_reaction'
   | 'moderation_warning';
 
 export interface Notification {

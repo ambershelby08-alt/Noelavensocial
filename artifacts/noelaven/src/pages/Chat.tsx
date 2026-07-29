@@ -1608,6 +1608,14 @@ export default function Chat() {
     slots.push({ type: 'group', group });
   }
 
+  // Index of the last slot from the current user — "Seen" chip goes here.
+  const lastMeSlotIdx = slots.reduce(
+    (acc, slot, i) => (slot.type === 'group' && slot.group.senderId === cu?.id ? i : acc),
+    -1,
+  );
+  // Show "Seen" if any other participant has opened the conversation.
+  const seenByOthers = Object.keys(conversation?.seenBy ?? {}).some(uid => uid !== cu?.id);
+
   const inputVal = editingMsg ? editText : inputText;
   const hasText  = inputVal.trim().length > 0;
 
@@ -1778,6 +1786,12 @@ export default function Chat() {
                   <span className="text-[10.5px] text-gray-400 mt-0.5 mx-1">
                     {format(group.msgs[group.msgs.length - 1].createdAt, 'h:mm a')}
                   </span>
+                  {/* Seen receipt — shown only below the last message group from the current user */}
+                  {isMe && si === lastMeSlotIdx && seenByOthers && (
+                    <span className="text-[10.5px] text-blue-500 mt-0.5 mr-1 flex items-center gap-0.5 self-end">
+                      <CheckCheck size={11} className="text-blue-500" /> Seen
+                    </span>
+                  )}
                 </div>
               </div>
             );

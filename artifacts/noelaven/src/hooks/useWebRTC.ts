@@ -30,7 +30,7 @@ import {
   type CallDoc,
 } from '@/lib/callSignaling';
 import { getIceConfig } from '@/lib/iceConfig';
-import { sendMessage as fsSendMessage } from '@/lib/firestore';
+import { sendMessage as fsSendMessage, writeNotification } from '@/lib/firestore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -533,6 +533,11 @@ export function useWebRTC() {
             callType: type ?? 'voice',
             callDuration: 0,
             callStatus: 'missed',
+          }).catch(() => {});
+          // Push notification so the callee knows they missed a call even if offline.
+          writeNotification(calleeId, 'missed_call', currentUser, {
+            convId: conversationId,
+            message: `${currentUser.displayName} tried to ${type === 'video' ? 'video ' : ''}call you`,
           }).catch(() => {});
         }
         cleanup();

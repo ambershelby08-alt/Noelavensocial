@@ -16,6 +16,7 @@ import PostDetail from '@/pages/PostDetail';
 import SafetySettings from '@/pages/SafetySettings';
 import MyReports from '@/pages/MyReports';
 import ModerationDashboard from '@/pages/ModerationDashboard';
+import Privacy from '@/pages/Privacy';
 
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -43,6 +44,7 @@ function AuthenticatedApp() {
         <Route path="/safety"             component={SafetySettings} />
         <Route path="/my-reports"         component={MyReports} />
         <Route path="/moderation"         component={ModerationDashboard} />
+        <Route path="/privacy"            component={Privacy} />
         <Route>
           <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6">
             <p className="text-6xl mb-5">🌿</p>
@@ -86,6 +88,9 @@ export default function AppRouter() {
   const [location] = useLocation();
 
   if (isLoading) return <LoadingScreen />;
+
+  // Public routes — no auth required
+  if (location === '/privacy' || location.startsWith('/privacy/')) return <Privacy />;
 
   // After sign-up, before profile is complete
   if (isNewUser && !currentUser) return <CreateProfile />;

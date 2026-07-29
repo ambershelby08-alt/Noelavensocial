@@ -166,6 +166,16 @@ export function useMessages(convId: string | undefined) {
       return;
     }
     await fsDeleteForMe(convId, msgId, currentUser.id);
+    // Patch local state + cache immediately so navigating away before the
+    // Firestore subscription fires never flashes the deleted message.
+    const uid = currentUser.id;
+    setMessages(prev => {
+      const updated = prev.map(m =>
+        m.id === msgId ? { ...m, deletedFor: [...(m.deletedFor ?? []), uid] } : m
+      );
+      cacheMessages(uid, convId, updated);
+      return updated;
+    });
   }, [currentUser, convId]);
 
   const deleteForEveryone = useCallback(async (msgId: string) => {
@@ -177,7 +187,20 @@ export function useMessages(convId: string | undefined) {
       return;
     }
     await fsDeleteForEveryone(convId, msgId);
-  }, [convId]);
+    // Patch local state + cache immediately — same reason as deleteForMe above.
+    if (currentUser) {
+      const uid = currentUser.id;
+      setMessages(prev => {
+        const updated = prev.map(m =>
+          m.id === msgId
+            ? { ...m, deletedForEveryone: true, mediaUrl: undefined, editedContent: undefined }
+            : m
+        );
+        cacheMessages(uid, convId, updated);
+        return updated;
+      });
+    }
+  }, [currentUser, convId]);
 
   const toggleReaction = useCallback(async (msgId: string, emoji: string) => {
     if (!currentUser || !convId) return;

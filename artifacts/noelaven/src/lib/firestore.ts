@@ -475,14 +475,20 @@ export async function followUser(
   actor?: User
 ): Promise<void> {
   if (!db) return;
-  // Use a batched write so all four ops are atomic — if any fails, none commit.
-  const batch = writeBatch(db);
-  batch.set(doc(db, 'users', currentUserId, 'following', targetUserId), { createdAt: serverTimestamp() });
-  batch.set(doc(db, 'users', targetUserId, 'followers', currentUserId), { createdAt: serverTimestamp() });
-  batch.update(doc(db, 'users', currentUserId), { following: increment(1) });
-  batch.update(doc(db, 'users', targetUserId), { followers: increment(1) });
-  await batch.commit();
-  // Notify the target user that someone followed them (fire-and-forget, outside batch)
+  // Use a transaction so we can guard against double-follows.
+  // The counter only increments if the follow subcollection document didn't
+  // already exist — this prevents a slow connection double-tap from adding 2
+  // to both counters while the subcollection set() remains idempotent.
+  await runTransaction(db, async (tx) => {
+    const followRef = doc(db, 'users', currentUserId, 'following', targetUserId);
+    const followSnap = await tx.get(followRef);
+    if (followSnap.exists()) return; // already following — idempotent
+    tx.set(followRef, { createdAt: serverTimestamp() });
+    tx.set(doc(db, 'users', targetUserId, 'followers', currentUserId), { createdAt: serverTimestamp() });
+    tx.update(doc(db, 'users', currentUserId), { following: increment(1) });
+    tx.update(doc(db, 'users', targetUserId), { followers: increment(1) });
+  });
+  // Notify the target user that someone followed them (fire-and-forget, outside transaction)
   if (actor) {
     writeNotification(targetUserId, 'follow', actor, {
       message: `${actor.displayName} started following you`,
@@ -492,13 +498,17 @@ export async function followUser(
 
 export async function unfollowUser(currentUserId: string, targetUserId: string): Promise<void> {
   if (!db) return;
-  // Use a batched write so all four ops are atomic.
-  const batch = writeBatch(db);
-  batch.delete(doc(db, 'users', currentUserId, 'following', targetUserId));
-  batch.delete(doc(db, 'users', targetUserId, 'followers', currentUserId));
-  batch.update(doc(db, 'users', currentUserId), { following: increment(-1) });
-  batch.update(doc(db, 'users', targetUserId), { followers: increment(-1) });
-  await batch.commit().catch(() => {});
+  // Transaction guards against double-unfollows — counter only decrements if
+  // the follow relationship actually existed, preventing negative drift.
+  await runTransaction(db, async (tx) => {
+    const followRef = doc(db, 'users', currentUserId, 'following', targetUserId);
+    const followSnap = await tx.get(followRef);
+    if (!followSnap.exists()) return; // not following — idempotent
+    tx.delete(followRef);
+    tx.delete(doc(db, 'users', targetUserId, 'followers', currentUserId));
+    tx.update(doc(db, 'users', currentUserId), { following: increment(-1) });
+    tx.update(doc(db, 'users', targetUserId), { followers: increment(-1) });
+  }).catch(() => {});
 }
 
 /**
@@ -861,9 +871,37 @@ export async function createCommunity(
   return ref.id;
 }
 
+// ─── User lookup helpers ──────────────────────────────────────────────────────
+
+/**
+ * Resolve a @handle to the user's UID.
+ * Returns the UID string on success, or null if not found / Firebase unavailable.
+ */
+export async function getUserByHandle(handle: string): Promise<string | null> {
+  if (!db) return null;
+  try {
+    const q = query(
+      collection(db, 'users'),
+      where('handle', '==', handle.toLowerCase().replace(/^@/, '')),
+      limit(1),
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return snap.docs[0].id;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Conversations ────────────────────────────────────────────────────────────
 
 function docToConversation(id: string, d: DocumentData, currentUserId?: string): Conversation {
+  // Deserialise seenBy: Firestore stores each value as a Timestamp; convert to Date.
+  const rawSeenBy = d.seenBy as Record<string, unknown> | undefined;
+  const seenBy: Record<string, Date> | undefined = rawSeenBy
+    ? Object.fromEntries(Object.entries(rawSeenBy).map(([uid, v]) => [uid, ts(v)]))
+    : undefined;
+
   return {
     id,
     type: d.type ?? 'direct',
@@ -877,6 +915,7 @@ function docToConversation(id: string, d: DocumentData, currentUserId?: string):
     pinnedBy: d.pinnedBy ?? [],
     archivedBy: d.archivedBy ?? [],
     mutedBy: d.mutedBy ?? [],
+    seenBy,
   };
 }
 
@@ -1075,6 +1114,8 @@ export async function markConversationRead(convId: string, userId: string): Prom
   if (!db) return;
   await updateDoc(doc(db, 'conversations', convId), {
     [`unreadCounts.${userId}`]: 0,
+    // Write seen-receipt so the sender knows we've opened the conversation.
+    [`seenBy.${userId}`]: serverTimestamp(),
   });
 }
 
@@ -1621,6 +1662,7 @@ function notifTypeToPrefKey(type: NotificationType): string | undefined {
     like_comment:      'replies',
     follow:            'followers',
     message:           'messages',
+    missed_call:       'calls',
     mention:           'mentions',
     story_reaction:    'storyReplies',
     story_reply:       'storyReplies',
@@ -1718,6 +1760,7 @@ function buildPushTitle(type: NotificationType, actor: User): string | null {
     comment:             `${name} commented on your post`,
     reply:               `${name} replied to your comment`,
     message:             `${name} sent you a message`,
+    missed_call:         `${name} tried to call you`,
     mention:             `${name} mentioned you`,
     story_reply:         `${name} replied to your story`,
     story_reaction:      `${name} reacted to your story`,

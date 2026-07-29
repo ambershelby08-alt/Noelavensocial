@@ -36,6 +36,7 @@ import type { EditorLayer, TextLayer, CropData } from '@/components/stories/edit
 import { formatRelativeTime } from '@/lib/timestamp';
 import { REACTIONS, getLabelForEmoji } from '@/lib/reactions';
 import { writeNotification } from '@/lib/firestore';
+import { notifyStoryView } from '@/lib/notifications';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { User } from '@/lib/mockData';
@@ -408,9 +409,16 @@ export function StoryViewer({
     if (storyIdx >= g.stories.length) setStoryIdx(g.stories.length - 1);
   }, [groups]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mark viewed on story change; reset overlays
+  // Mark viewed on story change; reset overlays; notify story author
   useEffect(() => {
-    if (story) onMarkViewed?.(story.id);
+    if (story) {
+      onMarkViewed?.(story.id);
+      // Notify the story author that someone viewed their story (fire-and-forget).
+      // Guard: only fire when Firebase is live and the viewer isn't the author.
+      if (isFirebaseConfigured && currentUser && story.authorId && story.authorId !== currentUser.id) {
+        notifyStoryView(story.authorId, currentUser as unknown as User, story.id).catch(() => {});
+      }
+    }
     setMenuOpen(false);
     setConfirmDel(false);
     setDeleteError(null);

@@ -12,7 +12,8 @@
 import type { Message, Conversation } from '@/lib/mockData';
 
 const PREFIX = 'nlv_';
-const MAX_MSGS = 50; // keep the most-recent N messages per conversation
+const MAX_MSGS = 50;  // keep the most-recent N messages per conversation
+const MAX_CONVS = 30; // cap on how many conversations are cached per user (~150 KB worst-case)
 
 // ─── Key helpers ─────────────────────────────────────────────────────────────
 
@@ -82,10 +83,11 @@ export function evictAllMessages(userId: string): void {
 
 // ─── Conversations ────────────────────────────────────────────────────────────
 
-/** Write conversations list to cache. */
+/** Write conversations list to cache (capped at MAX_CONVS most-recent entries). */
 export function cacheConversations(userId: string, convs: Conversation[]): void {
   try {
-    localStorage.setItem(convsKey(userId), JSON.stringify(convs));
+    const slice = convs.slice(0, MAX_CONVS);
+    localStorage.setItem(convsKey(userId), JSON.stringify(slice));
   } catch {
     // quota exceeded — ignore
   }
