@@ -45,7 +45,9 @@ function Backdrop({ onClose }: { onClose: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+      // z-[55]: above BottomNav (z-50) so the nav is dimmed and unreachable while any sheet is open.
+      // z-[55] matches the established Noelaven overlay stack (see memory/noelaven-z-index.md).
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
       onClick={onClose}
     />
   );
@@ -160,7 +162,8 @@ function ConvActionSheet({
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl pb-8"
+        // z-[60]: above Backdrop (z-[55]) and BottomNav (z-50) — see noelaven z-index stack.
+        className="fixed inset-x-0 bottom-0 z-[60] bg-black rounded-t-[28px] shadow-2xl pb-8"
       >
         <div className="flex justify-center pt-3 pb-4">
           <div className="w-10 h-1 rounded-full bg-[#333]" />
@@ -375,23 +378,46 @@ function ComposeDrawer({
 
   return (
     <>
+      {/*
+        Backdrop at z-[55]: above BottomNav (z-50), so the nav is completely
+        hidden and unreachable while this modal is open.
+        We use the shared Backdrop which is now z-[55].
+      */}
       <Backdrop onClose={onClose} />
+
+      {/*
+        Sheet at z-[65]: above the Backdrop (z-[55]).
+        height: 92dvh — uses DYNAMIC viewport height so the sheet automatically
+        shrinks when the on-screen keyboard appears, keeping the search bar and
+        contacts fully visible at all times.
+        stopPropagation prevents backdrop-close when tapping inside the sheet.
+      */}
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-[75] bg-black rounded-t-[28px] shadow-2xl flex flex-col"
-        style={{ maxHeight: '80vh' }}
+        className="fixed inset-x-0 bottom-0 z-[65] bg-[#0a0a0a] rounded-t-[28px] shadow-2xl flex flex-col"
+        style={{ height: '92dvh' }}
+        onClick={e => e.stopPropagation()}
       >
+        {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 rounded-full bg-[#333]" />
         </div>
+
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
-          <button onClick={onClose} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors"
+            aria-label="Close"
+          >
             <X size={18} className="text-[#BDBDBD]" />
           </button>
           <span className="font-black text-[16px] text-white">New Message</span>
           <div className="w-8" />
         </div>
+
+        {/* Search — always visible below header */}
         <div className="px-5 pt-3 pb-2 flex-shrink-0">
           <div className="relative">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]" />
@@ -404,36 +430,56 @@ function ComposeDrawer({
             />
           </div>
         </div>
+
+        {/*
+          Contact list — flex-1 means it fills ALL remaining height inside the sheet.
+          overflow-y-auto makes it independently scrollable; the header + search bar
+          are flex-shrink-0 so they never scroll away.
+          paddingBottom ensures the last row clears the device's home indicator.
+        */}
         <div
-          className="overflow-y-auto flex-1 px-5"
-          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}
+          className="overflow-y-auto flex-1 px-5 overscroll-contain"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 32px)' }}
         >
           {filtered.length === 0 && (
-            <p className="text-center text-[14px] text-[rgba(255,255,255,0.45)] py-8">No people found</p>
+            <div className="flex flex-col items-center py-16 text-center">
+              <p className="text-[15px] font-semibold text-[rgba(255,255,255,0.45)]">No people found</p>
+              {search && (
+                <p className="text-[13px] text-[rgba(255,255,255,0.3)] mt-1">
+                  Try a different name or @handle
+                </p>
+              )}
+            </div>
           )}
           {filtered.map((user, i) => (
             <motion.button
               key={user.id}
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.03, 0.3) }} // cap delay at 0.3s for large lists
               onClick={() => handleSelect(user)}
-              className="w-full flex items-center gap-3 py-3 hover:bg-[#111] rounded-xl px-2 transition-colors"
+              className="w-full flex items-center gap-3 py-3 active:bg-[#111] rounded-xl px-2 transition-colors"
             >
-              <div className="relative">
-                <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={46} />
-                {/* Green dot reflects real presence — not mock data */}
+              <div className="relative flex-shrink-0">
+                <UserAvatar
+                  userId={user.id}
+                  fallbackName={user.displayName}
+                  fallbackSrc={user.avatarUrl || undefined}
+                  size={46}
+                />
                 {onlineIds.has(user.id) && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-white" />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-green-400 border-2 border-[#0a0a0a]" />
                 )}
               </div>
-              <div className="flex-1 text-left">
-                <p className="font-bold text-[14.5px] text-white">{user.displayName}</p>
-                <p className="text-[12.5px] text-[rgba(255,255,255,0.45)]">@{user.handle}</p>
+              <div className="flex-1 text-left min-w-0">
+                <p className="font-bold text-[14.5px] text-white truncate">{user.displayName}</p>
+                <p className="text-[12.5px] text-[rgba(255,255,255,0.45)] truncate">@{user.handle}</p>
               </div>
               <span
                 className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-bold text-white"
                 style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
               >
-                Start Chat
+                Message
               </span>
             </motion.button>
           ))}
