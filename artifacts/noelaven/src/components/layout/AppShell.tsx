@@ -98,12 +98,14 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
   const { hasAnsweredToday, prompt: sparkPrompt } = useDailySparkStatus();
   const [showAnsweredSheet, setShowAnsweredSheet] = useState(false);
 
+  const { currentUser } = useAuth();
+
   const navItems = [
     { icon: Home,          path: '/',               label: 'Home'   },
     { icon: Compass,       path: '/discover',        label: 'Discover' },
     { icon: Sparkles,      path: '/?spark=1',        label: 'Spark', special: true },
-    { icon: Bell,          path: '/notifications',   label: 'Alerts' },
     { icon: MessageCircle, path: '/messages',        label: 'Chats'  },
+    { icon: UserIcon,      path: currentUser ? `/profile/${currentUser.id}` : '/login', label: 'Profile' },
   ];
 
   return (

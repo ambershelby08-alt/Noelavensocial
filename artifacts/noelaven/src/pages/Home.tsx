@@ -639,8 +639,9 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
               <X size={18} className="text-[#BDBDBD]" />
             </button>
           </div>
-          <div className="mx-5 mb-3 px-4 py-3 rounded-2xl" style={{ background: 'linear-gradient(135deg, #EEF0FF, #FFF0F6)' }}>
-            <p className="text-[13px] font-semibold text-[#BDBDBD] mb-0.5">Today's prompt</p>
+          <div className="mx-5 mb-3 px-4 py-3 rounded-2xl"
+            style={{ background: '#0d0d0d', border: '1px solid rgba(124,58,237,0.35)' }}>
+            <p className="text-[12px] font-semibold mb-0.5" style={{ color: '#BDBDBD' }}>Today's prompt</p>
             <p className="text-[15px] font-bold text-white">"{spark}"</p>
           </div>
         </div>

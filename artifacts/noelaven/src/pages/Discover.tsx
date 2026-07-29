@@ -1287,7 +1287,7 @@ export default function Discover() {
     <div className="min-h-screen pb-32" style={{ background: '#000' }}>
 
       {/* ── Sticky header ─────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30" style={{ background: 'rgba(253,249,246,0.96)', backdropFilter: 'blur(16px)' }}>
+      <div className="sticky top-0 z-30" style={{ background: 'rgba(0,0,0,0.97)', backdropFilter: 'blur(16px)' }}>
         <div className="px-4 pt-6 pb-3">
           <AnimatePresence mode="wait">
             {activeTab !== 'Search' && (
@@ -1362,28 +1362,6 @@ export default function Discover() {
           </div>
         </div>
 
-        {/* Tab bar — always visible */}
-        <div className="flex border-b border-[#1a1a1a]">
-          {TABS.map(tab => (
-            <button
-              key={tab}
-              onClick={() => handleTabSelect(tab)}
-              className={cn(
-                'flex-1 py-2.5 text-[12px] font-bold transition-all relative',
-                activeTab === tab ? 'text-white' : 'text-[rgba(255,255,255,0.45)]',
-              )}
-            >
-              {tab}
-              {activeTab === tab && (
-                <motion.div
-                  layoutId="tab-indicator"
-                  className="absolute bottom-0 inset-x-3 h-0.5 rounded-full"
-                  style={{ background: '#EC4899' }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* ── Content ───────────────────────────────────────────────────────── */}
