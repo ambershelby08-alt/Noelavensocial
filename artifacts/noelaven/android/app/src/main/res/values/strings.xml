@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Noelaven</string>
+    <string name="title_activity_main">Noelaven</string>
+    <string name="package_name">com.noelaven.app</string>
+    <string name="custom_url_scheme">com.noelaven.app</string>
+</resources>
