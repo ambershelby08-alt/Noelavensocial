@@ -174,6 +174,61 @@ export function isCallStale(call: CallDoc): boolean {
   return Date.now() - call.createdAt.getTime() > CALL_MAX_RING_AGE_MS;
 }
 
+/**
+ * Eagerly expire every stale `ringing` call document on app startup,
+ * BEFORE the reactive `subscribeIncomingCalls` listener delivers them.
+ *
+ * Why: `subscribeIncomingCalls` expires stale docs when the snapshot arrives.
+ * But a stuck doc can momentarily flash to the UI before the TTL check fires.
+ * Calling this once on mount wipes the database clean so no ghost docs exist.
+ *
+ * Covers two roles:
+ *   • Callee: docs targeting this user — would ring them directly.
+ *   • Caller: docs created by this user that were never cleaned up — they ring
+ *     the remote party on every reconnect until the remote's TTL check fires.
+ */
+export async function cleanupStaleCallsForUser(userId: string): Promise<void> {
+  if (!userId) return;
+  try {
+    // Callee-side: uses the same composite index as subscribeIncomingCalls.
+    const calleeSnap = await getDocs(query(
+      collection(db(), 'calls'),
+      where('calleeId', '==', userId),
+      where('status',   '==', 'ringing'),
+    ));
+
+    // Caller-side: requires a separate (callerId, status) composite index.
+    // Best-effort — skip if the index has not been deployed.
+    let callerDocs: typeof calleeSnap.docs = [];
+    try {
+      const callerSnap = await getDocs(query(
+        collection(db(), 'calls'),
+        where('callerId', '==', userId),
+        where('status',   '==', 'ringing'),
+      ));
+      callerDocs = callerSnap.docs;
+    } catch { /* (callerId, status) index not deployed — reactive TTL still covers this */ }
+
+    const staleDocs = [...calleeSnap.docs, ...callerDocs].filter(d => {
+      const ts = d.data().createdAt?.toDate?.() as Date | undefined;
+      return ts instanceof Date && Date.now() - ts.getTime() > CALL_MAX_RING_AGE_MS;
+    });
+
+    if (staleDocs.length === 0) return;
+
+    console.log('[callSignaling] startup cleanup: expiring', staleDocs.length, 'stale ringing doc(s)', {
+      userId,
+      callIds: staleDocs.map(d => d.id),
+    });
+    await Promise.all(staleDocs.map(d =>
+      updateDoc(d.ref, { status: 'missed' }).catch(() => {})
+    ));
+  } catch (err) {
+    // Non-critical — reactive TTL check in subscribeIncomingCalls is the backstop.
+    console.warn('[callSignaling] cleanupStaleCallsForUser error (non-critical):', err);
+  }
+}
+
 /** Subscribe to incoming ringing calls for a user. */
 export function subscribeIncomingCalls(userId: string, cb: (call: CallDoc | null) => void): Unsubscribe {
   const q = query(

@@ -35,7 +35,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { useWebRTC, type CallState } from '@/hooks/useWebRTC';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { subscribeIncomingCalls, isCallStale, type CallDoc } from '@/lib/callSignaling';
+import { subscribeIncomingCalls, cleanupStaleCallsForUser, isCallStale, type CallDoc } from '@/lib/callSignaling';
 
 // ─── Ring tone via Web Audio API ─────────────────────────────────────────────
 
@@ -172,6 +172,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!currentUser || !isFirebaseConfigured) return;
 
+    // ── Startup cleanup: expire any stuck 'ringing' docs BEFORE the reactive
+    //    listener fires. This ensures no stale document can even momentarily
+    //    flash as an incoming call on page load / reconnect.
+    cleanupStaleCallsForUser(currentUser.id).catch(() => {});
+
     const unsub = subscribeIncomingCalls(currentUser.id, incoming => {
       // ── No incoming call / call ended ─────────────────────────────────────
       if (incoming === null) {
@@ -179,10 +184,20 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // ── Guard: status sanity (Firestore offline cache can deliver docs with
+      //    pending-write status that doesn't match the query filter yet) ──────
+      if (incoming.status !== 'ringing') {
+        console.warn('[CallContext] Received non-ringing call from subscribeIncomingCalls — ignoring', {
+          callId: incoming.callId,
+          status: incoming.status,
+        });
+        return;
+      }
+
       // ── Guard: already in a call (use ref — never a stale closure) ────────
       if (activeCallIdRef.current) {
         console.debug('[CallContext] Ignoring incoming call — already in an active call', {
-          activeCallId: activeCallIdRef.current,
+          activeCallId:   activeCallIdRef.current,
           incomingCallId: incoming.callId,
         });
         return;
@@ -193,7 +208,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       if (isCallStale(incoming)) {
         console.warn('[CallContext] Ignoring stale call that slipped past signaling filter', {
           callId: incoming.callId,
-          ageMs: Date.now() - incoming.createdAt.getTime(),
+          ageMs:  Date.now() - incoming.createdAt.getTime(),
         });
         markCallHandled(incoming.callId);
         return;
@@ -205,12 +220,21 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // ── Guard: ignore calls we ourselves initiated (caller ≠ callee check) ─
+      if (incoming.callerId === currentUser.id) {
+        console.warn('[CallContext] Received own outgoing call as incoming — ignoring', {
+          callId: incoming.callId,
+        });
+        return;
+      }
+
       // ── All guards passed — ring ──────────────────────────────────────────
-      console.log('[CallContext] Incoming call', {
+      console.log('[Call] State transition', {
         state:          'idle → ringing',
         callId:         incoming.callId,
         callerId:       incoming.callerId,
         callerName:     incoming.callerName,
+        calleeId:       currentUser.id,
         conversationId: incoming.conversationId,
         type:           incoming.type,
         createdAt:      incoming.createdAt.toISOString(),

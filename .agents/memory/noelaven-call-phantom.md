@@ -6,7 +6,7 @@ description: Three root causes of phantom incoming calls and the fixes applied
 ## Rule
 Never let `subscribeIncomingCalls` deliver a call without passing all three guards.
 
-## Three root causes (all fixed)
+## Four root causes (all fixed)
 
 ### 1. Stale `ringing` documents (primary cause)
 When a caller's app crashes or loses connectivity before updating status, the document stays `ringing` forever. Every time the callee reconnects, Firestore re-delivers it and the phone rings again.

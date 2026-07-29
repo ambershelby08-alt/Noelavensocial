@@ -103,6 +103,18 @@ export function useWebRTC() {
   const remoteRef          = useRef<MediaStream | null>(null);
   /** Prevents concurrent camera-switch attempts. */
   const isSwitchingCameraRef = useRef(false);
+  /**
+   * Prevents a double-tap race in startCall.
+   *
+   * The guard `if (call.callId) return` reads from the hook's closed-over
+   * state, which is only updated on the next React render. If the user taps
+   * the call button twice before that render completes, both invocations see
+   * `call.callId === null` and both proceed — creating two Firestore documents
+   * and causing the callee to ring twice (phantom). This ref is set
+   * synchronously at the start of `startCall` and reset by `cleanup()`, so it
+   * is always current regardless of render scheduling.
+   */
+  const isCallingRef = useRef(false);
   const timers    = useRef<{
     interval:   ReturnType<typeof setInterval>  | null;
     demo:       ReturnType<typeof setTimeout>   | null;
@@ -119,6 +131,9 @@ export function useWebRTC() {
   // ── Cleanup ───────────────────────────────────────────────────────────────
 
   const cleanup = useCallback(() => {
+    // Allow new calls after this one is fully torn down.
+    isCallingRef.current = false;
+
     // Stop all senders (cleaner than just track.stop on some browsers)
     try {
       pcRef.current?.getSenders().forEach(s => {
@@ -370,9 +385,19 @@ export function useWebRTC() {
   ) => {
     if (!currentUser || call.callId) return;
 
+    // ── Double-tap guard (sync ref — not subject to React render scheduling) ─
+    // Without this, two rapid taps can both see call.callId === null before the
+    // first invocation's setCall() propagates, creating two Firestore documents
+    // and causing the callee to receive two simultaneous incoming calls.
+    if (isCallingRef.current) {
+      console.warn('[Call] startCall debounced — previous initiation still in progress');
+      return;
+    }
+    isCallingRef.current = true;
+
     // ── State-machine log: idle → calling ────────────────────────────────────
-    // Logged ONLY here — after the guard confirms a user action triggered this,
-    // not a reconnect, subscription replay, or render side-effect.
+    // Logged ONLY here — after all guards confirm a real user action triggered
+    // this, not a reconnect, subscription replay, or render side-effect.
     const callInitiatedAt = new Date().toISOString();
     console.log('[Call] Initiating call', {
       state:          'idle → calling',
@@ -649,6 +674,14 @@ export function useWebRTC() {
     conversationId?: string,
     callType?: CallType,
   ) => {
+    console.log('[Call] State transition', {
+      state:         'ringing → declined',
+      callId,
+      conversationId,
+      type:          callType,
+      decliningUser: currentUser?.id,
+      timestamp:     new Date().toISOString(),
+    });
     if (isFirebaseConfigured) await updateCallStatus(callId, 'declined').catch(() => {});
     // Write a declined-call event into the shared conversation so both parties see it.
     if (conversationId && currentUser?.id && isFirebaseConfigured) {
@@ -678,7 +711,15 @@ export function useWebRTC() {
     // during ICE negotiation (after the callee answered) was logged as "missed".
     const wasAnswered = call.isActive || call.status === 'active';
 
-    console.log('[WebRTC] endCall — callId:', id, '| wasAnswered:', wasAnswered, '| duration:', duration);
+    console.log('[Call] State transition', {
+      state:     wasAnswered ? 'connected → ended' : 'ringing → missed',
+      callId:    id,
+      convId,
+      type,
+      duration,
+      endingUser: uid,
+      timestamp:  new Date().toISOString(),
+    });
     cleanup(); // dismiss UI immediately
 
     if (id && id !== 'demo-call' && isFirebaseConfigured) {
