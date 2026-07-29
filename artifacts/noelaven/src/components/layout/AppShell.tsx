@@ -15,6 +15,7 @@ import {
   Settings,
   Sparkles,
   X,
+  Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDailySparkStatus } from '@/contexts/DailySparkContext';
@@ -107,17 +108,13 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
 
   return (
     <>
-    <nav className="fixed bottom-4 left-3 right-3 z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       <div
-        className="flex justify-around items-center h-[64px] px-2 backdrop-blur-2xl rounded-[32px]"
-        style={{
-          background: 'rgba(0,0,0,0.92)',
-          border: '1px solid #222',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)',
-        }}
+        className="flex justify-around items-center h-[60px] px-1"
+        style={{ background: '#000', borderTop: '1px solid #1a1a1a' }}
       >
         {navItems.map((item) => {
-          const isActive = location === item.path;
+          const isActive = location === item.path || (item.path === '/' && location === '/');
 
           if (item.special) {
             return (
@@ -129,23 +126,27 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                     ? setShowAnsweredSheet(true)
                     : setLocation('/?spark=1')
                 }
-                className="flex items-center justify-center w-[52px] h-[52px] rounded-full cursor-pointer"
-                style={{
-                  background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)',
-                  padding: '2.5px',
-                  boxShadow: '0 0 18px rgba(236,72,153,0.45)',
-                }}
+                className="flex flex-col items-center justify-center w-14 h-full gap-0.5 cursor-pointer"
               >
-                <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
-                  <item.icon size={21} strokeWidth={2.5} style={{ color: '#fff' }} />
-                </div>
+                <item.icon
+                  size={22}
+                  strokeWidth={2}
+                  style={{ color: isActive ? '#EC4899' : 'rgba(255,255,255,0.5)' }}
+                  className="transition-colors duration-200"
+                />
+                <span
+                  className="text-[10px] font-semibold transition-colors duration-200"
+                  style={{ color: isActive ? '#EC4899' : 'rgba(255,255,255,0.4)' }}
+                >
+                  {item.label}
+                </span>
               </motion.button>
             );
           }
 
           return (
             <Link key={item.path} href={item.path}>
-              <div className="flex flex-col items-center justify-center w-14 h-12 gap-0.5 cursor-pointer relative">
+              <div className="flex flex-col items-center justify-center w-14 h-[60px] gap-0.5 cursor-pointer relative">
                 <item.icon
                   size={22}
                   strokeWidth={isActive ? 2.5 : 2}
@@ -154,14 +155,14 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                 />
                 {/* Unread message badge */}
                 {item.path === '/messages' && totalUnread > 0 && (
-                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
                     style={{ background: '#EC4899' }}>
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
                 {/* Unread notification badge */}
                 {item.path === '/notifications' && notifUnreadCount > 0 && (
-                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
+                  <span className="absolute top-1 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
                     style={{ background: '#EC4899' }}>
                     {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
                   </span>
@@ -172,14 +173,6 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                 >
                   {item.label}
                 </span>
-                {isActive && (
-                  <motion.div
-                    layoutId="navActiveBar"
-                    className="absolute -bottom-2 w-5 h-[3px] rounded-full"
-                    style={{ background: '#EC4899' }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  />
-                )}
               </div>
             </Link>
           );
@@ -314,24 +307,29 @@ function MobileHeader({ notifUnreadCount = 0 }: { notifUnreadCount?: number }) {
   const { isDemoMode } = useAuth();
   return (
     <header
-      className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-5 backdrop-blur-xl"
-      style={{ background: 'rgba(0,0,0,0.92)', borderBottom: '1px solid #1a1a1a' }}
+      className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-5"
+      style={{ background: '#000', borderBottom: '1px solid #1a1a1a' }}
     >
-      <Link href="/" aria-label="Go to Noelaven Home" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center">
-        <NoelavenLogo variant="full" size="sm" />
-      </Link>
-      <div className="flex items-center gap-3">
+      {/* Left: logo + wordmark */}
+      <Link href="/" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="flex items-center gap-2.5">
+        <img src="/noelaven-logo.png" alt="Noelaven" className="w-8 h-8 rounded-[10px] object-cover" />
+        <span className="text-[20px] font-black text-white tracking-tight">Noelaven</span>
         {isDemoMode && (
-          <span className="text-[9px] uppercase font-black tracking-wider px-2 py-1 rounded-full"
-            style={{ background: '#1a1a00', color: '#F5C542' }}>
-            Demo
-          </span>
+          <span className="text-[9px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full"
+            style={{ background: '#1a1a00', color: '#F5C542' }}>Demo</span>
         )}
-        <Link href="/notifications" className="relative p-1.5">
-          <Bell size={20} style={{ color: 'rgba(255,255,255,0.7)' }} />
+      </Link>
+      {/* Right: search + bell */}
+      <div className="flex items-center gap-4">
+        <Link href="/discover">
+          <Search size={22} style={{ color: 'rgba(255,255,255,0.8)' }} />
+        </Link>
+        <Link href="/notifications" className="relative">
+          <Bell size={22} style={{ color: 'rgba(255,255,255,0.8)' }} />
           {notifUnreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-black px-1"
-              style={{ background: '#F5C542' }}>
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
+              style={{ background: '#EC4899' }}>
               {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
             </span>
           )}

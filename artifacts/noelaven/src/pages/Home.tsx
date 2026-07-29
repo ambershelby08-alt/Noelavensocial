@@ -822,7 +822,6 @@ interface DailySparkProps {
 export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, streak }: DailySparkProps) {
   const [dismissed, setDismissed] = useState(false);
 
-  // Already answered (not the just-completed transition) or user skipped → hide
   if ((hasAnsweredToday && !justCompleted) || dismissed) return null;
 
   // ── Completion state ────────────────────────────────────────────────────────
@@ -830,87 +829,80 @@ export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, 
     return (
       <motion.div
         key="spark-done"
-        initial={{ opacity: 0, scale: 0.92 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.88, y: -8 }}
-        transition={{ type: 'spring', damping: 18, stiffness: 260 }}
-        className="mx-4 mb-5 rounded-[28px] overflow-hidden relative shadow-lg"
-        style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="mx-4 mb-4 rounded-[24px] overflow-hidden"
+        style={{ background: '#111', border: '1.5px solid #10B981', boxShadow: '0 0 20px rgba(16,185,129,0.15)' }}
       >
-        <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-[#111]/10 blur-2xl -mr-10 -mt-10 pointer-events-none" />
-        <div className="relative z-10 p-6 flex items-center gap-4">
-          <motion.div
-            className="w-14 h-14 rounded-full bg-[#111]/20 flex items-center justify-center flex-shrink-0"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', damping: 10, stiffness: 220, delay: 0.08 }}
-          >
-            <Check size={28} className="text-white" />
-          </motion.div>
-          <div className="flex-1 min-w-0">
-            <motion.p
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15 }}
-              className="text-white font-black text-[17px] leading-tight"
-            >
-              Today's Spark completed!
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 }}
-              className="text-white/80 text-[13px] font-medium mt-0.5"
-            >
-              {streak > 1 ? `🔥 ${streak}-day streak — keep it up!` : 'You\'re sparking! ✨'}
-            </motion.p>
+        <div className="p-6 flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+            <Check size={26} className="text-white" />
+          </div>
+          <div>
+            <p className="font-black text-white text-[18px] leading-tight">Spark shared! ✨</p>
+            <p className="text-[13px] text-[#BDBDBD] mt-0.5">
+              {streak > 1 ? `🔥 ${streak}-day streak — keep it up!` : "You're on a roll!"}
+            </p>
           </div>
         </div>
       </motion.div>
     );
   }
 
-  // ── Default: unanswered prompt card ─────────────────────────────────────────
+  // ── Unanswered prompt card ───────────────────────────────────────────────────
   return (
     <motion.div
       key="spark-prompt"
-      initial={{ opacity: 0, y: -12 }}
+      initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="mx-4 mb-5 rounded-[28px] overflow-hidden relative shadow-lg"
-      style={{ background: 'linear-gradient(135deg, #6B73FF 0%, #9B59B6 45%, #FF6B9D 100%)' }}
+      exit={{ opacity: 0, scale: 0.97 }}
+      className="mx-4 mb-4 rounded-[24px] overflow-hidden"
+      style={{ background: '#111', border: '1.5px solid #F5C542', boxShadow: '0 0 24px rgba(245,197,66,0.10)' }}
     >
-      <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-[#111]/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-[#111]/10 blur-2xl -ml-10 -mb-10 pointer-events-none" />
-      <div className="relative z-10 p-6">
-        <div className="flex items-center gap-2 mb-3.5">
-          <div className="flex items-center gap-1.5 bg-[#111]/20 backdrop-blur-sm rounded-full px-3 py-1">
-            <Sparkles size={12} className="text-yellow-200" />
-            <span className="text-white/90 text-[10px] font-black uppercase tracking-[0.12em]">Daily Spark</span>
+      <div className="p-5">
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+            style={{ background: 'rgba(245,197,66,0.12)', border: '1px solid rgba(245,197,66,0.22)' }}>
+            <Sparkles size={12} style={{ color: '#F5C542' }} />
+            <span className="text-[11px] font-black uppercase tracking-[0.10em]" style={{ color: '#F5C542' }}>
+              Daily Spark
+            </span>
           </div>
           {streak > 0 && (
-            <div className="flex items-center gap-1 bg-[#111]/20 backdrop-blur-sm rounded-full px-2.5 py-1">
-              <Flame size={11} className="text-orange-200" />
-              <span className="text-white/90 text-[10px] font-bold">{streak}d streak</span>
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-full"
+              style={{ background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.22)' }}>
+              <Flame size={12} className="text-orange-400" />
+              <span className="text-[11px] font-bold text-orange-400">{streak} day streak</span>
             </div>
           )}
         </div>
-        <p className="text-white text-xl font-bold leading-snug mb-5">{spark ?? dailySparks[0]}</p>
+
+        {/* Prompt text */}
+        <p className="text-white text-[24px] font-black leading-[1.25] mb-6">
+          {spark ?? dailySparks[0]}
+        </p>
+
+        {/* Action buttons */}
         <div className="flex gap-3">
           <motion.button
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.97 }}
             onClick={onRespond}
-            className="text-white px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-md"
-            style={{ background: 'linear-gradient(90deg, #EC4899, #F59E0B)', boxShadow: '0 3px 14px rgba(236,72,153,0.4)' }}
+            className="flex-1 py-3.5 rounded-full font-black text-[15px] text-white"
+            style={{ background: 'linear-gradient(90deg, #EC4899, #F59E0B)', boxShadow: '0 4px 20px rgba(236,72,153,0.35)' }}
           >
-            Answer Spark +
+            Answer Spark ✨
           </motion.button>
-          <button
+          <motion.button
+            whileTap={{ scale: 0.97 }}
             onClick={() => setDismissed(true)}
-            className="bg-[#111]/20 hover:bg-[#111]/30 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors"
+            className="px-6 py-3.5 rounded-full font-black text-[15px] text-white"
+            style={{ background: '#222' }}
           >
             Skip
-          </button>
+          </motion.button>
         </div>
       </div>
     </motion.div>
@@ -1069,25 +1061,26 @@ function CommunityReveal({
     >
       {/* ── Unlock banner ───────────────────────────────────────────────────── */}
       <div
-        className="mx-4 mb-4 px-5 py-4 rounded-[24px] flex items-center gap-3"
-        style={{ background: 'linear-gradient(135deg, #6B73FF18, #FF6B9D12)', border: '1px solid #6B73FF22' }}
+        className="mx-4 mb-5 px-4 py-4 rounded-[20px] flex items-center gap-3"
+        style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.12), rgba(236,72,153,0.08))', border: '1px solid rgba(124,58,237,0.18)' }}
       >
         <div
-          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
         >
           <Sparkles size={18} className="text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-black text-white text-[14px] leading-snug">✨ Community responses unlocked!</p>
+          <p className="font-black text-white text-[14px]">✨ Community responses unlocked!</p>
           <p className="text-[12px] text-[#BDBDBD] mt-0.5">
             {total > 1 ? `${total} people answered today's spark` : 'Be the first to inspire others!'}
           </p>
         </div>
         {streak > 1 && (
-          <div className="flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-full px-3 py-1.5 flex-shrink-0">
-            <Flame size={13} className="text-orange-500" />
-            <span className="text-orange-600 font-bold text-[12px]">{streak}</span>
+          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full flex-shrink-0"
+            style={{ background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.25)' }}>
+            <Flame size={12} className="text-orange-400" />
+            <span className="text-orange-400 font-bold text-[12px]">{streak}</span>
           </div>
         )}
       </div>
@@ -1097,12 +1090,13 @@ function CommunityReveal({
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="mx-4 mb-4 px-4 py-3.5 rounded-[20px] border border-[rgba(245,197,66,0.2)] bg-[rgba(245,197,66,0.08)]/60 flex items-start gap-3"
+          className="mx-4 mb-4 px-4 py-3.5 rounded-[20px] flex items-start gap-3"
+          style={{ background: 'rgba(245,197,66,0.08)', border: '1px solid rgba(245,197,66,0.2)' }}
         >
           <span className="text-2xl leading-none mt-0.5">🌅</span>
           <div>
-            <p className="text-[13px] font-bold text-purple-700">Memory Lane</p>
-            <p className="text-[12px] text-[#F5C542]/80 mt-0.5 leading-relaxed">
+            <p className="text-[13px] font-bold" style={{ color: '#F5C542' }}>Memory Lane</p>
+            <p className="text-[12px] text-[#BDBDBD] mt-0.5 leading-relaxed">
               You answered this same prompt {memoryLane.yearsAgo === 1 ? 'one year' : `${memoryLane.yearsAgo} years`} ago today!
             </p>
           </div>
@@ -1121,39 +1115,35 @@ function CommunityReveal({
       )}
 
       {/* ── Section header + sort tabs ──────────────────────────────────────── */}
-      <div className="px-4 mb-3 flex items-center justify-between">
-        <h2 className="font-black text-[16px] text-white">Today's Community Sparks</h2>
-        <div className="flex gap-1">
-          {SORT_TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setSort(t.key)}
-              className={cn(
-                'px-2.5 py-1 rounded-full text-[11px] font-bold transition-all',
-                sort === t.key ? 'text-white' : 'text-[rgba(255,255,255,0.45)] bg-[#1a1a1a] hover:bg-[#222]'
-              )}
-              style={sort === t.key ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' } : {}}
-            >
-              {t.label}
-            </button>
-          ))}
+      <div className="px-4 mb-3">
+        <h2 className="font-black text-[17px] text-white mb-3">Today's Community Sparks</h2>
+        <div className="flex gap-2">
+          {SORT_TABS.map(t => {
+            const active = sort === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setSort(t.key)}
+                className="px-4 py-2 rounded-full text-[13px] font-bold transition-all"
+                style={active
+                  ? { border: '1.5px solid #EC4899', color: '#EC4899', background: 'rgba(236,72,153,0.08)' }
+                  : { border: '1.5px solid #2a2a2a', color: 'rgba(255,255,255,0.45)', background: 'transparent' }
+                }
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* ── Responses ───────────────────────────────────────────────────────── */}
       {loading && community.length === 0 ? (
-        // Only reach here on the very first launch — no cache in either tier.
         (timedOut || error) ? (
-          // Firestore error or 2 s timeout — show what went wrong and let the user retry.
           <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-3 text-center">
             <span className="text-3xl">⏳</span>
             <p className="font-bold text-[#BDBDBD] text-[14px]">
               {error ? 'Could not load responses' : 'Taking longer than usual…'}
-            </p>
-            <p className="text-[rgba(255,255,255,0.45)] text-[12.5px] max-w-[240px] leading-relaxed">
-              {error
-                ? 'A Firestore error occurred. Tap below to try again.'
-                : 'Check your connection, then tap below to try again.'}
             </p>
             {error && import.meta.env.DEV && (
               <p className="text-[10.5px] text-red-400 font-mono max-w-[280px] break-all">{error}</p>
@@ -1167,27 +1157,24 @@ function CommunityReveal({
             </button>
           </div>
         ) : (
-          // Skeleton — only 2 cards so the UI doesn't feel heavy.
           <>
             <SparkSkeletonCard index={0} />
             <SparkSkeletonCard index={1} />
           </>
         )
       ) : community.length === 0 ? (
-        <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-2 text-center">
-          <span className="text-3xl">
-            {sort === 'everyone' ? '🌱' : sort === 'following' ? '🔭' : '🤝'}
-          </span>
-          <p className="font-bold text-[#BDBDBD] text-[14px]">
+        <div className="mx-4 mb-4 py-14 flex flex-col items-center gap-2 text-center">
+          <span className="text-5xl mb-2">✨</span>
+          <p className="font-bold text-[#BDBDBD] text-[15px]">
             {sort === 'everyone'
               ? 'No other responses yet'
               : sort === 'following'
               ? 'No responses from people you follow'
               : 'No responses from your mutuals yet'}
           </p>
-          <p className="text-[rgba(255,255,255,0.45)] text-[12.5px] max-w-[220px] leading-relaxed">
+          <p className="text-[13px] text-[rgba(255,255,255,0.45)] max-w-[220px] leading-relaxed mt-1">
             {sort === 'everyone'
-              ? 'Share today\'s spark — invite your community!'
+              ? "Share today's spark — invite your community!"
               : sort === 'following'
               ? 'Follow more people to see their sparks here.'
               : 'Mutuals are people you follow who also follow you back.'}
@@ -1195,11 +1182,6 @@ function CommunityReveal({
         </div>
       ) : (
         <>
-          {featured.length > 0 && (
-            <div className="px-4 mb-2">
-              <span className="text-[10.5px] font-bold text-amber-600 uppercase tracking-wider">✦ Featured</span>
-            </div>
-          )}
           {featured.map((post, idx) => (
             <PostCard
               key={post.id}
@@ -1215,9 +1197,11 @@ function CommunityReveal({
           ))}
           {rest.length > 0 && (
             <>
-              <div className="px-4 my-2">
-                <span className="text-[10.5px] font-bold text-[rgba(255,255,255,0.45)] uppercase tracking-wider">More responses</span>
-              </div>
+              {featured.length > 0 && (
+                <div className="px-4 my-2">
+                  <span className="text-[10.5px] font-bold text-[rgba(255,255,255,0.35)] uppercase tracking-wider">More responses</span>
+                </div>
+              )}
               {rest.map((post, idx) => (
                 <PostCard
                   key={post.id}
@@ -1233,13 +1217,9 @@ function CommunityReveal({
               ))}
             </>
           )}
-          {/* Sentinel: IntersectionObserver triggers loadMore() automatically */}
           <div ref={sentinelRef} className="h-1 mt-1" aria-hidden />
         </>
       )}
-
-      {/* ── Divider ─────────────────────────────────────────────────────────── */}
-      <div className="mx-4 mt-2 mb-5 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
     </motion.div>
   );
 }
@@ -2196,30 +2176,8 @@ export default function Home() {
   }
 
   return (
-    <div className="pb-32 min-h-screen">
+    <div className="pb-24 min-h-screen">
       <Toast message={toast} visible={toastVisible} variant={toastVariant} />
-
-      {/* Greeting header — mobile only */}
-      <div className="px-4 pt-7 pb-5 md:hidden">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[13px] font-semibold text-[rgba(255,255,255,0.45)] mb-0.5">{greeting} 👋</p>
-            <h1 className="text-[24px] font-black tracking-tight text-white leading-tight">
-              Hey,{' '}
-              <span style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                {firstName}
-              </span>
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            {currentUser && (
-              <Link href={`/profile/${currentUser.id}`}>
-                <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={40} className="cursor-pointer hover:scale-105 transition-transform" />
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/*
         Hidden story picker — fires BEFORE StoryComposer mounts.
