@@ -129,14 +129,16 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                     ? setShowAnsweredSheet(true)
                     : setLocation('/?spark=1')
                 }
-                className="flex flex-col items-center justify-center w-12 h-12 rounded-[18px] cursor-pointer"
+                className="flex items-center justify-center w-[52px] h-[52px] rounded-full cursor-pointer"
                 style={{
                   background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)',
-                  boxShadow: '0 0 18px rgba(124,58,237,0.5)',
+                  padding: '2.5px',
+                  boxShadow: '0 0 18px rgba(236,72,153,0.45)',
                 }}
               >
-                <item.icon size={20} strokeWidth={2.5} style={{ color: '#fff' }} />
-                <span className="text-[8px] font-black uppercase tracking-wide mt-0.5" style={{ color: '#fff' }}>{item.label}</span>
+                <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
+                  <item.icon size={21} strokeWidth={2.5} style={{ color: '#fff' }} />
+                </div>
               </motion.button>
             );
           }
@@ -147,32 +149,26 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                 <item.icon
                   size={22}
                   strokeWidth={isActive ? 2.5 : 2}
-                  style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.5)' }}
+                  style={{ color: isActive ? '#EC4899' : 'rgba(255,255,255,0.5)' }}
                   className="transition-colors duration-200"
                 />
-                {isActive && (
-                  <span
-                    className="absolute inset-0 rounded-xl opacity-10"
-                    style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
-                  />
-                )}
                 {/* Unread message badge */}
                 {item.path === '/messages' && totalUnread > 0 && (
                   <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
-                    style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED)' }}>
+                    style={{ background: '#EC4899' }}>
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
                 {/* Unread notification badge */}
                 {item.path === '/notifications' && notifUnreadCount > 0 && (
                   <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white px-1"
-                    style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED)' }}>
+                    style={{ background: '#EC4899' }}>
                     {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
                   </span>
                 )}
                 <span
                   className="text-[10px] font-semibold transition-colors duration-200"
-                  style={{ color: isActive ? '#fff' : 'rgba(255,255,255,0.4)' }}
+                  style={{ color: isActive ? '#EC4899' : 'rgba(255,255,255,0.4)' }}
                 >
                   {item.label}
                 </span>
@@ -180,7 +176,7 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                   <motion.div
                     layoutId="navActiveBar"
                     className="absolute -bottom-2 w-5 h-[3px] rounded-full"
-                    style={{ background: 'linear-gradient(90deg, #EC4899, #7C3AED, #2563EB)' }}
+                    style={{ background: '#EC4899' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}

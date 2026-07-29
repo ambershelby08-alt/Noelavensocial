@@ -91,10 +91,10 @@ function QuickComposer({
                 className="flex items-center justify-between mt-2.5"
               >
                 <div className="flex gap-1">
-                  <button className="p-2 rounded-full text-[rgba(255,255,255,0.45)] hover:text-[#F5C542] hover:bg-[rgba(245,197,66,0.08)] transition-all">
+                  <button className="p-2 rounded-full text-[rgba(255,255,255,0.45)] hover:text-[#EC4899] hover:bg-[rgba(236,72,153,0.08)] transition-all">
                     <ImageIcon size={16} />
                   </button>
-                  <button className="p-2 rounded-full text-[rgba(255,255,255,0.45)] hover:text-[#F5C542] hover:bg-pink-50 transition-all">
+                  <button className="p-2 rounded-full text-[rgba(255,255,255,0.45)] hover:text-[#EC4899] hover:bg-[rgba(236,72,153,0.08)] transition-all">
                     <Sparkles size={16} />
                   </button>
                 </div>
@@ -137,7 +137,7 @@ function ModCard({ userId, from, to }: { userId: string; from: string; to: strin
       <div className="flex items-center gap-3 py-2.5 cursor-pointer group">
         <UserAvatar userId={userId} fallbackName={name} fallbackSrc={user?.avatarUrl || undefined} size={44} />
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-[14px] text-white group-hover:text-[#F5C542] transition-colors truncate">{name}</p>
+          <p className="font-bold text-[14px] text-white group-hover:text-[#EC4899] transition-colors truncate">{name}</p>
           <p className="text-[12px] text-[rgba(255,255,255,0.45)] truncate">@{user?.handle ?? userId}</p>
         </div>
         <span
@@ -179,7 +179,7 @@ function MemberCard({ user, currentUserId }: { user: User; currentUserId?: strin
       </Link>
       <div className="flex-1 min-w-0">
         <Link href={`/profile/${user.id}`}>
-          <p className="font-bold text-[14px] text-white hover:text-[#F5C542] transition-colors truncate cursor-pointer">{user.displayName}</p>
+          <p className="font-bold text-[14px] text-white hover:text-[#EC4899] transition-colors truncate cursor-pointer">{user.displayName}</p>
         </Link>
         <p className="text-[12px] text-[rgba(255,255,255,0.45)] truncate">@{user.handle} · {fmtNum(user.followers)} followers</p>
       </div>
@@ -368,7 +368,7 @@ export default function CommunityFeed() {
         {/* Stats row */}
         <div className="flex items-center gap-4 mb-4">
           <div className="flex items-center gap-1.5 text-[13px] text-[#BDBDBD] font-medium">
-            <Users size={14} className="text-[#F5C542]" />
+            <Users size={14} className="text-[#EC4899]" />
             <span><strong className="text-white font-black">{fmtNum(community.memberCount)}</strong> members</span>
           </div>
           <div className="w-px h-4 bg-[#222]" />
@@ -502,8 +502,8 @@ export default function CommunityFeed() {
                 {/* Stats grid */}
                 <div className="grid grid-cols-3 gap-3 mt-5">
                   {[
-                    { label: 'Members', value: fmtNum(community.memberCount), icon: Users, color: '#F5C542' },
-                    { label: 'Posts',   value: fmtNum(community.postCount),   icon: LayoutGrid, color: '#F5C542' },
+                    { label: 'Members', value: fmtNum(community.memberCount), icon: Users, color: '#EC4899' },
+                    { label: 'Posts',   value: fmtNum(community.postCount),   icon: LayoutGrid, color: '#EC4899' },
                     { label: 'Online',  value: String(community.onlineCount),  icon: Flame, color: '#2ECC71' },
                   ].map(({ label, value, icon: Icon, color }) => (
                     <div key={label} className="flex flex-col items-center py-4 rounded-[16px] border border-[#1a1a1a]" style={{ background: `${color}0d` }}>
@@ -553,7 +553,7 @@ export default function CommunityFeed() {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-black text-[15px] text-white">Rules</h3>
-                    <div className="flex items-center gap-1 text-[13px] text-[#F5C542] font-bold">
+                    <div className="flex items-center gap-1 text-[13px] text-[#EC4899] font-bold">
                       View all <ChevronRight size={14} />
                     </div>
                   </div>

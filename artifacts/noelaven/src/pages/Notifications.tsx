@@ -53,17 +53,17 @@ function TypeIcon({ type, emoji }: { type: NotificationType; emoji?: string }) {
     case 'like_comment':
       return <span className="text-[12px] leading-none">🌊</span>;
     case 'comment': case 'story_reply':
-      return <MessageCircle size={12} className="text-[#F5C542] fill-[rgba(245,197,66,0.2)]" />;
+      return <MessageCircle size={12} className="text-[#EC4899] fill-[rgba(236,72,153,0.2)]" />;
     case 'reply':
-      return <Reply size={12} className="text-[#F5C542]" />;
+      return <Reply size={12} className="text-[#EC4899]" />;
     case 'follow':
-      return <UserPlus size={12} className="text-[#F5C542]" />;
+      return <UserPlus size={12} className="text-[#EC4899]" />;
     case 'community_invite':
-      return <Users size={12} className="text-[#F5C542]" />;
+      return <Users size={12} className="text-[#EC4899]" />;
     case 'daily_spark':
-      return <Sparkles size={12} className="text-yellow-500 fill-yellow-400" />;
+      return <Sparkles size={12} className="text-[#EC4899]" />;
     case 'message':
-      return <MessageSquare size={12} className="text-[#F5C542]" />;
+      return <MessageSquare size={12} className="text-[#EC4899]" />;
     case 'mention':
       return <AtSign size={12} className="text-orange-500" />;
     case 'moderation_warning':
@@ -249,7 +249,7 @@ function Empty({ filter }: { filter: Filter }) {
         className="w-20 h-20 rounded-full flex items-center justify-center"
         style={{ background: 'linear-gradient(135deg, #EDE9FE, #FCE7F3)' }}
       >
-        <Bell size={32} className="text-[#F5C542]" />
+        <Bell size={32} className="text-[#EC4899]" />
       </div>
       <div className="text-center">
         <p className="font-bold text-[17px] text-white mb-1">{title}</p>
@@ -286,7 +286,7 @@ export default function Notifications() {
         <div>
           <h1 className="text-[26px] font-black text-white tracking-tight">Notifications</h1>
           {filteredUnread > 0 && (
-            <p className="text-[13px] text-[#F5C542] font-semibold mt-0.5">
+            <p className="text-[13px] text-[#EC4899] font-semibold mt-0.5">
               {filteredUnread} new
             </p>
           )}

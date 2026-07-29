@@ -202,7 +202,7 @@ export default function PostDetail() {
   if (postLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 size={28} className="text-[#F5C542] animate-spin" />
+        <Loader2 size={28} className="text-[#EC4899] animate-spin" />
       </div>
     );
   }
@@ -255,7 +255,7 @@ export default function PostDetail() {
       {/* Comments section */}
       <div className="px-4 mt-1">
         <div className="flex items-center gap-2 mb-4">
-          <MessageCircle size={16} className="text-[#F5C542]" />
+          <MessageCircle size={16} className="text-[#EC4899]" />
           <h2 className="font-black text-[15px] text-white">
             {comments.length > 0 ? `${comments.length} Comment${comments.length !== 1 ? 's' : ''}` : 'Comments'}
           </h2>
@@ -263,7 +263,7 @@ export default function PostDetail() {
 
         {commentsLoading ? (
           <div className="flex justify-center py-10">
-            <Loader2 size={22} className="text-[#F5C542] animate-spin" />
+            <Loader2 size={22} className="text-[#EC4899] animate-spin" />
           </div>
         ) : comments.length === 0 ? (
           <motion.div

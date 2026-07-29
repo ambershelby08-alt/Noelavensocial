@@ -399,8 +399,8 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
           >
             {replyingTo && (
               <div className="flex items-center gap-2 mb-2 px-1">
-                <MessageCircle size={12} className="text-[#F5C542] flex-shrink-0" />
-                <span className="flex-1 text-[12px] text-[#F5C542] font-semibold truncate">
+                <MessageCircle size={12} className="text-[#EC4899] flex-shrink-0" />
+                <span className="flex-1 text-[12px] text-[#EC4899] font-semibold truncate">
                   Replying to @{replyingTo.author.handle}
                 </span>
                 <button onClick={() => setReplyingTo(null)} className="p-0.5 rounded-full hover:bg-[#1a1a1a]">
@@ -900,9 +900,10 @@ export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, 
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={onRespond}
-            className="bg-[#111] text-[#F5C542] px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-md"
+            className="text-white px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-md"
+            style={{ background: 'linear-gradient(90deg, #EC4899, #F59E0B)', boxShadow: '0 3px 14px rgba(236,72,153,0.4)' }}
           >
-            Respond ✨
+            Answer Spark +
           </motion.button>
           <button
             onClick={() => setDismissed(true)}

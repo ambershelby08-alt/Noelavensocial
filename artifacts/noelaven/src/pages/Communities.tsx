@@ -143,7 +143,7 @@ function CircleGridCard({ community, onJoin }: CircleCardProps) {
       {/* Body */}
       <div className="p-4 flex flex-col flex-1">
         <Link href={`/communities/${community.id}`}>
-          <p className="font-black text-[15px] text-white hover:text-[#F5C542] transition-colors line-clamp-1 cursor-pointer">
+          <p className="font-black text-[15px] text-white hover:text-[#EC4899] transition-colors line-clamp-1 cursor-pointer">
             {community.name}
           </p>
         </Link>
@@ -162,15 +162,15 @@ function CircleGridCard({ community, onJoin }: CircleCardProps) {
             className={cn(
               'px-4 py-1.5 rounded-full text-[12.5px] font-black transition-all',
               community.isJoined
-                ? 'bg-[#1a1a1a] text-[#BDBDBD]'
-                : 'text-white shadow-sm'
+                ? 'text-[#BDBDBD]'
+                : 'text-[#EC4899]'
             )}
             style={!community.isJoined
-              ? { background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 2px 10px ${from}55` }
-              : {}
+              ? { border: '1.5px solid #EC4899', background: 'transparent' }
+              : { border: '1.5px solid #2a2a2a', background: 'transparent' }
             }
           >
-            {community.isJoined ? '✓ Joined' : '+ Join'}
+            {community.isJoined ? '✓ Joined' : 'Join'}
           </motion.button>
         </div>
       </div>

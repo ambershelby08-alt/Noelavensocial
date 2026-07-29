@@ -431,7 +431,7 @@ function ExploreCard({ post, onReact, onSave }: ExploreCardProps) {
           onClick={handleVibe}
           className={cn(
             'flex items-center gap-0.5 px-2 py-1 rounded-full text-[11px] font-bold backdrop-blur-sm transition-all',
-            localMyReaction ? 'bg-[#F5C542]/90 text-white' : 'bg-black/30 text-white hover:bg-black/45',
+            localMyReaction ? 'bg-[#EC4899]/90 text-white' : 'bg-black/30 text-white hover:bg-black/45',
           )}
         >
           <span className="text-[12px] leading-none">{localMyReaction ?? '🌊'}</span>
@@ -442,7 +442,7 @@ function ExploreCard({ post, onReact, onSave }: ExploreCardProps) {
           onClick={handleSaveClick}
           className={cn(
             'w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition-all',
-            localSaved ? 'bg-[#F5C542]/90 text-white' : 'bg-black/30 text-white hover:bg-black/45',
+            localSaved ? 'bg-[#EC4899]/90 text-white' : 'bg-black/30 text-white hover:bg-black/45',
           )}
         >
           {localSaved ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
@@ -516,7 +516,7 @@ function ExploreGrid({ posts, hasMore, loadMore, loading, onReact, onSave }: Exp
       <div ref={sentinelRef} className="h-4" />
       {hasMore && (
         <div className="flex justify-center py-6">
-          <Loader2 size={22} className="text-[#F5C542] animate-spin" />
+          <Loader2 size={22} className="text-[#EC4899] animate-spin" />
         </div>
       )}
     </>
@@ -569,7 +569,7 @@ function SparkCard({ prompt, count }: { prompt: string; count: number }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-[14px] text-white leading-snug">"{prompt}"</p>
-        <p className="text-[11.5px] text-[#F5C542] font-bold mt-1">{count} answers today</p>
+        <p className="text-[11.5px] text-[#EC4899] font-bold mt-1">{count} answers today</p>
       </div>
     </motion.div>
   );
@@ -625,7 +625,7 @@ function PostSearchRow({ post }: { post: Post }) {
         />
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-[12px] text-[#F5C542]">@{post.author.handle}</p>
+        <p className="font-bold text-[12px] text-[#EC4899]">@{post.author.handle}</p>
         <p className="text-[13.5px] text-[#BDBDBD] leading-snug truncate mt-0.5">{post.content}</p>
         <p className="text-[11px] text-[rgba(255,255,255,0.45)] mt-1">{post.likes} reactions · {post.comments} comments</p>
       </div>
@@ -690,7 +690,7 @@ function SearchView({
           <section>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-black text-[12.5px] text-[rgba(255,255,255,0.45)] uppercase tracking-wider">Recent</h3>
-              <button onClick={onClearSearches} className="text-[12px] text-[#F5C542] font-bold">
+              <button onClick={onClearSearches} className="text-[12px] text-[#EC4899] font-bold">
                 Clear all
               </button>
             </div>
@@ -732,7 +732,7 @@ function SearchView({
                 className="w-full flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-[#111] transition-colors"
               >
                 <span className="text-[12px] font-black text-[rgba(255,255,255,0.35)] w-4 text-center">{i + 1}</span>
-                <TrendingUp size={13} className="text-[#F5C542] flex-shrink-0" />
+                <TrendingUp size={13} className="text-[#EC4899] flex-shrink-0" />
                 <span className="text-[14px] text-[#BDBDBD] font-medium flex-1 text-left">{term}</span>
                 <ChevronRight size={13} className="text-[rgba(255,255,255,0.35)]" />
               </motion.button>
@@ -746,7 +746,7 @@ function SearchView({
   if (searching) {
     return (
       <div className="flex flex-col items-center py-24 gap-3">
-        <Loader2 size={26} className="text-[#F5C542] animate-spin" />
+        <Loader2 size={26} className="text-[#EC4899] animate-spin" />
         <p className="text-[14px] text-[rgba(255,255,255,0.45)]">Searching…</p>
       </div>
     );
@@ -765,7 +765,7 @@ function SearchView({
           className="w-16 h-16 rounded-[22px] flex items-center justify-center mb-4"
           style={{ background: 'linear-gradient(135deg, #6B73FF22, #FF6B9D22)' }}
         >
-          <Search size={28} className="text-[#F5C542]" />
+          <Search size={28} className="text-[#EC4899]" />
         </div>
         <h3 className="font-black text-[17px] text-white mb-1.5">No results for "{query}"</h3>
         <p className="text-[13.5px] text-[rgba(255,255,255,0.45)] max-w-[220px] leading-relaxed">
@@ -810,7 +810,7 @@ function SearchView({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.04 }}
                 onClick={() => onSearch(tag)}
-                className="px-4 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13.5px] font-bold text-[#BDBDBD] hover:border-[#F5C542] hover:text-[#F5C542] transition-colors shadow-sm"
+                className="px-4 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13.5px] font-bold text-[#BDBDBD] hover:border-[#EC4899] hover:text-[#EC4899] transition-colors shadow-sm"
               >
                 {tag}
               </motion.button>
@@ -1078,7 +1078,7 @@ function SuggestedView({
           {(liveHashtags.length >= 4 ? liveHashtags : DEMO_TRENDING_HASHTAGS).map(({ tag }) => (
             <button
               key={tag}
-              className="px-4 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13px] font-bold text-[#BDBDBD] hover:border-[#F5C542] hover:text-[#F5C542] transition-colors shadow-sm"
+              className="px-4 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13px] font-bold text-[#BDBDBD] hover:border-[#EC4899] hover:text-[#EC4899] transition-colors shadow-sm"
             >
               {tag}
             </button>
@@ -1120,7 +1120,7 @@ function SuggestedView({
           <motion.p
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-3 text-[12px] text-[#F5C542] font-semibold text-center"
+            className="mt-3 text-[12px] text-[#EC4899] font-semibold text-center"
           >
             ✓ {selectedInterests.length} interest{selectedInterests.length !== 1 ? 's' : ''} selected — your For You feed is being personalised
           </motion.p>
@@ -1353,7 +1353,7 @@ export default function Discover() {
                   animate={{ opacity: 1, width: 'auto' }}
                   exit={{ opacity: 0, width: 0 }}
                   onClick={dismissSearch}
-                  className="text-[13.5px] font-bold text-[#F5C542] whitespace-nowrap"
+                  className="text-[13.5px] font-bold text-[#EC4899] whitespace-nowrap"
                 >
                   Cancel
                 </motion.button>
@@ -1378,7 +1378,7 @@ export default function Discover() {
                 <motion.div
                   layoutId="tab-indicator"
                   className="absolute bottom-0 inset-x-3 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg, #C9982A, #F5C542)' }}
+                  style={{ background: '#EC4899' }}
                 />
               )}
             </button>

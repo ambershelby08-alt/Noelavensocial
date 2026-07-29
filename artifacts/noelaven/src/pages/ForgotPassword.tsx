@@ -116,14 +116,14 @@ export default function ForgotPassword() {
               <p className="text-[14px] text-[rgba(255,255,255,0.45)] font-medium leading-relaxed mb-2">
                 We've sent a reset link to
               </p>
-              <p className="text-[15px] font-bold text-[#F5C542] mb-8">
+              <p className="text-[15px] font-bold text-[#EC4899] mb-8">
                 {email}
               </p>
               <p className="text-[12.5px] text-[rgba(255,255,255,0.45)] mb-8 leading-relaxed max-w-[240px]">
                 Didn't receive it? Check your spam folder or{' '}
                 <button
                   onClick={() => setSent(false)}
-                  className="text-[#F5C542] font-semibold underline underline-offset-2"
+                  className="text-[#EC4899] font-semibold underline underline-offset-2"
                 >
                   try again
                 </button>

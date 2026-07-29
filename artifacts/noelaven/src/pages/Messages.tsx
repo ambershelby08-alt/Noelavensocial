@@ -264,7 +264,7 @@ function ConvItem({
           {unread && (
             <div
               className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black text-white px-1"
-              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
+              style={{ background: '#EC4899' }}
             >
               {conv.unreadCount}
             </div>
@@ -281,7 +281,7 @@ function ConvItem({
               </span>
               {isMuted && <BellOff size={11} className="text-[rgba(255,255,255,0.35)] flex-shrink-0" />}
             </div>
-            <span className={cn('text-[11.5px] flex-shrink-0', unread ? 'text-[#F5C542] font-bold' : 'text-[rgba(255,255,255,0.45)]')}>
+            <span className={cn('text-[11.5px] flex-shrink-0', unread ? 'text-white font-bold' : 'text-[rgba(255,255,255,0.45)]')}>
               {fmtTime(conv.lastMessageAt)}
             </span>
           </div>
@@ -292,7 +292,7 @@ function ConvItem({
 
         {/* Unread dot */}
         {unread && !isMuted && (
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }} />
+          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#EC4899' }} />
         )}
       </motion.div>
     </Link>
@@ -452,7 +452,7 @@ export default function Messages() {
               {totalUnread > 0 && (
                 <span
                   className="text-[11px] font-black text-white px-2 py-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
+                  style={{ background: '#EC4899' }}
                 >
                   {totalUnread}
                 </span>
@@ -503,7 +503,7 @@ export default function Messages() {
             <div className="flex flex-col items-center py-24 text-center">
               <div className="w-16 h-16 rounded-[22px] flex items-center justify-center mb-4"
                 style={{ background: 'linear-gradient(135deg, #6B73FF22, #FF6B9D22)' }}>
-                <MessageCircle size={28} className="text-[#F5C542]" />
+                <MessageCircle size={28} className="text-[#EC4899]" />
               </div>
               <h3 className="font-black text-[17px] text-white mb-1.5">No conversations</h3>
               <p className="text-[14px] text-[rgba(255,255,255,0.45)] max-w-[200px] leading-relaxed">

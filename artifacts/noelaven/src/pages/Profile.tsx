@@ -1112,11 +1112,11 @@ export default function Profile() {
                     }
                   } catch { setLocation('/messages'); } finally { setMsgLoading(false); }
                 }}
-                className="w-10 h-10 rounded-full bg-[#111] border border-[#2a2a2a] flex items-center justify-center shadow-sm hover:shadow-md transition-all disabled:opacity-60"
+                className="w-10 h-10 rounded-full bg-[#111] border border-[#EC4899]/40 flex items-center justify-center shadow-sm hover:shadow-md transition-all disabled:opacity-60"
               >
                 {msgLoading
-                  ? <span className="w-4 h-4 border-2 border-[#F5C542] border-t-transparent rounded-full animate-spin" />
-                  : <MessageCircle size={17} className="text-[#F5C542]" />}
+                  ? <span className="w-4 h-4 border-2 border-[#EC4899] border-t-transparent rounded-full animate-spin" />
+                  : <MessageCircle size={17} className="text-[#EC4899]" />}
               </motion.button>
             </>
           )}
@@ -1147,7 +1147,7 @@ export default function Profile() {
         ) : isOwnProfile ? (
           <button
             onClick={() => setEditOpen(true)}
-            className="flex items-center gap-1.5 text-[13.5px] text-[#F5C542] font-semibold mb-3 hover:text-[#F5C542] transition-colors"
+            className="flex items-center gap-1.5 text-[13.5px] text-[#EC4899] font-semibold mb-3 hover:text-[#EC4899] transition-colors"
           >
             <Plus size={14} /> Add a bio
           </button>
@@ -1210,7 +1210,7 @@ export default function Profile() {
                 onClick={() => setActiveTab(tab)}
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-3.5 text-[13.5px] font-semibold whitespace-nowrap relative flex-shrink-0 transition-colors',
-                  active ? 'text-white' : 'text-[rgba(255,255,255,0.45)] hover:text-[#BDBDBD]'
+                  active ? 'text-[#EC4899]' : 'text-[rgba(255,255,255,0.45)] hover:text-[#BDBDBD]'
                 )}
               >
                 {tabIcons[tab]}
@@ -1219,7 +1219,7 @@ export default function Profile() {
                   <motion.div
                     layoutId="profileTabIndicator"
                     className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full"
-                    style={{ background: 'linear-gradient(90deg, #C9982A, #F5C542)' }}
+                    style={{ background: '#EC4899' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
