@@ -801,56 +801,119 @@ export function useWebRTC() {
       setTimeout(() => setCall(s => ({ ...s, switchCameraError: null })), 3000);
     };
 
-    try {
-      const settings       = videoTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
-      const currentFacing  = settings.facingMode;
-      const currentDeviceId = settings.deviceId ?? '';
+    // Save old track info so we can restore it if the switch fails
+    const settings        = videoTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
+    const currentFacing   = settings.facingMode ?? '';
+    const currentDeviceId = settings.deviceId   ?? '';
 
-      // ── Enumerate video devices (best-effort; often returns empty IDs on mobile) ──
+    /** Attempt getUserMedia with a given constraint, logging the exact error. */
+    const tryGetCamera = async (constraint: MediaTrackConstraints, label: string): Promise<MediaStream> => {
+      console.info('[WebRTC] switchCamera trying:', label, constraint);
+      try {
+        return await navigator.mediaDevices.getUserMedia({ video: constraint, audio: false });
+      } catch (err: unknown) {
+        const name = err instanceof Error ? err.name    : 'UnknownError';
+        const msg  = err instanceof Error ? err.message : String(err);
+        console.warn(`[WebRTC] switchCamera ${label} failed: ${name}: ${msg}`);
+        throw err;
+      }
+    };
+
+    /** Restore the previous camera when a switch attempt fails. */
+    const restoreOldCamera = async () => {
+      console.info('[WebRTC] switchCamera restoring previous camera');
+      try {
+        const restoreConstraint = (currentDeviceId
+          ? { deviceId: { exact: currentDeviceId } }
+          : { facingMode: { ideal: (currentFacing || 'user') } }) as MediaTrackConstraints;
+        const restored = await navigator.mediaDevices.getUserMedia({ video: restoreConstraint, audio: false });
+        const restoredTrack = restored.getVideoTracks()[0];
+        if (!restoredTrack || !pcRef.current || !localRef.current) { restored.getTracks().forEach(t => t.stop()); return; }
+        const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) await sender.replaceTrack(restoredTrack);
+        localRef.current.addTrack(restoredTrack);
+        const updated = new MediaStream(localRef.current.getTracks());
+        localRef.current = updated;
+        setCall(s => ({ ...s, localStream: updated }));
+        console.info('[WebRTC] switchCamera restored facing:', restoredTrack.getSettings().facingMode);
+      } catch (restoreErr) {
+        console.error('[WebRTC] switchCamera restore also failed:', restoreErr);
+      }
+    };
+
+    try {
+      // ── Enumerate video devices (best-effort; empty on many mobile browsers) ──
       let videoDevices: MediaDeviceInfo[] = [];
       try {
         const all = await navigator.mediaDevices.enumerateDevices();
         videoDevices = all.filter(d => d.kind === 'videoinput' && d.deviceId !== '');
       } catch { /* ignore — fall through to facingMode path */ }
 
-      // ── Choose constraint ─────────────────────────────────────────────────────
-      // Mobile-first: facingMode toggle. On Android/iOS, facingMode is populated
-      // by the browser and 'ideal' never throws OverconstrainedError even on a
-      // single-camera device (we detect the no-switch below by comparing deviceIds).
+      // ── Determine next-camera constraints ─────────────────────────────────────
+      // Mobile: toggle facingMode (front ↔ rear).
       // Desktop: rotate by deviceId from enumerateDevices.
-      let videoConstraint: MediaTrackConstraints;
+      // When facingMode is unknown AND devices are listed, prefer deviceId rotation.
+      let exactConstraint: MediaTrackConstraints | null = null;
+      let softConstraint: MediaTrackConstraints;
 
       if (currentFacing || videoDevices.length === 0) {
-        // Mobile path: toggle facing mode
+        // ── Mobile path ──────────────────────────────────────────────────────────
         const nextFacing = currentFacing === 'environment' ? 'user' : 'environment';
-        videoConstraint = { facingMode: { ideal: nextFacing } };
+        // Try exact first (per spec recommendation for Android Chrome / WebView).
+        // Exact throws OverconstrainedError when the device truly only has one
+        // camera; soft falls back to whatever facingMode is available.
+        exactConstraint = { facingMode: { exact: nextFacing } };
+        softConstraint  = { facingMode: nextFacing };       // "environment" == { ideal: "environment" }
       } else if (videoDevices.length < 2) {
         showError('Only one camera available');
         return;
       } else {
-        // Desktop path: rotate through deviceIds
+        // ── Desktop path ─────────────────────────────────────────────────────────
         const currentIdx = videoDevices.findIndex(d => d.deviceId === currentDeviceId);
         const nextIdx    = (currentIdx + 1) % videoDevices.length;
-        videoConstraint  = { deviceId: { exact: videoDevices[nextIdx].deviceId } };
+        exactConstraint  = { deviceId: { exact: videoDevices[nextIdx].deviceId } };
+        softConstraint   = { deviceId: videoDevices[nextIdx].deviceId };
       }
 
-      // ── Acquire new video stream ──────────────────────────────────────────────
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraint,
-        audio: false,
-      });
+      // ── KEY FIX: stop old track BEFORE requesting new camera ──────────────────
+      // Android Chrome / WebView cannot open two cameras simultaneously.
+      // If we request the rear camera while the front is still live, the system
+      // either fails the request or silently returns the front camera again.
+      localRef.current?.removeTrack(videoTrack);
+      videoTrack.stop();
+      console.info('[WebRTC] switchCamera stopped old track (facing:', currentFacing || 'unknown', ')');
+
+      // ── Acquire new camera: exact → soft ─────────────────────────────────────
+      let newStream: MediaStream | null = null;
+      try {
+        newStream = await tryGetCamera(exactConstraint, 'exact');
+      } catch {
+        // exact failed (OverconstrainedError on single-camera, or NotFoundError on
+        // some Android WebViews that don't support exact facingMode) → soft retry
+        try {
+          newStream = await tryGetCamera(softConstraint, 'soft-fallback');
+        } catch (softErr) {
+          // Both attempts failed — restore old camera so the call isn't broken
+          await restoreOldCamera();
+          throw softErr;
+        }
+      }
 
       const newTrack = newStream.getVideoTracks()[0];
       if (!newTrack) {
         newStream.getTracks().forEach(t => t.stop());
+        await restoreOldCamera();
         showError('Camera switch failed — no video track returned');
         return;
       }
 
-      // ── Detect no-switch (single-camera device) ───────────────────────────────
-      const newDeviceId = newTrack.getSettings().deviceId ?? '';
+      // ── Detect no-switch (single-camera device on desktop) ────────────────────
+      const newSettings  = newTrack.getSettings() as MediaTrackSettings & { facingMode?: string };
+      const newDeviceId  = newSettings.deviceId  ?? '';
+      const newFacing    = newSettings.facingMode ?? '';
       if (newDeviceId && currentDeviceId && newDeviceId === currentDeviceId) {
         newTrack.stop();
+        await restoreOldCamera();
         showError('Only one camera available');
         return;
       }
@@ -866,26 +929,27 @@ export function useWebRTC() {
       if (sender) await sender.replaceTrack(newTrack);
 
       // ── Swap track in the local MediaStream ───────────────────────────────────
-      localRef.current.removeTrack(videoTrack);
       localRef.current.addTrack(newTrack);
-      videoTrack.stop();
 
       // New object reference triggers callback-ref re-bind in CallScreen
       const updated = new MediaStream(localRef.current.getTracks());
       localRef.current = updated;
       setCall(s => ({ ...s, localStream: updated, switchCameraError: null }));
 
-      console.info('[WebRTC] switchCamera → facing:', newTrack.getSettings().facingMode || 'unknown',
-        '| device:', newTrack.label || newDeviceId || 'unknown');
+      console.info('[WebRTC] switchCamera ✓ facing:', newFacing || 'unknown',
+        '| label:', newTrack.label || '(none)',
+        '| deviceId:', newDeviceId || '(none)');
 
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn('[WebRTC] switchCamera failed:', msg);
-      const friendly = /overconstrained|notfound|not found/i.test(msg)
-        ? 'Only one camera available'
-        : /permission|denied/i.test(msg)
-          ? 'Camera permission denied'
-          : 'Failed to switch camera';
+      const errName = err instanceof Error ? err.name    : 'UnknownError';
+      const errMsg  = err instanceof Error ? err.message : String(err);
+      console.warn('[WebRTC] switchCamera failed:', errName, '—', errMsg);
+      const friendly =
+        /overconstrained/i.test(errName) || /notfound|not found/i.test(errMsg + errName)
+          ? 'Only one camera available'
+          : /notallowed|permission|denied/i.test(errName + errMsg)
+            ? 'Camera permission denied'
+            : 'Failed to switch camera';
       showError(friendly);
     } finally {
       isSwitchingCameraRef.current = false;
