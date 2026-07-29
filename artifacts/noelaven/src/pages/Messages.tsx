@@ -10,6 +10,7 @@ import type { Conversation, User } from '@/lib/mockData';
 import { useConversations } from '@/hooks/useConversations';
 import { useActiveNow, type OnlineUser } from '@/hooks/useActiveNow';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { useUserProfile } from '@/contexts/UserCacheContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday } from 'date-fns';
@@ -199,22 +200,36 @@ function ConvItem({
   const { currentUser } = useAuth();
   const uid = currentUser?.id ?? '';
 
-  /**
-   * Derive the "other" participant safely:
-   * - Only run the lookup once `uid` is known (auth resolved).
-   * - Prefer the participant whose ID differs from the viewer.
-   * - Fallback order: participants[1] → participants[0], never guessing
-   *   before auth resolves (avoids every row resolving to the same person).
-   */
-  const other = uid
-    ? conv.participants.find(p => p.id !== uid)
-      ?? conv.participants[1]
-      ?? conv.participants[0]
-    : undefined;
+  // ── Find the other user's ID ─────────────────────────────────────────────────
+  // Priority: participantIds (raw strings, 100% reliable) → participants embed.
+  // We NEVER fall back to a participant we haven't confirmed is not the viewer,
+  // and we NEVER run this before uid is known (avoids all-rows-same-avatar race).
+  const otherId: string = (() => {
+    if (!uid) return '';
+    // 1. Use the raw participantIds array (stored in Firestore, always correct)
+    if (conv.participantIds && conv.participantIds.length > 0) {
+      const found = conv.participantIds.find(id => id !== uid);
+      if (found) return found;
+    }
+    // 2. Fall back to the embedded participants array
+    const found = conv.participants.find(p => p.id && p.id !== uid);
+    return found?.id ?? '';
+  })();
 
-  const name     = conv.type === 'group' ? (conv.name ?? 'Group') : (other?.displayName ?? '');
-  // Real presence: only green when this participant is actually online in Firestore.
-  const isOnline = conv.type === 'direct' && !!other && onlineIds.has(other.id);
+  // ── Live profile from Firestore via UserCacheContext ─────────────────────────
+  // This is the ONLY source used for avatar and display name.
+  // useUserProfile(otherId) subscribes to doc(db,'users',otherId) and updates
+  // automatically — no stale embed data can bleed through.
+  const otherProfile = useUserProfile(otherId);
+
+  // Fallback name from embed while the live profile loads (prevents blank flash)
+  const embedName = conv.participants.find(p => p.id === otherId)?.displayName ?? '';
+
+  const displayName = conv.type === 'group'
+    ? (conv.name ?? 'Group')
+    : (otherProfile?.displayName || embedName || '…');
+
+  const isOnline = conv.type === 'direct' && !!otherId && onlineIds.has(otherId);
   const unread   = conv.unreadCount > 0;
   const isPinned = conv.pinnedBy?.includes(uid);
   const isMuted  = conv.mutedBy?.includes(uid);
@@ -228,8 +243,7 @@ function ConvItem({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }
 
-  // Don't render until we know who the viewer is — prevents every row briefly
-  // showing the same avatar (the fallback participants[0]) before auth resolves.
+  // Show skeleton while auth hasn't resolved — no premature rendering
   if (!uid) {
     return (
       <div className="flex items-center gap-3.5 px-4 py-3 border-b border-[#111]">
@@ -253,25 +267,30 @@ function ConvItem({
         onMouseLeave={endPress}
         className="flex items-center gap-3.5 px-4 py-3 border-b border-[#111] transition-all cursor-pointer"
       >
-        {/* Avatar with rainbow ring */}
+        {/* Avatar */}
         <div className="relative flex-shrink-0">
           {conv.type === 'group' ? (
             <GroupAvatar participants={conv.participants} currentUserId={uid} />
-          ) : other ? (
+          ) : otherId ? (
             <>
               <Link
-                href={`/profile/${other.id}`}
+                href={`/profile/${otherId}`}
                 onClick={e => e.stopPropagation()}
                 className="block"
-                aria-label={`View ${other.displayName}'s profile`}
+                aria-label={`View ${displayName}'s profile`}
               >
-                <div className="p-[2.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
+                <div className="p-[2.5px] rounded-full"
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
                   <div className="p-[2px] rounded-full bg-black">
-                    {/* userId keyed to the specific other user — never the viewer */}
+                    {/*
+                      userId is always the other person's UID — never the viewer's.
+                      No fallbackSrc from the embed: useUserProfile is the sole image source.
+                      This prevents any stale or cross-contaminated avatarUrl from
+                      the Firestore participant embed leaking into the display.
+                    */}
                     <UserAvatar
-                      userId={other.id}
-                      fallbackName={other.displayName}
-                      fallbackSrc={other.avatarUrl || undefined}
+                      userId={otherId}
+                      fallbackName={embedName || displayName}
                       size={50}
                     />
                   </div>
@@ -282,7 +301,6 @@ function ConvItem({
               )}
             </>
           ) : (
-            /* other still resolving — show ghost ring */
             <div className="w-[58px] h-[58px] rounded-full bg-[#1a1a1a] animate-pulse" />
           )}
           {unread && (
@@ -300,16 +318,19 @@ function ConvItem({
           <div className="flex items-baseline justify-between gap-2 mb-0.5">
             <div className="flex items-center gap-1.5 min-w-0">
               {isPinned && <Pin size={11} className="text-[#F5C542] flex-shrink-0" />}
-              <span className={cn('text-[15px] truncate', unread ? 'font-black text-white' : 'font-semibold text-white')}>
-                {name}
+              <span className={cn('text-[15px] truncate',
+                unread ? 'font-black text-white' : 'font-semibold text-white')}>
+                {displayName}
               </span>
               {isMuted && <BellOff size={11} className="text-[rgba(255,255,255,0.35)] flex-shrink-0" />}
             </div>
-            <span className={cn('text-[11.5px] flex-shrink-0', unread ? 'text-white font-bold' : 'text-[rgba(255,255,255,0.45)]')}>
+            <span className={cn('text-[11.5px] flex-shrink-0',
+              unread ? 'text-white font-bold' : 'text-[rgba(255,255,255,0.45)]')}>
               {fmtTime(conv.lastMessageAt)}
             </span>
           </div>
-          <p className={cn('text-[13.5px] truncate', unread ? 'font-semibold text-[#BDBDBD]' : 'text-[rgba(255,255,255,0.45)]')}>
+          <p className={cn('text-[13.5px] truncate',
+            unread ? 'font-semibold text-[#BDBDBD]' : 'text-[rgba(255,255,255,0.45)]')}>
             {lastMsgLabel(conv)}
           </p>
         </div>

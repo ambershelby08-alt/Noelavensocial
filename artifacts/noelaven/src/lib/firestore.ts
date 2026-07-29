@@ -906,6 +906,7 @@ function docToConversation(id: string, d: DocumentData, currentUserId?: string):
     id,
     type: d.type ?? 'direct',
     name: d.name ?? undefined,
+    participantIds: (d.participantIds ?? []) as string[],
     participants: (d.participants ?? []).map((p: DocumentData) => docToUser(p.id ?? '', p)),
     lastMessage: d.lastMessage ?? '',
     lastMessageType: d.lastMessageType ?? 'text',

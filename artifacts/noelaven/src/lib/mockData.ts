@@ -115,6 +115,8 @@ export interface Conversation {
   type: 'direct' | 'group';
   name?: string;
   participants: User[];
+  /** Raw array of participant UIDs — authoritative source for identity checks. */
+  participantIds?: string[];
   lastMessage: string;
   lastMessageType?: Message['type'];
   lastSenderId?: string;
@@ -558,6 +560,7 @@ export const mockConversations: Conversation[] = [
     id: "conv-1",
     type: "direct",
     participants: [mockUsers[2], mockUsers[0]], // Demo user and Alice
+    participantIds: ["demo-user", "user-1"],
     lastMessage: "That sounds like a great idea! Let's do it.",
     lastMessageAt: new Date(Date.now() - 3600000),
     unreadCount: 0
@@ -566,6 +569,7 @@ export const mockConversations: Conversation[] = [
     id: "conv-2",
     type: "direct",
     participants: [mockUsers[2], mockUsers[1]], // Demo user and Bob
+    participantIds: ["demo-user", "user-2"],
     lastMessage: "Did you check out the new API update?",
     lastMessageAt: new Date(Date.now() - 3600000 * 5),
     unreadCount: 2
@@ -575,6 +579,7 @@ export const mockConversations: Conversation[] = [
     type: "group",
     name: "Project Phoenix Team",
     participants: [mockUsers[2], mockUsers[0], mockUsers[4]],
+    participantIds: ["demo-user", "user-1", "user-5"],
     lastMessage: "Alice: I uploaded the new assets.",
     lastMessageAt: new Date(Date.now() - 3600000 * 24),
     unreadCount: 5
