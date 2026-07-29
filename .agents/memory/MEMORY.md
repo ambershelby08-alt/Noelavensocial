@@ -13,6 +13,8 @@
 - [Noelaven messaging architecture](noelaven-messaging-arch.md) — production messaging layer: extended Message/Conversation types, Firestore helpers, hooks (useMessages/useConversations/useVoiceRecorder), Chat.tsx + Messages.tsx patterns.
 - [Noelaven page wiring sweep](noelaven-page-wiring.md) — Discover/Profile/Notifications/Communities/PostDetail all wired to Firestore; see file for per-page details.
 - [Noelaven voice/video calls](noelaven-calls.md) — WebRTC + Firestore signaling; CallContext singleton; ICE candidate queuing pattern; demo mode simulates ring+connect.
+- [Noelaven phantom call bug](noelaven-call-phantom.md) — 3 root causes: stale Firestore doc, stale closure, no dedup; all fixed via isCallStale()+activeCallIdRef+handledCallIdsRef.
+- [Noelaven Spark prompt system](noelaven-spark-system.md) — categorized prompts, 90-day rotation, Golden Spark (weekly Monday), Surprise Sparks (10%); new API fields: categoryLabel + isGoldenSpark.
 - [Noelaven call ring timer bug](noelaven-calls-ring-timer.md) — ring timer MUST be cancelled in subscribeCall when callee answers; endCall MUST use call.status not call.isActive for missed-call gate.
 - [Noelaven reaction system](noelaven-reactions.md) — 20 emoji reactions replacing likes; Firestore transaction model; ReactionButton long-press tray; notification format.
 - [Noelaven Discover page](noelaven-discover.md) — usePersonalization + useDiscover hooks; SparkAudience filter is 'public' not 'everyone'; optimistic overrides pattern; CSS columns masonry.

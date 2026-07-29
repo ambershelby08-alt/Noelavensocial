@@ -370,6 +370,21 @@ export function useWebRTC() {
   ) => {
     if (!currentUser || call.callId) return;
 
+    // ── State-machine log: idle → calling ────────────────────────────────────
+    // Logged ONLY here — after the guard confirms a user action triggered this,
+    // not a reconnect, subscription replay, or render side-effect.
+    const callInitiatedAt = new Date().toISOString();
+    console.log('[Call] Initiating call', {
+      state:          'idle → calling',
+      callerId:       currentUser.id,
+      callerName:     currentUser.displayName,
+      calleeId,
+      calleeName,
+      conversationId,
+      type,
+      initiatedAt:    callInitiatedAt,
+    });
+
     setCall(s => ({
       ...s,
       status: 'ringing', phase: 'ringing', type,
@@ -462,6 +477,16 @@ export function useWebRTC() {
       );
       callIdRef.current = callId;
       setCall(s => ({ ...s, callId }));
+      console.log('[Call] Firestore call document created', {
+        state:          'calling → ringing',
+        callId,
+        callerId:       currentUser.id,
+        calleeId,
+        conversationId,
+        type,
+        initiatedAt:    callInitiatedAt,
+        timestamp:      new Date().toISOString(),
+      });
 
       // Flush queued candidates
       for (const c of pendingCandidates) {
@@ -559,6 +584,19 @@ export function useWebRTC() {
 
   const answerIncomingCall = useCallback(async (incoming: CallDoc) => {
     if (!currentUser) return;
+
+    // ── State-machine log: ringing → connecting ───────────────────────────────
+    console.log('[Call] Answering incoming call', {
+      state:          'ringing → connecting',
+      callId:         incoming.callId,
+      callerId:       incoming.callerId,
+      callerName:     incoming.callerName,
+      calleeId:       currentUser.id,
+      conversationId: incoming.conversationId,
+      type:           incoming.type,
+      callAgeMs:      Date.now() - incoming.createdAt.getTime(),
+      answeredAt:     new Date().toISOString(),
+    });
 
     setCall(s => ({
       ...s,

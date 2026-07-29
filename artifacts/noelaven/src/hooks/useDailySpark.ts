@@ -46,6 +46,10 @@ import { isFirebaseConfigured } from '@/lib/firebase';
 
 /** Prompt text is NOT user-specific — same question for everyone today. */
 const PROMPT_PREFIX = 'noelaven_spark_prompt_';
+/** Category metadata — NOT user-specific. Stored alongside the prompt. */
+const META_PREFIX   = 'noelaven_spark_meta_';
+/** Golden Spark — NOT user-specific. Keyed by ISO week. */
+const GOLDEN_PREFIX = 'noelaven_spark_golden_';
 
 /**
  * Answered/completion key — MUST include the UID so answers from
@@ -187,6 +191,23 @@ export function useDailySpark(userId?: string) {
     return !localStorage.getItem(PROMPT_PREFIX + todayKeyET());
   });
 
+  // ── Category / Golden Spark metadata (shared, not user-scoped) ────────────
+  const [categoryLabel, setCategoryLabel] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const raw = localStorage.getItem(META_PREFIX + todayKeyET());
+      return raw ? (JSON.parse(raw) as { categoryLabel?: string }).categoryLabel ?? '' : '';
+    } catch { return ''; }
+  });
+
+  const [isGoldenSpark, setIsGoldenSpark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const raw = localStorage.getItem(META_PREFIX + todayKeyET());
+      return raw ? !!(JSON.parse(raw) as { isGoldenSpark?: boolean }).isGoldenSpark : false;
+    } catch { return false; }
+  });
+
   // ── Per-account state — intentionally NOT initialised from localStorage ──────
   //
   // We cannot read the UID-scoped done-key in the useState initializer because
@@ -310,15 +331,44 @@ export function useDailySpark(userId?: string) {
       try {
         const res = await fetch('/api/spark/today');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: { prompt: string; date: string } = await res.json();
+        const data: {
+          prompt: string;
+          date: string;
+          categoryKey?: string;
+          categoryLabel?: string;
+          isGoldenSpark?: boolean;
+          isSurprise?: boolean;
+          goldenSpark?: { prompt: string; categoryLabel: string; weekKey: string } | null;
+        } = await res.json();
         if (cancelled) return;
-        // Evict previous day's prompt keys (only PROMPT_PREFIX keys — never done/streak keys).
+
+        // Evict previous day's prompt + meta keys (never done/streak keys).
         for (let i = localStorage.length - 1; i >= 0; i--) {
           const k = localStorage.key(i);
           if (k?.startsWith(PROMPT_PREFIX) && k !== cacheKey) localStorage.removeItem(k);
+          if (k?.startsWith(META_PREFIX) && k !== META_PREFIX + today) localStorage.removeItem(k!);
         }
+
         localStorage.setItem(cacheKey, data.prompt);
         setPrompt(data.prompt);
+
+        // Cache and apply category / Golden Spark metadata.
+        const meta = {
+          categoryLabel: data.categoryLabel ?? '',
+          isGoldenSpark: data.isGoldenSpark ?? false,
+          isSurprise:    data.isSurprise    ?? false,
+        };
+        localStorage.setItem(META_PREFIX + today, JSON.stringify(meta));
+        setCategoryLabel(meta.categoryLabel);
+        setIsGoldenSpark(meta.isGoldenSpark);
+
+        // Cache the weekly Golden Spark separately so it survives midnight rollover.
+        if (data.goldenSpark) {
+          localStorage.setItem(
+            GOLDEN_PREFIX + data.goldenSpark.weekKey,
+            JSON.stringify(data.goldenSpark)
+          );
+        }
       } catch (err) {
         console.warn('Daily Spark fetch failed, using fallback:', err);
       } finally {
@@ -371,6 +421,10 @@ export function useDailySpark(userId?: string) {
     streak,
     memoryLane,
     markAnswered,
+    /** Category badge label, e.g. "❤️ Heartfelt" or "⭐ Golden Spark". */
+    categoryLabel,
+    /** True on Golden Spark days — the whole community gets the same standout prompt. */
+    isGoldenSpark,
     /**
      * `statusConfirmed` becomes `true` once the [userId, today] effect has
      * finished reading localStorage for the current userId.  Components that

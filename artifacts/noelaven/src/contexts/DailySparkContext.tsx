@@ -52,6 +52,16 @@ export interface DailySparkStatusValue {
   streak: number;
   /** Memory-lane entry if one exists for today's anniversary. */
   memoryLane: MemoryLaneEntry | null;
+  /**
+   * Category label for today's prompt, e.g. "❤️ Heartfelt" or "🔥 Debates".
+   * Empty string while loading.
+   */
+  categoryLabel: string;
+  /**
+   * True on Golden Spark days — one shared standout prompt for the whole
+   * Noelaven community to answer together.
+   */
+  isGoldenSpark: boolean;
   /** Mark the current user as having answered today (updates local + streak). */
   markAnswered: (postId: string) => void;
 }
@@ -77,6 +87,8 @@ export function DailySparkProvider({ children }: { children: React.ReactNode }) 
     todayPostId,
     streak,
     memoryLane,
+    categoryLabel,
+    isGoldenSpark,
     markAnswered,
   } = useDailySpark(currentUser?.id);
 
@@ -88,6 +100,8 @@ export function DailySparkProvider({ children }: { children: React.ReactNode }) 
     isLoading: loading,
     streak,
     memoryLane,
+    categoryLabel,
+    isGoldenSpark,
     markAnswered,
   };
 

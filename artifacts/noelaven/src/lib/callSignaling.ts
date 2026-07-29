@@ -159,6 +159,21 @@ export function subscribeCall(callId: string, cb: (call: CallDoc | null) => void
   }, err => console.error('[subscribeCall]', err.code, err.message));
 }
 
+/**
+ * Calls ringing for longer than this are considered stale.
+ * Root cause of phantom calls: if a caller's app crashes before it can update
+ * the status to ended/missed, the document stays `ringing` forever.  Every
+ * time the callee reconnects, Firestore re-delivers the snapshot and the phone
+ * rings again.  We discard any call that is older than this threshold and
+ * auto-expire it to `missed` so it is never delivered again.
+ */
+export const CALL_MAX_RING_AGE_MS = 45_000; // 45 s — matches RING_TIMEOUT_MS in useWebRTC
+
+/** Returns true when a ringing call document is too old to legitimately ring. */
+export function isCallStale(call: CallDoc): boolean {
+  return Date.now() - call.createdAt.getTime() > CALL_MAX_RING_AGE_MS;
+}
+
 /** Subscribe to incoming ringing calls for a user. */
 export function subscribeIncomingCalls(userId: string, cb: (call: CallDoc | null) => void): Unsubscribe {
   const q = query(
@@ -169,7 +184,7 @@ export function subscribeIncomingCalls(userId: string, cb: (call: CallDoc | null
   return onSnapshot(q, snap => {
     if (snap.empty) { cb(null); return; }
     const d = snap.docs[0].data();
-    cb({
+    const call: CallDoc = {
       callId: snap.docs[0].id,
       callerId: d.callerId,
       callerName: d.callerName,
@@ -181,7 +196,26 @@ export function subscribeIncomingCalls(userId: string, cb: (call: CallDoc | null
       offer: d.offer,
       answer: d.answer,
       createdAt: d.createdAt?.toDate?.() ?? new Date(),
-    });
+    };
+
+    // Auto-expire phantom calls — caller app crashed before updating status.
+    // Silently update to 'missed' and tell the subscriber there is no call,
+    // so the recipient is never rung by a ghost document on reconnect.
+    if (isCallStale(call)) {
+      const ageMs = Date.now() - call.createdAt.getTime();
+      console.warn('[callSignaling] Auto-expiring stale ringing call', {
+        callId: call.callId,
+        callerId: call.callerId,
+        conversationId: call.conversationId,
+        ageMs,
+        exceededBy: ageMs - CALL_MAX_RING_AGE_MS,
+      });
+      updateDoc(doc(db(), 'calls', call.callId), { status: 'missed' }).catch(() => {});
+      cb(null);
+      return;
+    }
+
+    cb(call);
   }, err => console.error('[subscribeIncomingCalls]', err.code, err.message));
 }
 
