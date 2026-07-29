@@ -148,11 +148,11 @@ function SectionHeader({
 }: { emoji?: string; title: string; subtitle?: string }) {
   return (
     <div>
-      <h2 className="font-black text-[16px] text-gray-900 flex items-center gap-1.5">
+      <h2 className="font-black text-[16px] text-white flex items-center gap-1.5">
         {emoji && <span className="text-[18px]">{emoji}</span>}
         {title}
       </h2>
-      {subtitle && <p className="text-[12px] text-gray-400 mt-0.5">{subtitle}</p>}
+      {subtitle && <p className="text-[12px] text-[rgba(255,255,255,0.45)] mt-0.5">{subtitle}</p>}
     </div>
   );
 }
@@ -200,9 +200,9 @@ function FollowButton({
       className={cn(
         'flex-shrink-0 flex items-center gap-1 rounded-full font-bold transition-all disabled:opacity-60',
         size === 'sm' ? 'px-3 py-1 text-[11px]' : 'px-3.5 py-1.5 text-[12.5px]',
-        following ? 'bg-gray-100 text-gray-500' : 'text-white',
+        following ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white',
       )}
-      style={!following ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+      style={!following ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
     >
       {loading ? <Loader2 size={11} className="animate-spin" />
         : following ? <><UserCheck size={11} />Following</>
@@ -221,17 +221,17 @@ function UserRow({
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="flex items-center gap-3 p-3 rounded-[18px] bg-white border border-black/[0.05] shadow-sm"
+      className="flex items-center gap-3 p-3 rounded-[18px] bg-[#111] border border-[#1a1a1a] shadow-sm"
     >
       <Link href={`/profile/${user.id}`} className="flex-shrink-0">
         <UserAvatar userId={user.id} fallbackName={user.displayName}
           fallbackSrc={user.avatarUrl || undefined} size={46} />
       </Link>
       <Link href={`/profile/${user.id}`} className="flex-1 min-w-0">
-        <p className="font-bold text-[14px] text-gray-900 truncate">{user.displayName}</p>
-        <p className="text-[12px] text-gray-400">@{user.handle}</p>
+        <p className="font-bold text-[14px] text-white truncate">{user.displayName}</p>
+        <p className="text-[12px] text-[rgba(255,255,255,0.45)]">@{user.handle}</p>
         {user.interests.length > 0 && (
-          <p className="text-[11px] text-gray-400 truncate mt-0.5">
+          <p className="text-[11px] text-[rgba(255,255,255,0.45)] truncate mt-0.5">
             {user.interests.slice(0, 2).join(' · ')}
           </p>
         )}
@@ -254,17 +254,17 @@ function UserCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="flex-shrink-0 w-[148px] p-4 rounded-[22px] bg-white border border-black/[0.05] shadow-sm flex flex-col items-center text-center"
+      className="flex-shrink-0 w-[148px] p-4 rounded-[22px] bg-[#111] border border-[#1a1a1a] shadow-sm flex flex-col items-center text-center"
     >
       <Link href={`/profile/${user.id}`}>
         <UserAvatar userId={user.id} fallbackName={user.displayName}
           fallbackSrc={user.avatarUrl || undefined} size={60} className="mb-3 cursor-pointer" />
       </Link>
       <Link href={`/profile/${user.id}`}>
-        <p className="font-bold text-[13.5px] text-gray-900 truncate w-full">{user.displayName}</p>
+        <p className="font-bold text-[13.5px] text-white truncate w-full">{user.displayName}</p>
       </Link>
-      <p className="text-[11px] text-gray-400 mb-1">@{user.handle}</p>
-      <p className="text-[10.5px] text-gray-400 mb-3">{fmt(user.followers)} followers</p>
+      <p className="text-[11px] text-[rgba(255,255,255,0.45)] mb-1">@{user.handle}</p>
+      <p className="text-[10.5px] text-[rgba(255,255,255,0.45)] mb-3">{fmt(user.followers)} followers</p>
       {currentUserId && user.id !== currentUserId && (
         <FollowButton userId={user.id} currentUserId={currentUserId} size="sm" />
       )}
@@ -292,7 +292,7 @@ function CommunityRow({ community, index }: { community: DiscoverCommunity; inde
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.04 }}
-      className="flex items-center gap-3 p-3.5 rounded-[20px] bg-white border border-black/[0.05] shadow-sm hover:shadow-md transition-all"
+      className="flex items-center gap-3 p-3.5 rounded-[20px] bg-[#111] border border-[#1a1a1a] shadow-sm hover:shadow-md transition-all"
     >
       <Link href={`/communities/${community.id}`} className="flex-shrink-0">
         <div
@@ -303,8 +303,8 @@ function CommunityRow({ community, index }: { community: DiscoverCommunity; inde
         </div>
       </Link>
       <Link href={`/communities/${community.id}`} className="flex-1 min-w-0">
-        <p className="font-bold text-[14px] text-gray-900 truncate">{community.name}</p>
-        <p className="text-[11.5px] text-gray-400 truncate">
+        <p className="font-bold text-[14px] text-white truncate">{community.name}</p>
+        <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] truncate">
           {community.category} · {fmt(community.memberCount)} members
         </p>
       </Link>
@@ -313,9 +313,9 @@ function CommunityRow({ community, index }: { community: DiscoverCommunity; inde
         onClick={() => setJoined(v => !v)}
         className={cn(
           'flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-black transition-all',
-          joined ? 'bg-gray-100 text-gray-500' : 'text-white',
+          joined ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white',
         )}
-        style={!joined ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+        style={!joined ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
       >
         {joined ? '✓' : '+'}
       </motion.button>
@@ -378,7 +378,7 @@ function ExploreCard({ post, onReact, onSave }: ExploreCardProps) {
   return (
     <motion.div
       onClick={() => navigate(`/post/${post.id}`)}
-      className="relative overflow-hidden rounded-[18px] cursor-pointer bg-gray-100 group"
+      className="relative overflow-hidden rounded-[18px] cursor-pointer bg-[#1a1a1a] group"
       style={{ marginBottom: '8px', breakInside: 'avoid', display: 'block' }}
       whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', damping: 20, stiffness: 400 }}
@@ -431,7 +431,7 @@ function ExploreCard({ post, onReact, onSave }: ExploreCardProps) {
           onClick={handleVibe}
           className={cn(
             'flex items-center gap-0.5 px-2 py-1 rounded-full text-[11px] font-bold backdrop-blur-sm transition-all',
-            localMyReaction ? 'bg-purple-500/90 text-white' : 'bg-black/30 text-white hover:bg-black/45',
+            localMyReaction ? 'bg-[#F5C542]/90 text-white' : 'bg-black/30 text-white hover:bg-black/45',
           )}
         >
           <span className="text-[12px] leading-none">{localMyReaction ?? '🌊'}</span>
@@ -442,7 +442,7 @@ function ExploreCard({ post, onReact, onSave }: ExploreCardProps) {
           onClick={handleSaveClick}
           className={cn(
             'w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition-all',
-            localSaved ? 'bg-purple-500/90 text-white' : 'bg-black/30 text-white hover:bg-black/45',
+            localSaved ? 'bg-[#F5C542]/90 text-white' : 'bg-black/30 text-white hover:bg-black/45',
           )}
         >
           {localSaved ? <BookmarkCheck size={13} /> : <Bookmark size={13} />}
@@ -457,7 +457,7 @@ function ExploreCard({ post, onReact, onSave }: ExploreCardProps) {
 function SkeletonCard({ tall }: { tall: boolean }) {
   return (
     <div
-      className="rounded-[18px] bg-gray-100 animate-pulse"
+      className="rounded-[18px] bg-[#1a1a1a] animate-pulse"
       style={{ height: tall ? 210 : 140, marginBottom: 8, breakInside: 'avoid', display: 'block' }}
     />
   );
@@ -500,8 +500,8 @@ function ExploreGrid({ posts, hasMore, loadMore, loading, onReact, onSave }: Exp
     return (
       <div className="flex flex-col items-center py-16 text-center px-4">
         <span className="text-4xl mb-3">🔍</span>
-        <p className="font-black text-[16px] text-gray-700 mb-1">Nothing here yet</p>
-        <p className="text-[13px] text-gray-400">Try a different category or check back later.</p>
+        <p className="font-black text-[16px] text-[#BDBDBD] mb-1">Nothing here yet</p>
+        <p className="text-[13px] text-[rgba(255,255,255,0.45)]">Try a different category or check back later.</p>
       </div>
     );
   }
@@ -516,7 +516,7 @@ function ExploreGrid({ posts, hasMore, loadMore, loading, onReact, onSave }: Exp
       <div ref={sentinelRef} className="h-4" />
       {hasMore && (
         <div className="flex justify-center py-6">
-          <Loader2 size={22} className="text-purple-400 animate-spin" />
+          <Loader2 size={22} className="text-[#F5C542] animate-spin" />
         </div>
       )}
     </>
@@ -542,11 +542,11 @@ function HashtagPill({
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.03 }}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-[14px] border border-black/[0.06] hover:shadow-md transition-all"
+      className="flex items-center gap-2 px-4 py-2.5 rounded-[14px] border border-[#1a1a1a] hover:shadow-md transition-all"
       style={{ background: bg }}
     >
-      <span className="text-[13.5px] font-black text-gray-800">{tag}</span>
-      <span className="text-[11px] font-bold text-gray-400">{fmt(count)}</span>
+      <span className="text-[13.5px] font-black text-white">{tag}</span>
+      <span className="text-[11px] font-bold text-[rgba(255,255,255,0.45)]">{fmt(count)}</span>
     </motion.button>
   );
 }
@@ -558,18 +558,18 @@ function SparkCard({ prompt, count }: { prompt: string; count: number }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 rounded-[20px] border border-purple-100 flex items-start gap-3"
+      className="p-4 rounded-[20px] border border-[rgba(245,197,66,0.2)] flex items-start gap-3"
       style={{ background: 'linear-gradient(135deg, #EEF0FF 0%, #FFF0F6 100%)' }}
     >
       <div
         className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
       >
         <Sparkles size={16} className="text-white" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-[14px] text-gray-800 leading-snug">"{prompt}"</p>
-        <p className="text-[11.5px] text-purple-400 font-bold mt-1">{count} answers today</p>
+        <p className="font-bold text-[14px] text-white leading-snug">"{prompt}"</p>
+        <p className="text-[11.5px] text-[#F5C542] font-bold mt-1">{count} answers today</p>
       </div>
     </motion.div>
   );
@@ -594,9 +594,9 @@ function CategoryChips({
             onClick={() => onSelect(cat.slug)}
             className={cn(
               'flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12.5px] font-bold transition-all',
-              isActive ? 'text-white shadow-md' : 'bg-white text-gray-500 border border-black/[0.07] hover:border-purple-200',
+              isActive ? 'text-white shadow-md' : 'bg-[#111] text-[#BDBDBD] border border-black/[0.07] hover:border-[rgba(245,197,66,0.25)]',
             )}
-            style={isActive ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+            style={isActive ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
           >
             <span className="text-[14px]">{cat.emoji}</span>
             <span>{cat.label}</span>
@@ -614,7 +614,7 @@ function PostSearchRow({ post }: { post: Post }) {
   return (
     <motion.button
       onClick={() => navigate(`/post/${post.id}`)}
-      className="w-full flex items-start gap-3 p-3 rounded-[16px] bg-white border border-black/[0.05] shadow-sm hover:shadow-md transition-all text-left"
+      className="w-full flex items-start gap-3 p-3 rounded-[16px] bg-[#111] border border-[#1a1a1a] shadow-sm hover:shadow-md transition-all text-left"
     >
       {post.imageUrl ? (
         <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-[10px] object-cover flex-shrink-0" />
@@ -625,9 +625,9 @@ function PostSearchRow({ post }: { post: Post }) {
         />
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-[12px] text-purple-500">@{post.author.handle}</p>
-        <p className="text-[13.5px] text-gray-700 leading-snug truncate mt-0.5">{post.content}</p>
-        <p className="text-[11px] text-gray-400 mt-1">{post.likes} reactions · {post.comments} comments</p>
+        <p className="font-bold text-[12px] text-[#F5C542]">@{post.author.handle}</p>
+        <p className="text-[13.5px] text-[#BDBDBD] leading-snug truncate mt-0.5">{post.content}</p>
+        <p className="text-[11px] text-[rgba(255,255,255,0.45)] mt-1">{post.likes} reactions · {post.comments} comments</p>
       </div>
     </motion.button>
   );
@@ -689,17 +689,17 @@ function SearchView({
         {recentSearches.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-black text-[12.5px] text-gray-400 uppercase tracking-wider">Recent</h3>
-              <button onClick={onClearSearches} className="text-[12px] text-purple-500 font-bold">
+              <h3 className="font-black text-[12.5px] text-[rgba(255,255,255,0.45)] uppercase tracking-wider">Recent</h3>
+              <button onClick={onClearSearches} className="text-[12px] text-[#F5C542] font-bold">
                 Clear all
               </button>
             </div>
             <div className="space-y-0.5">
               {recentSearches.map(term => (
-                <div key={term} className="flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-gray-50 transition-colors group">
-                  <Clock size={13} className="text-gray-300 flex-shrink-0" />
+                <div key={term} className="flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-[#111] transition-colors group">
+                  <Clock size={13} className="text-[rgba(255,255,255,0.35)] flex-shrink-0" />
                   <button
-                    className="flex-1 text-left text-[14px] text-gray-700 font-medium"
+                    className="flex-1 text-left text-[14px] text-[#BDBDBD] font-medium"
                     onClick={() => onSearch(term)}
                   >
                     {term}
@@ -708,7 +708,7 @@ function SearchView({
                     onClick={() => onRemoveSearch(term)}
                     className="p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <X size={13} className="text-gray-400" />
+                    <X size={13} className="text-[rgba(255,255,255,0.45)]" />
                   </button>
                 </div>
               ))}
@@ -718,7 +718,7 @@ function SearchView({
 
         {/* Trending searches */}
         <section>
-          <h3 className="font-black text-[12.5px] text-gray-400 uppercase tracking-wider mb-3">
+          <h3 className="font-black text-[12.5px] text-[rgba(255,255,255,0.45)] uppercase tracking-wider mb-3">
             Trending Searches
           </h3>
           <div className="space-y-0.5">
@@ -729,12 +729,12 @@ function SearchView({
                 initial={{ opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.04 }}
-                className="w-full flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-3 py-2.5 px-2 rounded-xl hover:bg-[#111] transition-colors"
               >
-                <span className="text-[12px] font-black text-gray-300 w-4 text-center">{i + 1}</span>
-                <TrendingUp size={13} className="text-purple-400 flex-shrink-0" />
-                <span className="text-[14px] text-gray-700 font-medium flex-1 text-left">{term}</span>
-                <ChevronRight size={13} className="text-gray-300" />
+                <span className="text-[12px] font-black text-[rgba(255,255,255,0.35)] w-4 text-center">{i + 1}</span>
+                <TrendingUp size={13} className="text-[#F5C542] flex-shrink-0" />
+                <span className="text-[14px] text-[#BDBDBD] font-medium flex-1 text-left">{term}</span>
+                <ChevronRight size={13} className="text-[rgba(255,255,255,0.35)]" />
               </motion.button>
             ))}
           </div>
@@ -746,8 +746,8 @@ function SearchView({
   if (searching) {
     return (
       <div className="flex flex-col items-center py-24 gap-3">
-        <Loader2 size={26} className="text-purple-400 animate-spin" />
-        <p className="text-[14px] text-gray-400">Searching…</p>
+        <Loader2 size={26} className="text-[#F5C542] animate-spin" />
+        <p className="text-[14px] text-[rgba(255,255,255,0.45)]">Searching…</p>
       </div>
     );
   }
@@ -765,10 +765,10 @@ function SearchView({
           className="w-16 h-16 rounded-[22px] flex items-center justify-center mb-4"
           style={{ background: 'linear-gradient(135deg, #6B73FF22, #FF6B9D22)' }}
         >
-          <Search size={28} className="text-purple-400" />
+          <Search size={28} className="text-[#F5C542]" />
         </div>
-        <h3 className="font-black text-[17px] text-gray-800 mb-1.5">No results for "{query}"</h3>
-        <p className="text-[13.5px] text-gray-400 max-w-[220px] leading-relaxed">
+        <h3 className="font-black text-[17px] text-white mb-1.5">No results for "{query}"</h3>
+        <p className="text-[13.5px] text-[rgba(255,255,255,0.45)] max-w-[220px] leading-relaxed">
           Try searching for a person, post, topic, or interest.
         </p>
       </motion.div>
@@ -810,7 +810,7 @@ function SearchView({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.04 }}
                 onClick={() => onSearch(tag)}
-                className="px-4 py-2 rounded-xl bg-white border border-black/[0.06] text-[13.5px] font-bold text-gray-700 hover:border-purple-300 hover:text-purple-600 transition-colors shadow-sm"
+                className="px-4 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13.5px] font-bold text-[#BDBDBD] hover:border-[#F5C542] hover:text-[#F5C542] transition-colors shadow-sm"
               >
                 {tag}
               </motion.button>
@@ -847,7 +847,7 @@ function ForYouView({ posts, loading, onReact, onSave, onOpenPhoto }: ForYouView
     return (
       <div className="space-y-4 px-4 pt-2">
         {[0, 1, 2].map(i => (
-          <div key={i} className={cn('rounded-[24px] bg-gray-100 animate-pulse', i === 0 ? 'h-52' : 'h-44')} />
+          <div key={i} className={cn('rounded-[24px] bg-[#1a1a1a] animate-pulse', i === 0 ? 'h-52' : 'h-44')} />
         ))}
       </div>
     );
@@ -857,8 +857,8 @@ function ForYouView({ posts, loading, onReact, onSave, onOpenPhoto }: ForYouView
     return (
       <div className="flex flex-col items-center py-20 px-6 text-center">
         <span className="text-4xl mb-3">🌊</span>
-        <p className="font-black text-[16px] text-gray-700 mb-2">Your feed is waiting</p>
-        <p className="text-[13px] text-gray-400 leading-relaxed max-w-[220px]">
+        <p className="font-black text-[16px] text-[#BDBDBD] mb-2">Your feed is waiting</p>
+        <p className="text-[13px] text-[rgba(255,255,255,0.45)] leading-relaxed max-w-[220px]">
           Follow people, react to posts, and select interests in the Suggested tab to personalize your feed.
         </p>
       </div>
@@ -1078,7 +1078,7 @@ function SuggestedView({
           {(liveHashtags.length >= 4 ? liveHashtags : DEMO_TRENDING_HASHTAGS).map(({ tag }) => (
             <button
               key={tag}
-              className="px-4 py-2 rounded-xl bg-white border border-black/[0.06] text-[13px] font-bold text-gray-700 hover:border-purple-300 hover:text-purple-600 transition-colors shadow-sm"
+              className="px-4 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13px] font-bold text-[#BDBDBD] hover:border-[#F5C542] hover:text-[#F5C542] transition-colors shadow-sm"
             >
               {tag}
             </button>
@@ -1105,9 +1105,9 @@ function SuggestedView({
                   'flex items-center gap-1.5 px-4 py-2 rounded-full text-[12.5px] font-bold transition-all border',
                   selected
                     ? 'text-white border-transparent shadow-md'
-                    : 'bg-white text-gray-600 border-black/[0.07] hover:border-purple-200',
+                    : 'bg-[#111] text-[#BDBDBD] border-black/[0.07] hover:border-[rgba(245,197,66,0.25)]',
                 )}
-                style={selected ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+                style={selected ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
               >
                 <span className="text-[13px]">{cat.emoji}</span>
                 <span>{cat.label}</span>
@@ -1120,7 +1120,7 @@ function SuggestedView({
           <motion.p
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-3 text-[12px] text-purple-500 font-semibold text-center"
+            className="mt-3 text-[12px] text-[#F5C542] font-semibold text-center"
           >
             ✓ {selectedInterests.length} interest{selectedInterests.length !== 1 ? 's' : ''} selected — your For You feed is being personalised
           </motion.p>
@@ -1284,7 +1284,7 @@ export default function Discover() {
   );
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: '#FDF9F6' }}>
+    <div className="min-h-screen pb-32" style={{ background: '#000' }}>
 
       {/* ── Sticky header ─────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30" style={{ background: 'rgba(253,249,246,0.96)', backdropFilter: 'blur(16px)' }}>
@@ -1309,7 +1309,7 @@ export default function Discover() {
             <div className="relative flex-1">
               <Search
                 size={15}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)] pointer-events-none"
               />
               <input
                 ref={inputRef}
@@ -1335,14 +1335,14 @@ export default function Discover() {
                   }
                   if (e.key === 'Escape') dismissSearch();
                 }}
-                className="w-full bg-white border border-black/[0.06] rounded-2xl pl-10 pr-10 py-3 text-[14.5px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all shadow-sm"
+                className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-10 py-3 text-[14.5px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all shadow-sm"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2"
                 >
-                  <X size={15} className="text-gray-400" />
+                  <X size={15} className="text-[rgba(255,255,255,0.45)]" />
                 </button>
               )}
             </div>
@@ -1353,7 +1353,7 @@ export default function Discover() {
                   animate={{ opacity: 1, width: 'auto' }}
                   exit={{ opacity: 0, width: 0 }}
                   onClick={dismissSearch}
-                  className="text-[13.5px] font-bold text-purple-500 whitespace-nowrap"
+                  className="text-[13.5px] font-bold text-[#F5C542] whitespace-nowrap"
                 >
                   Cancel
                 </motion.button>
@@ -1363,14 +1363,14 @@ export default function Discover() {
         </div>
 
         {/* Tab bar — always visible */}
-        <div className="flex border-b border-black/[0.05]">
+        <div className="flex border-b border-[#1a1a1a]">
           {TABS.map(tab => (
             <button
               key={tab}
               onClick={() => handleTabSelect(tab)}
               className={cn(
                 'flex-1 py-2.5 text-[12px] font-bold transition-all relative',
-                activeTab === tab ? 'text-gray-900' : 'text-gray-400',
+                activeTab === tab ? 'text-white' : 'text-[rgba(255,255,255,0.45)]',
               )}
             >
               {tab}
@@ -1378,7 +1378,7 @@ export default function Discover() {
                 <motion.div
                   layoutId="tab-indicator"
                   className="absolute bottom-0 inset-x-3 h-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(90deg, #6B73FF, #FF6B9D)' }}
+                  style={{ background: 'linear-gradient(90deg, #C9982A, #F5C542)' }}
                 />
               )}
             </button>

@@ -1,28 +1,8 @@
-/**
- * NoelavenLogo — official brand logo component.
- *
- * ─── HOW TO SWAP WITH A FILE ASSET LATER ─────────────────────────────────────
- *
- * Option A — replace just the mark SVG:
- *   Swap the <LighthouseMark> SVG with an <img src={markSrc} /> or an imported
- *   SVG component. The layout and wordmark stay as-is.
- *
- * Option B — replace the whole component with a single image:
- *   import logoSrc from '@/assets/noelaven-logo.svg';
- *   export function NoelavenLogo({ className }: { className?: string }) {
- *     return <img src={logoSrc} alt="Noelaven" className={cn('h-8', className)} />;
- *   }
- *
- * The `variant` and `size` props stay so every call-site keeps working untouched.
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-// ─── Lighthouse SVG mark ──────────────────────────────────────────────────────
-// Single source of truth for the brand mark. Swap the SVG content here when
-// the official artwork arrives; nothing else needs to change.
+// ─── Premium Lighthouse Mark ──────────────────────────────────────────────────
+// White lighthouse, gold heart, wide gold beam, thin rainbow ring, small waves.
 
 function LighthouseMark({ size }: { size: number }) {
   return (
@@ -36,66 +16,79 @@ function LighthouseMark({ size }: { size: number }) {
       style={{ flexShrink: 0 }}
     >
       <defs>
-        <linearGradient id="nlv-ring" x1="80" y1="25" x2="18" y2="78" gradientUnits="userSpaceOnUse">
+        {/* Rainbow ring — thin decorative accent only */}
+        <linearGradient id="nlv-ring" x1="80" y1="20" x2="18" y2="80" gradientUnits="userSpaceOnUse">
           <stop stopColor="#EC4899"/>
-          <stop offset=".5" stopColor="#7C3AED"/>
-          <stop offset="1" stopColor="#2563EB"/>
-        </linearGradient>
-        <linearGradient id="nlv-wave" x1="14" y1="80" x2="86" y2="80" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#2563EB"/>
+          <stop offset="0.33" stopColor="#F5C542"/>
+          <stop offset="0.66" stopColor="#2563EB"/>
           <stop offset="1" stopColor="#06B6D4"/>
+        </linearGradient>
+        {/* Gold gradient for beam & accents */}
+        <linearGradient id="nlv-gold" x1="50" y1="10" x2="90" y2="45" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FFE08A"/>
+          <stop offset="1" stopColor="#F5C542"/>
+        </linearGradient>
+        {/* Rainbow waves */}
+        <linearGradient id="nlv-wave" x1="10" y1="80" x2="90" y2="80" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#EC4899"/>
+          <stop offset="0.5" stopColor="#F5C542"/>
+          <stop offset="1" stopColor="#2563EB"/>
         </linearGradient>
       </defs>
 
-      {/* Ring arc: pink → purple → blue, opens at bottom */}
-      <path d="M 19,76 A 35,35 0 1 1 81,76"
-            stroke="url(#nlv-ring)" strokeWidth="5.5" strokeLinecap="round"/>
+      {/* Thin rainbow ring — opens at bottom */}
+      <path
+        d="M 17,75 A 36,36 0 1 1 83,75"
+        stroke="url(#nlv-ring)"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        opacity="0.85"
+      />
 
-      {/* Light beam */}
-      <path d="M 55,34 L 86,14 L 80,39" fill="#F59E0B" opacity="0.52"/>
+      {/* Wide gold light beam */}
+      <path d="M 50,35 L 88,10 L 82,42" fill="url(#nlv-gold)" opacity="0.75"/>
 
-      {/* Lighthouse roof */}
-      <polygon points="50,30 41,40 59,40" fill="#1A1B4B"/>
-      {/* Lantern housing */}
-      <rect x="42" y="40" width="16" height="10" rx="2" fill="#1A1B4B"/>
-      {/* Lantern glow */}
-      <circle cx="50" cy="45" r="4" fill="#FCD34D"/>
-      <circle cx="50" cy="45" r="2.2" fill="#FEFCE8"/>
-      {/* Tower */}
-      <rect x="44" y="49" width="12" height="21" rx="2" fill="#1A1B4B"/>
-      {/* Base */}
-      <path d="M 42,70 L 43,74 L 57,74 L 58,70 Z" fill="#1A1B4B"/>
+      {/* Lighthouse roof — white */}
+      <polygon points="50,28 39,40 61,40" fill="#FFFFFF"/>
+      {/* Lantern housing — white */}
+      <rect x="41" y="40" width="18" height="11" rx="2" fill="#FFFFFF"/>
+      {/* Lantern glow — gold */}
+      <circle cx="50" cy="45.5" r="4.5" fill="#F5C542"/>
+      <circle cx="50" cy="45.5" r="2.5" fill="#FFF9E6"/>
+      {/* Tower — white */}
+      <rect x="43" y="51" width="14" height="20" rx="2" fill="#FFFFFF"/>
+      {/* Base — white */}
+      <path d="M 40,71 L 41,76 L 59,76 L 60,71 Z" fill="#FFFFFF"/>
 
-      {/* Heart */}
-      <path d="M50,57 C50,57 46.5,54 46.5,56.2 C46.5,58.2 50,61 50,61 C50,61 53.5,58.2 53.5,56.2 C53.5,54 50,57 50,57Z"
-            fill="white" opacity="0.88"/>
+      {/* Gold heart on tower */}
+      <path
+        d="M50,59 C50,59 46,55.5 46,57.8 C46,60 50,63 50,63 C50,63 54,60 54,57.8 C54,55.5 50,59 50,59Z"
+        fill="#F5C542"
+      />
 
-      {/* Waves */}
-      <path d="M14,78 Q26,73 38,77 Q50,81 62,76 Q74,71 86,75 L86,85 Q74,82 62,86 Q50,90 38,86 Q26,82 14,85Z"
-            fill="url(#nlv-wave)" opacity="0.88"/>
+      {/* Small rainbow waves */}
+      <path
+        d="M12,79 Q24,74 36,78 Q48,82 60,77 Q72,72 88,76 L88,84 Q72,82 60,86 Q48,90 36,86 Q24,82 12,86Z"
+        fill="url(#nlv-wave)"
+        opacity="0.7"
+      />
 
-      {/* Sparkle stars */}
-      <path d="M29,32 L30.2,29.2 L31.4,32 L34.2,33.2 L31.4,34.4 L30.2,37.2 L29,34.4 L26.2,33.2Z" fill="#EC4899"/>
-      <path d="M71,27 L71.9,24.8 L72.8,27 L75,27.9 L72.8,28.8 L71.9,31 L71,28.8 L68.8,27.9Z" fill="#7C3AED"/>
-      <circle cx="23" cy="54" r="1.8" fill="#2563EB" opacity="0.85"/>
-      <circle cx="67" cy="34" r="1.4" fill="#EC4899" opacity="0.70"/>
+      {/* Tiny sparkle accents */}
+      <path d="M28,30 L29.3,27 L30.6,30 L33.6,31.3 L30.6,32.6 L29.3,35.6 L28,32.6 L25,31.3Z" fill="#F5C542" opacity="0.9"/>
+      <path d="M72,25 L73,22.5 L74,25 L76.5,26 L74,27 L73,29.5 L72,27 L69.5,26Z" fill="#EC4899" opacity="0.8"/>
+      <circle cx="21" cy="52" r="1.8" fill="#F5C542" opacity="0.7"/>
     </svg>
   );
 }
 
-// ─── Colorful wordmark ────────────────────────────────────────────────────────
-// Per-letter colors match the official brand wordmark.
-// Swap the LETTER_COLORS array when the final brand guide arrives.
+// ─── White wordmark ───────────────────────────────────────────────────────────
+// All-white for premium black background. Gold heart accent.
 
-const LETTER_COLORS = ['#1A1B4B', '#2563EB', '#7C3AED', '#EC4899', '#F59E0B', '#06B6D4', '#10B981', '#1A1B4B'];
-const LETTERS       = ['N', 'o', 'e', 'l', 'a', 'v', 'e', 'n'];
-
-function ColorWordmark({ fontSize }: { fontSize: number }) {
+function WhiteWordmark({ fontSize }: { fontSize: number }) {
   return (
-    <span className="leading-none select-none font-black tracking-tight flex" style={{ fontSize }}>
-      {LETTERS.map((ch, i) => (
-        <span key={i} style={{ color: LETTER_COLORS[i] }}>{ch}</span>
-      ))}
+    <span className="leading-none select-none font-black tracking-tight flex items-center gap-0.5" style={{ fontSize }}>
+      <span style={{ color: '#FFFFFF' }}>Noelaven</span>
+      <span style={{ color: '#F5C542', fontSize: fontSize * 0.7, marginLeft: 2 }}>♥</span>
     </span>
   );
 }
@@ -112,12 +105,7 @@ const SIZES = {
 // ─── Public component ─────────────────────────────────────────────────────────
 
 interface NoelavenLogoProps {
-  /**
-   * `mark`  — lighthouse icon only.
-   * `full`  — lighthouse + colorful wordmark side by side (default).
-   */
   variant?: 'mark' | 'full';
-  /** Overall scale. Default: `md`. `xl` is used on auth/splash screens. */
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
@@ -125,9 +113,9 @@ interface NoelavenLogoProps {
 export function NoelavenLogo({ variant = 'full', size = 'md', className }: NoelavenLogoProps) {
   const { mark, wordmark } = SIZES[size];
   return (
-    <div className={cn('flex items-center gap-2.5', className)}>
+    <div className={cn('flex items-center gap-2', className)}>
       <LighthouseMark size={mark} />
-      {variant === 'full' && <ColorWordmark fontSize={wordmark} />}
+      {variant === 'full' && <WhiteWordmark fontSize={wordmark} />}
     </div>
   );
 }

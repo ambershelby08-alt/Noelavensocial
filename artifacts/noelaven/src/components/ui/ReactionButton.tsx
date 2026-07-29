@@ -241,8 +241,8 @@ export function ReactionButton({
           {/* Category label */}
           {!compact && (
             <div className="px-3 pt-2.5 pb-1 flex items-center gap-2">
-              <span className="text-[10px] font-black tracking-[0.1em] uppercase text-purple-400">Positive</span>
-              <div className="flex-1 h-px bg-purple-100" />
+              <span className="text-[10px] font-black tracking-[0.1em] uppercase text-[#F5C542]">Positive</span>
+              <div className="flex-1 h-px bg-[rgba(245,197,66,0.15)]" />
             </div>
           )}
 
@@ -289,8 +289,8 @@ export function ReactionButton({
         className={cn(
           'relative flex items-center gap-1.5 text-[13px] font-bold px-3 py-1.5 rounded-full transition-all select-none',
           myReaction
-            ? 'text-purple-600 bg-purple-50 ring-1 ring-purple-200'
-            : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
+            ? 'text-[#F5C542] bg-[rgba(245,197,66,0.08)] ring-1 ring-purple-200'
+            : 'text-[rgba(255,255,255,0.45)] hover:bg-[#111] hover:text-[#BDBDBD]'
         )}
         style={myReaction === '💜' ? {
           background: 'linear-gradient(135deg, #F5F0FF, #FDF0FF)',
@@ -382,7 +382,7 @@ function TrayItem({ reaction, delay, myReaction, onSelect, compact }: TrayItemPr
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
             className="absolute bottom-full mb-1.5 whitespace-nowrap text-[10px] font-black text-white px-2 py-1 rounded-lg pointer-events-none z-10"
-            style={{ background: 'linear-gradient(135deg, #7C3AED, #5B21B6)' }}
+            style={{ background: 'linear-gradient(135deg, #F5C542, #5B21B6)' }}
           >
             {reaction.label}
           </motion.span>
@@ -397,8 +397,8 @@ function TrayItem({ reaction, delay, myReaction, onSelect, compact }: TrayItemPr
         className={cn(
           'w-9 h-9 rounded-full flex items-center justify-center text-[20px] transition-all',
           isActive
-            ? 'bg-purple-100 ring-2 ring-purple-400 ring-offset-1'
-            : 'hover:bg-purple-50'
+            ? 'bg-[rgba(245,197,66,0.15)] ring-2 ring-purple-400 ring-offset-1'
+            : 'hover:bg-[rgba(245,197,66,0.08)]'
         )}
       >
         {reaction.emoji}

@@ -33,7 +33,7 @@ import type { ComposerItem } from './StoryComposer';
 const GRAD = 'linear-gradient(135deg,#FF6B9D,#C44FDB,#6B73FF)';
 
 const TEXT_COLORS = [
-  '#FFFFFF','#000000','#FF6B9D','#C44FDB','#6B73FF',
+  '#FFFFFF','#000000','#F5C542','#C44FDB','#F5C542',
   '#FF9800','#4CAF50','#00BCD4','#F44336','#FFEB3B',
 ];
 
@@ -511,7 +511,7 @@ export function StoryItemEditor({ item, initial, onDone, onCancel }: StoryItemEd
                   const s = parseFloat(e.target.value);
                   setTrim(prev => ({ start: Math.min(s, prev.end - 0.5 > 0 ? prev.end - 0.5 : 0), end: prev.end }));
                 }}
-                style={{ width: '100%', accentColor: '#FF6B9D' }}
+                style={{ width: '100%', accentColor: '#F5C542' }}
               />
             </div>
             <div>
@@ -525,7 +525,7 @@ export function StoryItemEditor({ item, initial, onDone, onCancel }: StoryItemEd
                   const end = parseFloat(e.target.value);
                   setTrim(prev => ({ start: prev.start, end: Math.max(end, prev.start + 0.5) }));
                 }}
-                style={{ width: '100%', accentColor: '#FF6B9D' }}
+                style={{ width: '100%', accentColor: '#F5C542' }}
               />
             </div>
           </motion.div>
@@ -576,7 +576,7 @@ export function StoryItemEditor({ item, initial, onDone, onCancel }: StoryItemEd
                     padding: '6px 12px',
                     borderRadius: 20,
                     border: '1.5px solid',
-                    borderColor: draftFont === f.css ? '#FF6B9D' : 'rgba(255,255,255,0.2)',
+                    borderColor: draftFont === f.css ? '#F5C542' : 'rgba(255,255,255,0.2)',
                     background: draftFont === f.css ? 'rgba(255,107,157,0.18)' : 'transparent',
                     color: '#fff', fontSize: 13, cursor: 'pointer',
                     fontFamily: f.css,
@@ -630,7 +630,7 @@ export function StoryItemEditor({ item, initial, onDone, onCancel }: StoryItemEd
                   onClick={() => setDraftStyle(s.id)}
                   style={{
                     padding: '5px 10px', borderRadius: 20, border: '1.5px solid',
-                    borderColor: draftStyle === s.id ? '#FF6B9D' : 'rgba(255,255,255,0.25)',
+                    borderColor: draftStyle === s.id ? '#F5C542' : 'rgba(255,255,255,0.25)',
                     background: draftStyle === s.id ? 'rgba(255,107,157,0.18)' : 'transparent',
                     color: '#fff', fontSize: 12, cursor: 'pointer',
                   }}
@@ -649,7 +649,7 @@ export function StoryItemEditor({ item, initial, onDone, onCancel }: StoryItemEd
                 type="range" min={14} max={64} step={2}
                 value={draftSize}
                 onChange={e => setDraftSize(parseInt(e.target.value))}
-                style={{ flex: 1, accentColor: '#FF6B9D' }}
+                style={{ flex: 1, accentColor: '#F5C542' }}
               />
             </div>
 
@@ -741,7 +741,7 @@ export function StoryItemEditor({ item, initial, onDone, onCancel }: StoryItemEd
                 >
                   <div style={{
                     width: 64, height: 80, borderRadius: 12, overflow: 'hidden',
-                    border: `2.5px solid ${filter === fd.id ? '#FF6B9D' : 'transparent'}`,
+                    border: `2.5px solid ${filter === fd.id ? '#F5C542' : 'transparent'}`,
                     boxSizing: 'border-box',
                     boxShadow: filter === fd.id ? '0 0 0 1px #FF6B9D' : '0 1px 6px rgba(0,0,0,0.4)',
                   }}>
@@ -765,7 +765,7 @@ export function StoryItemEditor({ item, initial, onDone, onCancel }: StoryItemEd
                   </div>
                   <span style={{
                     fontSize: 11, fontWeight: filter === fd.id ? 700 : 400,
-                    color: filter === fd.id ? '#FF6B9D' : '#fff',
+                    color: filter === fd.id ? '#F5C542' : '#fff',
                   }}>
                     {fd.label}
                   </span>
@@ -800,7 +800,7 @@ export function StoryItemEditor({ item, initial, onDone, onCancel }: StoryItemEd
                   gap: 4, padding: '8px 14px', borderRadius: 16,
                   background: isActive ? 'rgba(255,107,157,0.25)' : 'rgba(255,255,255,0.08)',
                   border: isActive ? '1.5px solid rgba(255,107,157,0.6)' : '1.5px solid transparent',
-                  cursor: 'pointer', color: isActive ? '#FF6B9D' : '#fff',
+                  cursor: 'pointer', color: isActive ? '#F5C542' : '#fff',
                   minWidth: 56,
                 }}
               >

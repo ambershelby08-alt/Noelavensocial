@@ -43,22 +43,22 @@ const SPARK_AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: React
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const INTEREST_GRADIENTS: Record<string, [string, string]> = {
-  'Art & Design':   ['#FF6B9D', '#C44FDB'],
+  'Art & Design':   ['#F5C542', '#C44FDB'],
   'Technology':     ['#4F75FF', '#6EC6F5'],
-  'Photography':    ['#FF8C42', '#FF6B9D'],
+  'Photography':    ['#FF8C42', '#F5C542'],
   'Travel':         ['#3CC2A8', '#4F75FF'],
   'Music':          ['#FFD93D', '#FF8C42'],
-  'Food & Cooking': ['#FF6B9D', '#FFD93D'],
+  'Food & Cooking': ['#F5C542', '#FFD93D'],
   'Fitness':        ['#2ECC71', '#3CC2A8'],
-  'Gaming':         ['#9B59B6', '#4F75FF'],
+  'Gaming':         ['#F5C542', '#4F75FF'],
   'Reading':        ['#FF8C42', '#C44FDB'],
   'Nature':         ['#2ECC71', '#4F75FF'],
-  'Movies & TV':    ['#C44FDB', '#FF6B9D'],
+  'Movies & TV':    ['#C44FDB', '#F5C542'],
   'Science':        ['#4F75FF', '#2ECC71'],
-  'Fashion':        ['#FF6B9D', '#FFD93D'],
+  'Fashion':        ['#F5C542', '#FFD93D'],
   'DIY & Making':   ['#FF8C42', '#2ECC71'],
   'Wellness':       ['#3CC2A8', '#C44FDB'],
-  'Pets':           ['#FFD93D', '#FF6B9D'],
+  'Pets':           ['#FFD93D', '#F5C542'],
 };
 
 const ALL_INTERESTS = [
@@ -81,11 +81,11 @@ const ALL_INTERESTS = [
 ];
 
 const BADGE_STYLES: Record<string, { bg: string; text: string; icon: string }> = {
-  'Verified':      { bg: '#EEF0FF', text: '#6B73FF', icon: '✓' },
-  'Top Creator':   { bg: '#FFF0F6', text: '#FF6B9D', icon: '🌟' },
+  'Verified':      { bg: '#EEF0FF', text: '#F5C542', icon: '✓' },
+  'Top Creator':   { bg: '#FFF0F6', text: '#F5C542', icon: '🌟' },
   'Early Adopter': { bg: '#FFF8EE', text: '#FF8C42', icon: '🚀' },
   'Hero':          { bg: '#EEF8F0', text: '#2ECC71', icon: '🦸' },
-  'Community Builder': { bg: '#F5EEF8', text: '#9B59B6', icon: '🏘️' },
+  'Community Builder': { bg: '#F5EEF8', text: '#F5C542', icon: '🏘️' },
   'New Member':    { bg: '#F0FAFF', text: '#4F75FF', icon: '👋' },
 };
 
@@ -180,15 +180,15 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[28px] shadow-2xl max-h-[75vh] flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-[28px] shadow-2xl max-h-[75vh] flex flex-col"
       >
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+          <div className="w-10 h-1 rounded-full bg-[#222]" />
         </div>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
-          <span className="font-bold text-[16px] text-gray-900">{title}</span>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={18} className="text-gray-500" />
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#222] flex-shrink-0">
+          <span className="font-bold text-[16px] text-white">{title}</span>
+          <button onClick={onClose} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+            <X size={18} className="text-[#BDBDBD]" />
           </button>
         </div>
         <div className="overflow-y-auto flex-1 px-4 py-3 space-y-1">
@@ -208,11 +208,11 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
                 <div className="flex-1 min-w-0">
                   <Link href={`/profile/${u.id}`} onClick={onClose}>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <p className="font-bold text-[14px] text-gray-900 hover:underline truncate">{u.displayName}</p>
+                      <p className="font-bold text-[14px] text-white hover:underline truncate">{u.displayName}</p>
                       <FounderBadge userId={u.id} size="xs" />
                     </div>
                   </Link>
-                  <p className="text-[12px] text-gray-400 truncate">@{u.handle} · {fmtNum(u.followers)} followers</p>
+                  <p className="text-[12px] text-[rgba(255,255,255,0.45)] truncate">@{u.handle} · {fmtNum(u.followers)} followers</p>
                 </div>
                 {!isMe && (
                   <motion.button
@@ -221,9 +221,9 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
                     onClick={() => handleFollowToggle(u.id, isFollowing)}
                     className={cn(
                       'flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold transition-all flex-shrink-0 disabled:opacity-60',
-                      isFollowing ? 'bg-gray-100 text-gray-600' : 'text-white shadow-sm'
+                      isFollowing ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white shadow-sm'
                     )}
-                    style={!isFollowing ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 2px 10px rgba(107,115,255,0.30)' } : {}}
+                    style={!isFollowing ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 2px 10px rgba(245,197,66,0.30)' } : {}}
                   >
                     {loadingId === u.id
                       ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" />
@@ -338,7 +338,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[32px] shadow-2xl flex flex-col"
+        className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[32px] shadow-2xl flex flex-col"
         style={{ maxHeight: '92vh' }}
       >
         {/* Handle */}
@@ -347,17 +347,17 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={20} className="text-gray-600" />
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
+          <button onClick={onClose} className="p-2 hover:bg-[#1a1a1a] rounded-full transition-colors">
+            <X size={20} className="text-[#BDBDBD]" />
           </button>
-          <span className="font-black text-[16px] text-gray-900">Edit Profile</span>
+          <span className="font-black text-[16px] text-white">Edit Profile</span>
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleSave}
             disabled={displayName.trim().length < 2 || handle.trim().length < 2 || saving}
             className="px-5 py-2 rounded-full text-[14px] font-bold text-white disabled:opacity-50 flex items-center gap-1.5"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(245,197,66,0.35)' }}
           >
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Check size={14} /> Save</>}
           </motion.button>
@@ -405,12 +405,12 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
               ) : null}
               <div
                 className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-md"
-                style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
               >
                 <Camera size={14} className="text-white" />
               </div>
             </button>
-            <p className="text-[12px] text-gray-400">
+            <p className="text-[12px] text-[rgba(255,255,255,0.45)]">
               {isCloudinaryConfigured
                 ? (avatarUrl && avatarUrl !== (user.avatarUrl ?? '') ? 'Photo ready — save to apply' : 'Tap to upload a profile photo')
                 : 'Your avatar updates as you type your name'}
@@ -420,8 +420,8 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
           {/* Display name */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[13px] font-semibold text-gray-600 ml-1">Display Name</label>
-              <span className={`text-[12px] font-medium mr-1 ${displayName.length > 36 ? 'text-orange-400' : 'text-gray-400'}`}>
+              <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1">Display Name</label>
+              <span className={`text-[12px] font-medium mr-1 ${displayName.length > 36 ? 'text-orange-400' : 'text-[rgba(255,255,255,0.45)]'}`}>
                 {displayName.length}/40
               </span>
             </div>
@@ -430,10 +430,10 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
               onChange={e => setDisplayName(e.target.value)}
               maxLength={40}
               placeholder="Your name"
-              className={`w-full bg-white border rounded-2xl px-4 py-3.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 transition-all ${
+              className={`w-full bg-[#111] border rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder:text-[#555] outline-none focus:ring-2 transition-all ${
                 displayName.trim().length > 0 && displayName.trim().length < 2
                   ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-                  : 'border-black/[0.08] focus:border-purple-400 focus:ring-purple-100'
+                  : 'border-[#2a2a2a] focus:border-[#F5C542] focus:ring-[rgba(245,197,66,0.15)]'
               }`}
             />
             {displayName.trim().length > 0 && displayName.trim().length < 2 && (
@@ -443,21 +443,21 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
 
           {/* Handle */}
           <div>
-            <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Username</label>
-            <div className={`flex items-center bg-white border rounded-2xl px-4 py-3.5 gap-2 focus-within:ring-2 transition-all ${
+            <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1 block mb-1.5">Username</label>
+            <div className={`flex items-center bg-[#111] border rounded-2xl px-4 py-3.5 gap-2 focus-within:ring-2 transition-all ${
               handle.trim().length > 0 && handle.trim().length < 2
                 ? 'border-red-400 focus-within:border-red-400 focus-within:ring-red-100'
-                : 'border-black/[0.08] focus-within:border-purple-400 focus-within:ring-purple-100'
+                : 'border-[#2a2a2a] focus-within:border-[#F5C542] focus-within:ring-purple-100'
             }`}>
-              <AtSign size={16} className="text-purple-400 flex-shrink-0" />
+              <AtSign size={16} className="text-[#F5C542] flex-shrink-0" />
               <input
                 value={handle}
                 onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 maxLength={30}
                 placeholder="yourhandle"
-                className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 outline-none"
+                className="flex-1 bg-transparent text-[15px] text-white placeholder:text-[#555] outline-none"
               />
-              <span className="text-[12px] text-gray-400">{handle.length}/30</span>
+              <span className="text-[12px] text-[rgba(255,255,255,0.45)]">{handle.length}/30</span>
             </div>
             {handle.trim().length > 0 && handle.trim().length < 2 && (
               <p className="text-[12px] text-red-500 font-medium mt-1.5 ml-1">Username must be at least 2 characters</p>
@@ -469,23 +469,23 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
 
           {/* Bio */}
           <div>
-            <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Bio</label>
+            <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1 block mb-1.5">Bio</label>
             <textarea
               value={bio}
               onChange={e => setBio(e.target.value)}
               maxLength={160}
               rows={4}
               placeholder="Tell the world what makes you, you… ✨"
-              className="w-full bg-white border border-black/[0.08] rounded-2xl px-4 py-3.5 text-[14.5px] text-gray-900 placeholder:text-gray-400 outline-none resize-none leading-relaxed focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+              className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14.5px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
             />
-            <p className="text-[12px] text-gray-400 text-right mt-1 mr-1">{bio.length}/160</p>
+            <p className="text-[12px] text-[rgba(255,255,255,0.45)] text-right mt-1 mr-1">{bio.length}/160</p>
           </div>
 
           {/* Interests */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-[13px] font-semibold text-gray-600 ml-1">Interests</label>
-              <span className="text-[12px] text-purple-500 font-semibold">{interests.length} selected</span>
+              <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1">Interests</label>
+              <span className="text-[12px] text-[#F5C542] font-semibold">{interests.length} selected</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {ALL_INTERESTS.map(({ label, emoji }) => {
@@ -497,7 +497,7 @@ function EditProfileDrawer({ user, onSave, onClose }: EditDrawerProps) {
                     whileTap={{ scale: 0.92 }}
                     onClick={() => toggleInterest(label)}
                     className={cn('flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all border',
-                      sel ? 'text-white border-transparent shadow-sm' : 'bg-white text-gray-600 border-black/[0.08] hover:border-purple-200'
+                      sel ? 'text-white border-transparent shadow-sm' : 'bg-[#111] text-[#BDBDBD] border-[#2a2a2a] hover:border-[rgba(245,197,66,0.25)]'
                     )}
                     style={sel ? { background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 2px 10px ${from}44` } : {}}
                   >
@@ -555,7 +555,7 @@ function CircleCard({ community }: { community: Community }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-[20px] shadow-sm border border-black/[0.04] overflow-hidden"
+      className="bg-[#111] rounded-[20px] shadow-sm border border-[#1a1a1a] overflow-hidden"
     >
       {/* Mini banner */}
       <div className="h-16 relative" style={{ background: `linear-gradient(135deg, ${from}cc, ${to}cc)` }}>
@@ -564,14 +564,14 @@ function CircleCard({ community }: { community: Community }) {
         )}
       </div>
       <div className="px-3.5 pt-2.5 pb-3.5">
-        <p className="font-bold text-[14px] text-gray-900 truncate">{community.name}</p>
-        <p className="text-[12px] text-gray-400 mt-0.5 line-clamp-1">{fmtNum(community.memberCount)} members</p>
+        <p className="font-bold text-[14px] text-white truncate">{community.name}</p>
+        <p className="text-[12px] text-[rgba(255,255,255,0.45)] mt-0.5 line-clamp-1">{fmtNum(community.memberCount)} members</p>
         <motion.button
           whileTap={{ scale: 0.93 }}
           onClick={() => setJoined(v => !v)}
           className={cn(
             'mt-3 w-full py-2 rounded-full text-[12.5px] font-bold transition-all',
-            joined ? 'bg-gray-100 text-gray-500' : 'text-white shadow-sm'
+            joined ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white shadow-sm'
           )}
           style={!joined ? { background: `linear-gradient(135deg, ${from}, ${to})`, boxShadow: `0 2px 8px ${from}55` } : {}}
         >
@@ -616,7 +616,7 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-4 mb-4 bg-white rounded-[24px] border border-black/[0.04] shadow-sm overflow-hidden"
+      className="mx-4 mb-4 bg-[#111] rounded-[24px] border border-[#1a1a1a] shadow-sm overflow-hidden"
     >
       {/* Gradient spark header */}
       <div
@@ -625,19 +625,19 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
       >
         <div
           className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
         >
           <Sparkles size={12} className="text-white" />
         </div>
-        <p className="text-[12px] font-semibold text-purple-600 flex-1 truncate">"{spark.prompt}"</p>
-        <span className="text-[11px] text-gray-400 flex-shrink-0 mr-1">{relDate(spark.date)}</span>
+        <p className="text-[12px] font-semibold text-[#F5C542] flex-1 truncate">"{spark.prompt}"</p>
+        <span className="text-[11px] text-[rgba(255,255,255,0.45)] flex-shrink-0 mr-1">{relDate(spark.date)}</span>
       </div>
 
       {/* Response */}
       <div className="px-4 py-3.5">
         <div className="flex items-start gap-3">
           <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={34} className="flex-shrink-0 mt-0.5" />
-          <p className="text-[14.5px] text-gray-800 leading-relaxed flex-1">{spark.response}</p>
+          <p className="text-[14.5px] text-white leading-relaxed flex-1">{spark.response}</p>
         </div>
         {spark.imageUrl && (
           <div
@@ -656,7 +656,7 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
           onClick={() => { setLiked(v => !v); setLikes(n => liked ? n - 1 : n + 1); }}
           className={cn(
             'flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full transition-all',
-            liked ? 'text-pink-500 bg-pink-50' : 'text-gray-400 hover:bg-gray-50'
+            liked ? 'text-[#F5C542] bg-pink-50' : 'text-[rgba(255,255,255,0.45)] hover:bg-[#111]'
           )}
         >
           <motion.span animate={liked ? { scale: [1, 1.4, 1] } : {}}>
@@ -664,11 +664,11 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
           </motion.span>
           <span>{likes}</span>
         </motion.button>
-        <button className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-gray-50 transition-all">
+        <button className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] transition-all">
           <MessageCircle size={15} />
           <span>Reply</span>
         </button>
-        <button className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-gray-50 transition-all ml-auto">
+        <button className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] transition-all ml-auto">
           <Share2 size={15} />
         </button>
 
@@ -677,7 +677,7 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
           <div className="relative ml-1">
             <button
               onClick={() => setShowAudience(v => !v)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors text-[11px] font-bold text-gray-500"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[#111] hover:bg-[#1a1a1a] transition-colors text-[11px] font-bold text-[#BDBDBD]"
             >
               {audienceMeta.icon}
               <span className="ml-0.5">{audienceMeta.label.split(' ')[1]}</span>
@@ -688,20 +688,20 @@ function SparkCard({ spark, user, onOpenPhoto }: { spark: SparkItem; user: User;
                   initial={{ opacity: 0, scale: 0.92, y: -6 }}
                   animate={{ opacity: 1, scale: 1,    y: 0  }}
                   exit={{   opacity: 0, scale: 0.92, y: -6  }}
-                  className="absolute bottom-full right-0 mb-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-20 min-w-[140px]"
+                  className="absolute bottom-full right-0 mb-2 bg-[#111] rounded-2xl shadow-xl border border-[#222] overflow-hidden z-20 min-w-[140px]"
                 >
                   {SPARK_AUDIENCE_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
                       onClick={() => changeAudience(opt.value)}
                       className={cn(
-                        'w-full flex items-center gap-2 px-4 py-2.5 text-[12.5px] font-semibold transition-colors hover:bg-gray-50',
-                        audience === opt.value ? 'text-purple-600 bg-purple-50/60' : 'text-gray-700'
+                        'w-full flex items-center gap-2 px-4 py-2.5 text-[12.5px] font-semibold transition-colors hover:bg-[#111]',
+                        audience === opt.value ? 'text-[#F5C542] bg-[rgba(245,197,66,0.08)]/60' : 'text-[#BDBDBD]'
                       )}
                     >
                       {opt.icon}
                       <span>{opt.label}</span>
-                      {audience === opt.value && <Check size={12} className="ml-auto text-purple-500" />}
+                      {audience === opt.value && <Check size={12} className="ml-auto text-[#F5C542]" />}
                     </button>
                   ))}
                 </motion.div>
@@ -770,7 +770,7 @@ function SparkTabContent({
       {isOwn && badges.length > 0 && (
         <div className="px-4 mb-4 flex flex-wrap gap-2">
           {badges.map(b => (
-            <span key={b} className="text-[11.5px] font-bold text-purple-600 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full">
+            <span key={b} className="text-[11.5px] font-bold text-[#F5C542] bg-[rgba(245,197,66,0.08)] border border-[rgba(245,197,66,0.2)] px-3 py-1 rounded-full">
               {b}
             </span>
           ))}
@@ -778,7 +778,7 @@ function SparkTabContent({
       )}
 
       <div className="px-4 mb-3">
-        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+        <p className="text-[11px] font-bold text-[rgba(255,255,255,0.45)] uppercase tracking-wider">
           {sparks.length} {sparks.length === 1 ? 'response' : 'responses'} · newest first
         </p>
       </div>
@@ -796,8 +796,8 @@ function EmptyState({ emoji, title, subtitle }: { emoji: string; title: string; 
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
       <div className="text-5xl mb-4">{emoji}</div>
-      <h3 className="font-bold text-[17px] text-gray-800 mb-1.5">{title}</h3>
-      <p className="text-[14px] text-gray-400 leading-relaxed max-w-[220px]">{subtitle}</p>
+      <h3 className="font-bold text-[17px] text-white mb-1.5">{title}</h3>
+      <p className="text-[14px] text-[rgba(255,255,255,0.45)] leading-relaxed max-w-[220px]">{subtitle}</p>
     </div>
   );
 }
@@ -973,7 +973,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] pb-32">
+    <div className="min-h-screen bg-black pb-32">
 
       {/* ── Cover ───────────────────────────────────────────────────────── */}
       <div className="relative h-48 overflow-hidden">
@@ -995,15 +995,15 @@ export default function Profile() {
           />
         )}
         {/* Bottom fade to page bg */}
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#FDF9F6] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black to-transparent" />
 
         {/* Top action row */}
         {!isOwnProfile && (
           <button
             onClick={() => window.history.back()}
-            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all z-10"
+            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-black/90 transition-all z-10"
           >
-            <ArrowLeft size={18} className="text-gray-700" />
+            <ArrowLeft size={18} className="text-[#BDBDBD]" />
           </button>
         )}
         <div className="absolute top-4 right-4 flex gap-2 z-10">
@@ -1012,28 +1012,28 @@ export default function Profile() {
               <Link href="/settings">
                 <button
                   aria-label="Settings"
-                  className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all"
+                  className="w-9 h-9 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-black/90 transition-all"
                 >
-                  <Settings2 size={16} className="text-gray-700" />
+                  <Settings2 size={16} className="text-[#BDBDBD]" />
                 </button>
               </Link>
               <button
                 onClick={() => setEditOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold bg-white/85 backdrop-blur-sm text-gray-700 shadow-sm hover:bg-white transition-all"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold bg-[#111]/85 backdrop-blur-sm text-[#BDBDBD] shadow-sm hover:bg-[#1a1a1a] transition-all"
               >
                 <Edit3 size={14} /> Edit
               </button>
             </>
           ) : (
             <>
-              <button className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all">
-                <Share2 size={16} className="text-gray-700" />
+              <button className="w-9 h-9 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-black/90 transition-all">
+                <Share2 size={16} className="text-[#BDBDBD]" />
               </button>
               <button
                 onClick={() => setSafetySheetOpen(true)}
-                className="w-9 h-9 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white transition-all"
+                className="w-9 h-9 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-black/90 transition-all"
               >
-                <MoreHorizontal size={16} className="text-gray-700" />
+                <MoreHorizontal size={16} className="text-[#BDBDBD]" />
               </button>
             </>
           )}
@@ -1054,14 +1054,14 @@ export default function Profile() {
       <div className="px-4 -mt-12 flex items-end justify-between">
         {/* Avatar */}
         <div className="relative">
-          <div className="ring-4 ring-[#FDF9F6] rounded-full shadow-xl">
+          <div className="ring-4 ring-[#111] rounded-full shadow-xl">
             <GradientAvatar name={user.displayName} src={user.avatarUrl || undefined} size={88} />
           </div>
           {isOwnProfile && (
             <button
               onClick={() => setEditOpen(true)}
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center border-2 border-[#FDF9F6] shadow-md"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center border-2 border-black shadow-md"
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
             >
               <Camera size={12} className="text-white" />
             </button>
@@ -1074,7 +1074,7 @@ export default function Profile() {
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setEditOpen(true)}
-              className="px-5 py-2.5 rounded-full bg-white border border-black/[0.08] text-gray-700 font-bold text-[13.5px] shadow-sm hover:shadow-md transition-all flex items-center gap-1.5"
+              className="px-5 py-2.5 rounded-full bg-[#111] border border-[#2a2a2a] text-[#BDBDBD] font-bold text-[13.5px] shadow-sm hover:shadow-md transition-all flex items-center gap-1.5"
             >
               <Edit3 size={14} /> Edit Profile
             </motion.button>
@@ -1086,9 +1086,9 @@ export default function Profile() {
                 disabled={followLoading}
                 className={cn(
                   'px-5 py-2.5 rounded-full font-bold text-[13.5px] transition-all flex items-center gap-1.5 disabled:opacity-70',
-                  isFollowing ? 'bg-white border border-black/[0.08] text-gray-700 shadow-sm' : 'text-white shadow-md'
+                  isFollowing ? 'bg-[#111] border border-[#2a2a2a] text-[#BDBDBD] shadow-sm' : 'text-white shadow-md'
                 )}
-                style={!isFollowing ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 14px rgba(107,115,255,0.35)' } : {}}
+                style={!isFollowing ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 14px rgba(245,197,66,0.35)' } : {}}
               >
                 {followLoading
                   ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -1112,11 +1112,11 @@ export default function Profile() {
                     }
                   } catch { setLocation('/messages'); } finally { setMsgLoading(false); }
                 }}
-                className="w-10 h-10 rounded-full bg-white border border-black/[0.08] flex items-center justify-center shadow-sm hover:shadow-md transition-all disabled:opacity-60"
+                className="w-10 h-10 rounded-full bg-[#111] border border-[#2a2a2a] flex items-center justify-center shadow-sm hover:shadow-md transition-all disabled:opacity-60"
               >
                 {msgLoading
-                  ? <span className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                  : <MessageCircle size={17} className="text-purple-500" />}
+                  ? <span className="w-4 h-4 border-2 border-[#F5C542] border-t-transparent rounded-full animate-spin" />
+                  : <MessageCircle size={17} className="text-[#F5C542]" />}
               </motion.button>
             </>
           )}
@@ -1128,11 +1128,11 @@ export default function Profile() {
         {/* Name + badges */}
         <div className="flex items-start gap-2 flex-wrap mb-0.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-[22px] font-black text-gray-900 tracking-tight leading-tight">{user.displayName}</h1>
+            <h1 className="text-[22px] font-black text-white tracking-tight leading-tight">{user.displayName}</h1>
             <FounderBadge userId={user.id} size="md" showLabel />
           </div>
         </div>
-        <p className="text-[14px] text-gray-400 font-medium mb-1">@{user.handle}</p>
+        <p className="text-[14px] text-[rgba(255,255,255,0.45)] font-medium mb-1">@{user.handle}</p>
 
         {/* Badges */}
         {user.badges.length > 0 && (
@@ -1143,18 +1143,18 @@ export default function Profile() {
 
         {/* Bio */}
         {user.bio ? (
-          <p className="text-[14.5px] text-gray-700 leading-relaxed mb-3 max-w-sm">{user.bio}</p>
+          <p className="text-[14.5px] text-[#BDBDBD] leading-relaxed mb-3 max-w-sm">{user.bio}</p>
         ) : isOwnProfile ? (
           <button
             onClick={() => setEditOpen(true)}
-            className="flex items-center gap-1.5 text-[13.5px] text-purple-400 font-semibold mb-3 hover:text-purple-600 transition-colors"
+            className="flex items-center gap-1.5 text-[13.5px] text-[#F5C542] font-semibold mb-3 hover:text-[#F5C542] transition-colors"
           >
             <Plus size={14} /> Add a bio
           </button>
         ) : null}
 
         {/* Joined date */}
-        <div className="flex items-center gap-1.5 text-[12.5px] text-gray-400 mb-4">
+        <div className="flex items-center gap-1.5 text-[12.5px] text-[rgba(255,255,255,0.45)] mb-4">
           <Calendar size={13} />
           <span>Joined {format(user.joinedAt, 'MMMM yyyy')}</span>
         </div>
@@ -1162,24 +1162,24 @@ export default function Profile() {
         {/* Stats row */}
         <div className="flex items-center gap-5 mb-4">
           <div className="flex items-baseline gap-1">
-            <span className="text-[18px] font-black text-gray-900">{fmtNum(user.postCount || userPosts.length)}</span>
-            <span className="text-[13px] text-gray-400 font-medium">Posts</span>
+            <span className="text-[18px] font-black text-white">{fmtNum(user.postCount || userPosts.length)}</span>
+            <span className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Posts</span>
           </div>
-          <div className="w-px h-5 bg-gray-200" />
+          <div className="w-px h-5 bg-[#222]" />
           <button
             onClick={() => { setFollowersOpen(true); loadFollowLists(); }}
             className="flex items-baseline gap-1 hover:opacity-75 transition-opacity"
           >
-            <span className="text-[18px] font-black text-gray-900">{fmtNum(followerCount)}</span>
-            <span className="text-[13px] text-gray-400 font-medium">Followers</span>
+            <span className="text-[18px] font-black text-white">{fmtNum(followerCount)}</span>
+            <span className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Followers</span>
           </button>
-          <div className="w-px h-5 bg-gray-200" />
+          <div className="w-px h-5 bg-[#222]" />
           <button
             onClick={() => { setFollowingOpen(true); loadFollowLists(); }}
             className="flex items-baseline gap-1 hover:opacity-75 transition-opacity"
           >
-            <span className="text-[18px] font-black text-gray-900">{fmtNum(user.following)}</span>
-            <span className="text-[13px] text-gray-400 font-medium">Following</span>
+            <span className="text-[18px] font-black text-white">{fmtNum(user.following)}</span>
+            <span className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Following</span>
           </button>
         </div>
 
@@ -1190,7 +1190,7 @@ export default function Profile() {
             {isOwnProfile && (
               <button
                 onClick={() => setEditOpen(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-purple-500 border border-purple-200 bg-white hover:bg-purple-50 transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-[#F5C542] border border-[rgba(245,197,66,0.25)] bg-[#111] hover:bg-[rgba(245,197,66,0.08)] transition-colors"
               >
                 <Plus size={11} /> Edit
               </button>
@@ -1200,7 +1200,7 @@ export default function Profile() {
       </div>
 
       {/* ── Sticky tab bar ───────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[#FDF9F6]/95 backdrop-blur-md border-b border-black/[0.06] px-2">
+      <div className="sticky top-0 z-30 bg-black/95 backdrop-blur-md border-b border-[#1a1a1a] px-2">
         <div className="flex overflow-x-auto scrollbar-none">
           {tabs.map(tab => {
             const active = activeTab === tab;
@@ -1210,7 +1210,7 @@ export default function Profile() {
                 onClick={() => setActiveTab(tab)}
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-3.5 text-[13.5px] font-semibold whitespace-nowrap relative flex-shrink-0 transition-colors',
-                  active ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
+                  active ? 'text-white' : 'text-[rgba(255,255,255,0.45)] hover:text-[#BDBDBD]'
                 )}
               >
                 {tabIcons[tab]}
@@ -1219,7 +1219,7 @@ export default function Profile() {
                   <motion.div
                     layoutId="profileTabIndicator"
                     className="absolute bottom-0 left-2 right-2 h-[3px] rounded-full"
-                    style={{ background: 'linear-gradient(90deg, #6B73FF, #FF6B9D)' }}
+                    style={{ background: 'linear-gradient(90deg, #C9982A, #F5C542)' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -1353,16 +1353,16 @@ export default function Profile() {
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-[65] bg-white rounded-t-[28px] shadow-2xl"
+              className="fixed bottom-0 left-0 right-0 z-[65] bg-[#111] rounded-t-[28px] shadow-2xl"
             >
               <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 rounded-full bg-gray-200" />
+                <div className="w-10 h-1 rounded-full bg-[#222]" />
               </div>
               <div className="px-5 pt-2 pb-3 flex items-center gap-3 border-b border-gray-50">
                 <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={38} />
                 <div>
-                  <p className="font-bold text-[14px] text-gray-900">{user.displayName}</p>
-                  <p className="text-[12px] text-gray-400">@{user.handle}</p>
+                  <p className="font-bold text-[14px] text-white">{user.displayName}</p>
+                  <p className="text-[12px] text-[rgba(255,255,255,0.45)]">@{user.handle}</p>
                 </div>
               </div>
 
@@ -1373,12 +1373,12 @@ export default function Profile() {
                   else await doMute(user.id);
                   setSafetySheetOpen(false);
                 }}
-                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50"
+                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-[#111] border-t border-gray-50"
               >
                 <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
-                  <VolumeX size={17} className="text-blue-500" />
+                  <VolumeX size={17} className="text-[#F5C542]" />
                 </div>
-                <span className="text-[15px] font-medium text-gray-800 flex-1 text-left">
+                <span className="text-[15px] font-medium text-white flex-1 text-left">
                   {isMuted(user.id) ? `Unmute @${user.handle}` : `Mute @${user.handle}`}
                 </span>
               </button>
@@ -1390,12 +1390,12 @@ export default function Profile() {
                   else await doRestrict(user.id);
                   setSafetySheetOpen(false);
                 }}
-                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50"
+                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-[#111] border-t border-gray-50"
               >
-                <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
-                  <EyeOff size={17} className="text-gray-500" />
+                <div className="w-9 h-9 rounded-full bg-[#1a1a1a] flex items-center justify-center">
+                  <EyeOff size={17} className="text-[#BDBDBD]" />
                 </div>
-                <span className="text-[15px] font-medium text-gray-800 flex-1 text-left">
+                <span className="text-[15px] font-medium text-white flex-1 text-left">
                   {isRestricted(user.id) ? `Unrestrict @${user.handle}` : `Restrict @${user.handle}`}
                 </span>
               </button>
@@ -1407,7 +1407,7 @@ export default function Profile() {
                   else await doBlock(user.id);
                   setSafetySheetOpen(false);
                 }}
-                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50"
+                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-[#111] border-t border-gray-50"
               >
                 <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
                   <UserX size={17} className="text-red-500" />
@@ -1420,7 +1420,7 @@ export default function Profile() {
               {/* Report */}
               <button
                 onClick={() => { setSafetySheetOpen(false); setProfileReportOpen(true); }}
-                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50"
+                className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-[#111] border-t border-gray-50"
               >
                 <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
                   <Shield size={17} className="text-red-500" />
@@ -1430,10 +1430,10 @@ export default function Profile() {
                 </span>
               </button>
 
-              <div className="px-5 py-4 border-t border-gray-100">
+              <div className="px-5 py-4 border-t border-[#222]">
                 <button
                   onClick={() => setSafetySheetOpen(false)}
-                  className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]"
+                  className="w-full py-3 rounded-2xl bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[15px]"
                 >
                   Cancel
                 </button>

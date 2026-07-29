@@ -75,7 +75,7 @@ export function EmojiPanel({ onPick }: EmojiPanelProps) {
           <button
             key={i}
             onClick={() => onPick(emoji)}
-            className="text-2xl h-10 flex items-center justify-center rounded-xl transition-transform active:scale-90 hover:bg-white/10"
+            className="text-2xl h-10 flex items-center justify-center rounded-xl transition-transform active:scale-90 hover:bg-[#111]/10"
           >
             {emoji}
           </button>

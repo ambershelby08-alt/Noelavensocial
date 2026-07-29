@@ -27,15 +27,15 @@ const CATEGORIES = [
 ];
 
 const CAT_GRADIENT: Record<string, [string, string]> = {
-  'Design':      ['#FF6B9D', '#C44FDB'],
+  'Design':      ['#F5C542', '#C44FDB'],
   'Technology':  ['#4F75FF', '#6EC6F5'],
-  'Photography': ['#FF8C42', '#FF6B9D'],
+  'Photography': ['#FF8C42', '#F5C542'],
   'Music':       ['#FFD93D', '#FF8C42'],
   'Travel':      ['#3CC2A8', '#4F75FF'],
   'Fitness':     ['#2ECC71', '#3CC2A8'],
-  'Gaming':      ['#9B59B6', '#4F75FF'],
+  'Gaming':      ['#F5C542', '#4F75FF'],
   'Reading':     ['#FF8C42', '#C44FDB'],
-  'Food':        ['#FF6B9D', '#FFD93D'],
+  'Food':        ['#F5C542', '#FFD93D'],
   'Wellness':    ['#3CC2A8', '#C44FDB'],
 };
 
@@ -108,7 +108,7 @@ function CircleGridCard({ community, onJoin }: CircleCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-[24px] border border-black/[0.05] shadow-sm overflow-hidden flex flex-col"
+      className="bg-[#111] rounded-[24px] border border-[#1a1a1a] shadow-sm overflow-hidden flex flex-col"
     >
       {/* Banner */}
       <Link href={`/communities/${community.id}`}>
@@ -143,16 +143,16 @@ function CircleGridCard({ community, onJoin }: CircleCardProps) {
       {/* Body */}
       <div className="p-4 flex flex-col flex-1">
         <Link href={`/communities/${community.id}`}>
-          <p className="font-black text-[15px] text-gray-900 hover:text-purple-600 transition-colors line-clamp-1 cursor-pointer">
+          <p className="font-black text-[15px] text-white hover:text-[#F5C542] transition-colors line-clamp-1 cursor-pointer">
             {community.name}
           </p>
         </Link>
-        <p className="text-[12.5px] text-gray-400 leading-relaxed mt-1 line-clamp-2 flex-1">
+        <p className="text-[12.5px] text-[rgba(255,255,255,0.45)] leading-relaxed mt-1 line-clamp-2 flex-1">
           {community.description}
         </p>
 
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-black/[0.05]">
-          <div className="flex items-center gap-1 text-[12px] text-gray-400 font-medium">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#1a1a1a]">
+          <div className="flex items-center gap-1 text-[12px] text-[rgba(255,255,255,0.45)] font-medium">
             <Users size={12} />
             <span>{fmtNum(community.memberCount)}</span>
           </div>
@@ -162,7 +162,7 @@ function CircleGridCard({ community, onJoin }: CircleCardProps) {
             className={cn(
               'px-4 py-1.5 rounded-full text-[12.5px] font-black transition-all',
               community.isJoined
-                ? 'bg-gray-100 text-gray-500'
+                ? 'bg-[#1a1a1a] text-[#BDBDBD]'
                 : 'text-white shadow-sm'
             )}
             style={!community.isJoined
@@ -236,7 +236,7 @@ function CreateCircleDrawer({
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 26, stiffness: 280 }}
         className="fixed inset-x-0 bottom-0 z-50 rounded-t-[32px] shadow-2xl flex flex-col"
-        style={{ background: '#FDF9F6', maxHeight: '92vh' }}
+        style={{ background: '#000', maxHeight: '92vh' }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -244,12 +244,12 @@ function CreateCircleDrawer({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
           <button
             onClick={step === 2 ? () => setStep(1) : onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-[#1a1a1a] rounded-full transition-colors"
           >
-            <X size={20} className="text-gray-600" />
+            <X size={20} className="text-[#BDBDBD]" />
           </button>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
@@ -258,13 +258,13 @@ function CreateCircleDrawer({
                   key={s}
                   className={cn(
                     'rounded-full transition-all',
-                    s === step ? 'w-6 h-2' : 'w-2 h-2 bg-gray-200'
+                    s === step ? 'w-6 h-2' : 'w-2 h-2 bg-[#222]'
                   )}
-                  style={s === step ? { background: 'linear-gradient(90deg, #6B73FF, #FF6B9D)', borderRadius: 99 } : {}}
+                  style={s === step ? { background: 'linear-gradient(90deg, #C9982A, #F5C542)', borderRadius: 99 } : {}}
                 />
               ))}
             </div>
-            <span className="font-black text-[16px] text-gray-900">Create Circle</span>
+            <span className="font-black text-[16px] text-white">Create Circle</span>
           </div>
           {step === 2 ? (
             <motion.button
@@ -272,7 +272,7 @@ function CreateCircleDrawer({
               onClick={handleCreate}
               disabled={saving}
               className="px-5 py-2 rounded-full text-[14px] font-black text-white flex items-center gap-1.5 disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.35)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(245,197,66,0.35)' }}
             >
               {saving
                 ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -285,7 +285,7 @@ function CreateCircleDrawer({
               onClick={() => step1Valid && setStep(2)}
               disabled={!step1Valid}
               className="px-5 py-2 rounded-full text-[14px] font-black text-white disabled:opacity-40"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
             >
               Next →
             </motion.button>
@@ -312,34 +312,34 @@ function CreateCircleDrawer({
 
                 {/* Name */}
                 <div>
-                  <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Circle Name *</label>
+                  <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1 block mb-1.5">Circle Name *</label>
                   <input
                     value={name}
                     onChange={e => setName(e.target.value)}
                     maxLength={50}
                     placeholder="e.g. Midnight Readers"
-                    className="w-full bg-white border border-black/[0.08] rounded-2xl px-4 py-3.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[15px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
                   />
-                  <p className="text-[11px] text-gray-400 mt-1 ml-1">{name.length}/50</p>
+                  <p className="text-[11px] text-[rgba(255,255,255,0.45)] mt-1 ml-1">{name.length}/50</p>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Description *</label>
+                  <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1 block mb-1.5">Description *</label>
                   <textarea
                     value={description}
                     onChange={e => setDesc(e.target.value)}
                     maxLength={300}
                     rows={3}
                     placeholder="What's this circle about? Who should join?"
-                    className="w-full bg-white border border-black/[0.08] rounded-2xl px-4 py-3.5 text-[14px] text-gray-900 placeholder:text-gray-400 outline-none resize-none leading-relaxed focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
                   />
-                  <p className="text-[11px] text-gray-400 mt-1 ml-1">{description.length}/300</p>
+                  <p className="text-[11px] text-[rgba(255,255,255,0.45)] mt-1 ml-1">{description.length}/300</p>
                 </div>
 
                 {/* Category */}
                 <div>
-                  <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-2">Category *</label>
+                  <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1 block mb-2">Category *</label>
                   <div className="flex flex-wrap gap-2">
                     {CATEGORY_OPTIONS.map(c => {
                       const sel = category === c.label;
@@ -351,7 +351,7 @@ function CreateCircleDrawer({
                           onClick={() => setCategory(c.label)}
                           className={cn(
                             'flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all border',
-                            sel ? 'text-white border-transparent' : 'bg-white text-gray-600 border-black/[0.08]'
+                            sel ? 'text-white border-transparent' : 'bg-[#111] text-[#BDBDBD] border-[#2a2a2a]'
                           )}
                           style={sel ? { background: `linear-gradient(135deg, ${f}, ${t})`, boxShadow: `0 2px 10px ${f}44` } : {}}
                         >
@@ -363,26 +363,26 @@ function CreateCircleDrawer({
                 </div>
 
                 {/* Privacy */}
-                <div className="flex items-center justify-between bg-white rounded-2xl px-4 py-4 border border-black/[0.06]">
+                <div className="flex items-center justify-between bg-[#111] rounded-2xl px-4 py-4 border border-[#1a1a1a]">
                   <div className="flex items-center gap-3">
-                    {isPrivate ? <Lock size={18} className="text-purple-500" /> : <Globe size={18} className="text-blue-400" />}
+                    {isPrivate ? <Lock size={18} className="text-[#F5C542]" /> : <Globe size={18} className="text-[#F5C542]" />}
                     <div>
-                      <p className="font-bold text-[14px] text-gray-900">{isPrivate ? 'Private Circle' : 'Public Circle'}</p>
-                      <p className="text-[12px] text-gray-400">{isPrivate ? 'Members must be approved' : 'Anyone can join and post'}</p>
+                      <p className="font-bold text-[14px] text-white">{isPrivate ? 'Private Circle' : 'Public Circle'}</p>
+                      <p className="text-[12px] text-[rgba(255,255,255,0.45)]">{isPrivate ? 'Members must be approved' : 'Anyone can join and post'}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setIsPrivate(v => !v)}
                     className={cn(
                       'w-12 h-6.5 rounded-full relative transition-colors flex-shrink-0',
-                      isPrivate ? 'bg-purple-500' : 'bg-gray-200'
+                      isPrivate ? 'bg-[#F5C542]' : 'bg-[#222]'
                     )}
                     style={{ height: 26 }}
                   >
                     <motion.div
                       animate={{ x: isPrivate ? 22 : 2 }}
                       transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                      className="absolute top-1 w-4.5 h-4.5 bg-white rounded-full shadow"
+                      className="absolute top-1 w-4.5 h-4.5 bg-[#111] rounded-full shadow"
                       style={{ width: 18, height: 18 }}
                     />
                   </button>
@@ -392,7 +392,7 @@ function CreateCircleDrawer({
               <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
 
                 {/* Header preview */}
-                <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-black/[0.06]">
+                <div className="flex items-center gap-3 p-4 bg-[#111] rounded-2xl border border-[#1a1a1a]">
                   <div
                     className="w-12 h-12 rounded-[14px] flex items-center justify-center text-2xl flex-shrink-0"
                     style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
@@ -400,16 +400,16 @@ function CreateCircleDrawer({
                     {CATEGORIES.find(c => c.label === category)?.emoji}
                   </div>
                   <div>
-                    <p className="font-black text-[15px] text-gray-900">{name}</p>
-                    <p className="text-[12px] text-gray-400">{category} · {isPrivate ? '🔒 Private' : '🌐 Public'}</p>
+                    <p className="font-black text-[15px] text-white">{name}</p>
+                    <p className="text-[12px] text-[rgba(255,255,255,0.45)]">{category} · {isPrivate ? '🔒 Private' : '🌐 Public'}</p>
                   </div>
                 </div>
 
                 {/* Rules */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <label className="text-[13px] font-semibold text-gray-600 ml-1">Community Rules</label>
-                    <span className="text-[12px] text-gray-400">{rules.length}/5</span>
+                    <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1">Community Rules</label>
+                    <span className="text-[12px] text-[rgba(255,255,255,0.45)]">{rules.length}/5</span>
                   </div>
 
                   <div className="space-y-2 mb-3">
@@ -417,7 +417,7 @@ function CreateCircleDrawer({
                       <motion.div
                         key={i}
                         initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start gap-3 bg-white rounded-xl px-4 py-3 border border-black/[0.06]"
+                        className="flex items-start gap-3 bg-[#111] rounded-xl px-4 py-3 border border-[#1a1a1a]"
                       >
                         <span
                           className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white flex-shrink-0 mt-0.5"
@@ -425,10 +425,10 @@ function CreateCircleDrawer({
                         >
                           {i + 1}
                         </span>
-                        <p className="text-[13.5px] text-gray-700 flex-1 leading-relaxed">{rule}</p>
+                        <p className="text-[13.5px] text-[#BDBDBD] flex-1 leading-relaxed">{rule}</p>
                         <button
                           onClick={() => removeRule(i)}
-                          className="flex-shrink-0 text-gray-300 hover:text-red-400 transition-colors mt-0.5"
+                          className="flex-shrink-0 text-[rgba(255,255,255,0.35)] hover:text-red-400 transition-colors mt-0.5"
                         >
                           <X size={14} />
                         </button>
@@ -444,13 +444,13 @@ function CreateCircleDrawer({
                         onKeyDown={e => e.key === 'Enter' && addRule()}
                         placeholder="Add a rule…"
                         maxLength={100}
-                        className="flex-1 bg-white border border-black/[0.08] rounded-xl px-4 py-3 text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+                        className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-xl px-4 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
                       />
                       <button
                         onClick={addRule}
                         disabled={!newRule.trim()}
                         className="w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-40 flex-shrink-0 self-center"
-                        style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
                       >
                         <Plus size={16} className="text-white" />
                       </button>
@@ -458,7 +458,7 @@ function CreateCircleDrawer({
                   )}
                 </div>
 
-                <p className="text-[12px] text-gray-400 text-center pb-4">You'll be the first member and moderator of this circle.</p>
+                <p className="text-[12px] text-[rgba(255,255,255,0.45)] text-center pb-4">You'll be the first member and moderator of this circle.</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -477,7 +477,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
           className="fixed bottom-28 md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-[13.5px] shadow-xl whitespace-nowrap"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
         >
           <Check size={15} /> {message}
         </motion.div>
@@ -530,20 +530,20 @@ export default function Communities() {
   });
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] pb-36">
+    <div className="min-h-screen bg-black pb-36">
 
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[#FDF9F6]/95 backdrop-blur-md border-b border-black/[0.05] px-4 pt-5 pb-3">
+      <div className="sticky top-0 z-30 bg-black/95 backdrop-blur-md border-b border-[#1a1a1a] px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-[26px] font-black text-gray-900 tracking-tight">Circles</h1>
-            <p className="text-[13px] text-gray-400 font-medium">Find your people</p>
+            <h1 className="text-[26px] font-black text-white tracking-tight">Circles</h1>
+            <p className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Find your people</p>
           </div>
           <motion.button
             whileTap={{ scale: 0.92 }}
             onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13.5px] font-black text-white shadow-md"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 14px rgba(107,115,255,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 14px rgba(245,197,66,0.35)' }}
           >
             <Plus size={15} /> Create
           </motion.button>
@@ -551,16 +551,16 @@ export default function Communities() {
 
         {/* Search */}
         <div className="relative">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search circles…"
-            className="w-full bg-white border border-black/[0.06] rounded-2xl pl-10 pr-4 py-3 text-[14px] text-gray-800 placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all shadow-sm"
+            className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-4 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all shadow-sm"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-              <X size={15} className="text-gray-400" />
+              <X size={15} className="text-[rgba(255,255,255,0.45)]" />
             </button>
           )}
         </div>
@@ -572,8 +572,8 @@ export default function Communities() {
         {myCircles.length > 0 && !search && (
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-[15px] font-black text-gray-800">My Circles</h2>
-              <span className="text-[12px] text-gray-400 font-medium">{myCircles.length} joined</span>
+              <h2 className="text-[15px] font-black text-white">My Circles</h2>
+              <span className="text-[12px] text-[rgba(255,255,255,0.45)] font-medium">{myCircles.length} joined</span>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
               {myCircles.map(c => <MyCircleCard key={c.id} community={c} />)}
@@ -594,7 +594,7 @@ export default function Communities() {
                   onClick={() => setCategory(cat.label)}
                   className={cn(
                     'flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-all flex-shrink-0',
-                    active ? 'text-white shadow-sm' : 'bg-white text-gray-500 border border-black/[0.06]'
+                    active ? 'text-white shadow-sm' : 'bg-[#111] text-[#BDBDBD] border border-[#1a1a1a]'
                   )}
                   style={active ? { background: `linear-gradient(135deg, ${f}, ${t})`, boxShadow: `0 2px 10px ${f}44` } : {}}
                 >
@@ -608,11 +608,11 @@ export default function Communities() {
         {/* ── Grid ────────────────────────────────────────────────────── */}
         <section>
           {search ? (
-            <p className="text-[13px] text-gray-400 font-medium mb-3">
-              {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "<span className="text-gray-700">{search}</span>"
+            <p className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium mb-3">
+              {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "<span className="text-[#BDBDBD]">{search}</span>"
             </p>
           ) : (
-            <h2 className="text-[15px] font-black text-gray-800 mb-3">
+            <h2 className="text-[15px] font-black text-white mb-3">
               {category === 'All' ? 'Discover Circles' : `${CATEGORIES.find(c => c.label === category)?.emoji} ${category}`}
             </h2>
           )}
@@ -620,15 +620,15 @@ export default function Communities() {
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center py-20 text-center">
               <p className="text-4xl mb-4">🔍</p>
-              <h3 className="font-black text-[17px] text-gray-800 mb-1.5">No circles found</h3>
-              <p className="text-[14px] text-gray-400 max-w-[200px] leading-relaxed">
+              <h3 className="font-black text-[17px] text-white mb-1.5">No circles found</h3>
+              <p className="text-[14px] text-[rgba(255,255,255,0.45)] max-w-[200px] leading-relaxed">
                 {search ? 'Try a different search.' : 'Be the first — create this circle!'}
               </p>
               {!search && (
                 <button
                   onClick={() => setCreateOpen(true)}
                   className="mt-6 px-6 py-3 rounded-full text-[14px] font-black text-white"
-                  style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
                 >
                   + Create Circle
                 </button>

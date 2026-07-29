@@ -129,7 +129,7 @@ function Thumb({
           style={{
             position: 'absolute', top: -6, right: -6,
             width: 24, height: 24, borderRadius: 12,
-            background: edited ? 'linear-gradient(135deg,#FF6B9D,#C44FDB)' : '#6B73FF',
+            background: edited ? 'linear-gradient(135deg,#FF6B9D,#C44FDB)' : '#F5C542',
             border: '2px solid white',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
@@ -369,7 +369,7 @@ export function StoryComposer({
             <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>
               {queue.length} {queue.length === 1 ? 'item' : 'items'}
               {Object.keys(editDataMap).length > 0 && (
-                <span style={{ color: '#FF6B9D', marginLeft: 4 }}>
+                <span style={{ color: '#F5C542', marginLeft: 4 }}>
                   · {Object.keys(editDataMap).length} edited
                 </span>
               )}
@@ -461,7 +461,7 @@ export function StoryComposer({
                         onClick={() => openEditor(item)}
                         style={{
                           marginTop: 4, background: 'none', border: 'none', padding: 0,
-                          fontSize: 12, color: '#FF6B9D', fontWeight: 600, cursor: 'pointer',
+                          fontSize: 12, color: '#F5C542', fontWeight: 600, cursor: 'pointer',
                         }}
                       >
                         ✏️ Tap to edit
@@ -472,7 +472,7 @@ export function StoryComposer({
                         onClick={() => openEditor(item)}
                         style={{
                           marginTop: 4, background: 'none', border: 'none', padding: 0,
-                          fontSize: 12, color: '#6B73FF', fontWeight: 600, cursor: 'pointer',
+                          fontSize: 12, color: '#F5C542', fontWeight: 600, cursor: 'pointer',
                         }}
                       >
                         + Add text, filters…
@@ -549,7 +549,7 @@ export function StoryComposer({
             }}
           >
             <Plus size={18} color="#6B73FF" strokeWidth={2.5} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#6B73FF' }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#F5C542' }}>
               + Add More Photos or Videos
             </span>
           </button>

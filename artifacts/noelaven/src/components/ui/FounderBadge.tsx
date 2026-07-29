@@ -19,7 +19,7 @@ interface FounderBadgeProps {
   className?: string;
 }
 
-const GRADIENT = 'linear-gradient(135deg, #7C3AED 0%, #A855F7 40%, #D4AF37 100%)';
+const GRADIENT = 'linear-gradient(135deg, #F5C542 0%, #A855F7 40%, #D4AF37 100%)';
 
 export function FounderBadge({
   userId, size = 'sm', showLabel = false, className = '',

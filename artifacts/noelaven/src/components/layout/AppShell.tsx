@@ -30,58 +30,57 @@ import { subscribeUnreadNotificationCount } from '@/lib/firestore';
 import { demoGetUserNotifs } from '@/lib/notifications';
 
 // ─── Already-Answered Sheet ───────────────────────────────────────────────────
-// Shown when the user taps the Spark button after already answering today.
 
 function AlreadyAnsweredSheet({ prompt, onClose }: { prompt: string; onClose: () => void }) {
   const [, setLocation] = useLocation();
   return (
     <>
-      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[59] bg-black/40"
+        className="fixed inset-0 z-[59] bg-black/70"
         onClick={onClose}
       />
-      {/* Bottom sheet */}
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl"
+        className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-[28px] shadow-2xl"
+        style={{ background: '#111111', border: '1px solid #222' }}
       >
         <div className="flex flex-col items-center px-6 py-8 text-center">
-          <div className="w-10 h-1 rounded-full bg-gray-200 mb-5" />
+          <div className="w-10 h-1 rounded-full mb-5" style={{ background: '#333' }} />
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+            style={{ background: '#000', border: '2px solid #F5C542', boxShadow: '0 0 20px rgba(245,197,66,0.3)' }}
           >
-            <Sparkles size={26} className="text-white" />
+            <Sparkles size={26} style={{ color: '#F5C542' }} />
           </div>
-          <h2 className="font-black text-[20px] text-gray-900 mb-2">
+          <h2 className="font-black text-[20px] text-white mb-2">
             Already Sparked Today! ✨
           </h2>
           {prompt && (
-            <p className="text-[13px] text-purple-600 font-semibold mb-3 leading-relaxed max-w-xs italic">
+            <p className="text-[13px] font-semibold mb-3 leading-relaxed max-w-xs italic" style={{ color: '#F5C542' }}>
               "{prompt}"
             </p>
           )}
-          <p className="text-[13.5px] text-gray-500 mb-7 leading-relaxed">
+          <p className="text-[13.5px] mb-7 leading-relaxed" style={{ color: '#BDBDBD' }}>
             You've shared your Daily Spark.<br />Come back tomorrow for a fresh prompt!
           </p>
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => { setLocation('/'); onClose(); }}
-            className="w-full py-3.5 rounded-2xl text-white font-bold text-[15px] mb-3"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 4px 18px rgba(107,115,255,0.3)' }}
+            className="w-full py-3.5 rounded-2xl text-black font-bold text-[15px] mb-3"
+            style={{ background: '#F5C542', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
           >
             View Community Sparks
           </motion.button>
           <button
             onClick={onClose}
-            className="text-[14px] text-gray-500 font-semibold py-2"
+            className="text-[14px] font-semibold py-2"
+            style={{ color: '#BDBDBD' }}
           >
             Come back tomorrow
           </button>
@@ -110,8 +109,12 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
     <>
     <nav className="fixed bottom-4 left-3 right-3 z-50 md:hidden">
       <div
-        className="flex justify-around items-center h-[64px] px-2 bg-white/95 backdrop-blur-2xl rounded-[32px] border border-white"
-        style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.06)' }}
+        className="flex justify-around items-center h-[64px] px-2 backdrop-blur-2xl rounded-[32px]"
+        style={{
+          background: 'rgba(0,0,0,0.92)',
+          border: '1px solid #222',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)',
+        }}
       >
         {navItems.map((item) => {
           const isActive = location === item.path;
@@ -126,14 +129,15 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                     ? setShowAnsweredSheet(true)
                     : setLocation('/?spark=1')
                 }
-                className="flex flex-col items-center justify-center w-12 h-12 rounded-[18px] text-white shadow-md cursor-pointer"
+                className="flex flex-col items-center justify-center w-12 h-12 rounded-[18px] cursor-pointer"
                 style={{
-                  background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)',
-                  boxShadow: '0 4px 18px rgba(107,115,255,0.45)',
+                  background: '#000',
+                  border: '2px solid #F5C542',
+                  boxShadow: '0 0 16px rgba(245,197,66,0.4)',
                 }}
               >
-                <item.icon size={20} strokeWidth={2.5} />
-                <span className="text-[8px] font-black uppercase tracking-wide mt-0.5 opacity-90">{item.label}</span>
+                <item.icon size={20} strokeWidth={2.5} style={{ color: '#F5C542' }} />
+                <span className="text-[8px] font-black uppercase tracking-wide mt-0.5" style={{ color: '#F5C542' }}>{item.label}</span>
               </motion.button>
             );
           }
@@ -144,28 +148,26 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                 <item.icon
                   size={22}
                   strokeWidth={isActive ? 2.5 : 2}
-                  className={cn(
-                    'transition-colors duration-200',
-                    isActive ? 'text-purple-500' : 'text-gray-400'
-                  )}
+                  style={{ color: isActive ? '#F5C542' : 'rgba(255,255,255,0.6)' }}
+                  className="transition-colors duration-200"
                 />
                 {/* Unread message badge */}
                 {item.path === '/messages' && totalUnread > 0 && (
-                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full bg-pink-500 ring-[1.5px] ring-white flex items-center justify-center text-[8px] font-black text-white px-1">
+                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full ring-[1.5px] flex items-center justify-center text-[8px] font-black px-1"
+                    style={{ background: '#F5C542', color: '#000', ringColor: '#000' }}>
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
-                {/* Unread notification badge — sits on the Bell (Alerts) icon */}
+                {/* Unread notification badge */}
                 {item.path === '/notifications' && notifUnreadCount > 0 && (
-                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full bg-purple-500 ring-[1.5px] ring-white flex items-center justify-center text-[8px] font-black text-white px-1">
+                  <span className="absolute top-0.5 right-1 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-black px-1"
+                    style={{ background: '#F5C542' }}>
                     {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
                   </span>
                 )}
                 <span
-                  className={cn(
-                    'text-[10px] font-semibold transition-colors duration-200',
-                    isActive ? 'text-purple-500' : 'text-gray-400'
-                  )}
+                  className="text-[10px] font-semibold transition-colors duration-200"
+                  style={{ color: isActive ? '#F5C542' : 'rgba(255,255,255,0.45)' }}
                 >
                   {item.label}
                 </span>
@@ -173,7 +175,7 @@ export function BottomNav({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnre
                   <motion.div
                     layoutId="navActiveBar"
                     className="absolute -bottom-2 w-5 h-[3px] rounded-full"
-                    style={{ background: 'linear-gradient(90deg, #6B73FF, #FF6B9D)' }}
+                    style={{ background: '#F5C542' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -215,18 +217,17 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
 
   return (
     <>
-    <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 border-r border-black/[0.06] bg-white/80 backdrop-blur-xl pt-8 pb-6 px-4 z-40">
+    <aside
+      className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 pt-8 pb-6 px-4 z-40"
+      style={{ background: '#000', borderRight: '1px solid #1a1a1a' }}
+    >
       <div className="flex items-center px-3 mb-10">
-        <Link
-          href="/"
-          aria-label="Go to Noelaven Home"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex items-center"
-        >
+        <Link href="/" aria-label="Go to Noelaven Home" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center">
           <NoelavenLogo variant="full" size="md" />
         </Link>
         {isDemoMode && (
-          <span className="ml-auto text-[9px] uppercase font-black tracking-wider bg-purple-50 text-purple-500 px-2 py-1 rounded-full">
+          <span className="ml-auto text-[9px] uppercase font-black tracking-wider px-2 py-1 rounded-full"
+            style={{ background: '#1a1a00', color: '#F5C542' }}>
             Demo
           </span>
         )}
@@ -241,26 +242,23 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
               href={item.path}
               className={cn(
                 'flex items-center gap-3.5 px-4 py-3 rounded-2xl transition-all duration-200 group relative',
-                isActive
-                  ? 'bg-purple-50 text-purple-600 font-semibold'
-                  : 'hover:bg-gray-50 text-gray-500 hover:text-gray-800'
               )}
+              style={{
+                background: isActive ? 'rgba(245,197,66,0.1)' : 'transparent',
+                color: isActive ? '#F5C542' : 'rgba(255,255,255,0.6)',
+              }}
             >
-              <item.icon
-                size={20}
-                strokeWidth={isActive ? 2.5 : 2}
-                className="transition-transform duration-200 group-hover:scale-110"
-              />
-              <span className="text-[15px]">{item.label}</span>
-              {/* Unread message badge */}
+              <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className="transition-transform duration-200 group-hover:scale-110" />
+              <span className="text-[15px] font-semibold">{item.label}</span>
               {item.path === '/messages' && totalUnread > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-pink-500 flex items-center justify-center text-[9px] font-black text-white px-1">
+                <span className="ml-auto min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-black text-black px-1"
+                  style={{ background: '#F5C542' }}>
                   {totalUnread > 9 ? '9+' : totalUnread}
                 </span>
               )}
-              {/* Unread notification badge */}
               {item.path === '/notifications' && notifUnreadCount > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-purple-500 flex items-center justify-center text-[9px] font-black text-white px-1">
+                <span className="ml-auto min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-black text-black px-1"
+                  style={{ background: '#F5C542' }}>
                   {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
                 </span>
               )}
@@ -268,7 +266,7 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
                 <motion.div
                   layoutId="sidebarIndicator"
                   className="absolute left-0 w-1 h-7 rounded-r-full"
-                  style={{ background: 'linear-gradient(180deg, #6B73FF, #FF6B9D)' }}
+                  style={{ background: '#F5C542' }}
                 />
               )}
             </Link>
@@ -277,37 +275,32 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
       </nav>
 
       <button
-        onClick={() =>
-          hasAnsweredToday
-            ? setShowAnsweredSheet(true)
-            : setLocation('/?spark=1')
-        }
-        className="mt-auto w-full text-white font-bold py-3.5 rounded-2xl shadow-lg hover:opacity-90 transition-opacity active:scale-95 duration-200 flex items-center justify-center gap-2"
-        style={{
-          background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)',
-          boxShadow: '0 4px 18px rgba(107,115,255,0.35)',
-        }}
+        onClick={() => hasAnsweredToday ? setShowAnsweredSheet(true) : setLocation('/?spark=1')}
+        className="mt-auto w-full font-bold py-3.5 rounded-2xl transition-opacity hover:opacity-90 active:scale-95 duration-200 flex items-center justify-center gap-2 text-black"
+        style={{ background: '#F5C542', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
       >
         <Sparkles size={18} />
         <span>{hasAnsweredToday ? 'Sparked Today ✨' : 'New Spark'}</span>
       </button>
 
       {currentUser && (
-        <Link href={`/profile/${currentUser.id}`} className="mt-5 flex items-center gap-3 px-2 py-2 rounded-2xl hover:bg-gray-50 transition-colors">
+        <Link href={`/profile/${currentUser.id}`}
+          className="mt-5 flex items-center gap-3 px-2 py-2 rounded-2xl transition-colors"
+          style={{ background: 'transparent' }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#111')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
           <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={38} />
           <div className="flex flex-col flex-1 min-w-0">
-            <span className="text-sm font-bold text-gray-900 truncate">{currentUser.displayName}</span>
-            <span className="text-xs text-gray-400 truncate">@{currentUser.handle}</span>
+            <span className="text-sm font-bold text-white truncate">{currentUser.displayName}</span>
+            <span className="text-xs truncate" style={{ color: '#BDBDBD' }}>@{currentUser.handle}</span>
           </div>
         </Link>
       )}
     </aside>
     <AnimatePresence>
       {showAnsweredSheet && (
-        <AlreadyAnsweredSheet
-          prompt={sparkPrompt}
-          onClose={() => setShowAnsweredSheet(false)}
-        />
+        <AlreadyAnsweredSheet prompt={sparkPrompt} onClose={() => setShowAnsweredSheet(false)} />
       )}
     </AnimatePresence>
     </>
@@ -319,25 +312,25 @@ export function Sidebar({ totalUnread = 0, notifUnreadCount = 0 }: { totalUnread
 function MobileHeader({ notifUnreadCount = 0 }: { notifUnreadCount?: number }) {
   const { isDemoMode } = useAuth();
   return (
-    <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-5 bg-[#FDF9F6]/90 backdrop-blur-xl border-b border-black/[0.05]">
-      <Link
-        href="/"
-        aria-label="Go to Noelaven Home"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className="flex items-center"
-      >
+    <header
+      className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 flex items-center justify-between px-5 backdrop-blur-xl"
+      style={{ background: 'rgba(0,0,0,0.92)', borderBottom: '1px solid #1a1a1a' }}
+    >
+      <Link href="/" aria-label="Go to Noelaven Home" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center">
         <NoelavenLogo variant="full" size="sm" />
       </Link>
       <div className="flex items-center gap-3">
         {isDemoMode && (
-          <span className="text-[9px] uppercase font-black tracking-wider bg-purple-50 text-purple-500 px-2 py-1 rounded-full">
+          <span className="text-[9px] uppercase font-black tracking-wider px-2 py-1 rounded-full"
+            style={{ background: '#1a1a00', color: '#F5C542' }}>
             Demo
           </span>
         )}
         <Link href="/notifications" className="relative p-1.5">
-          <Bell size={20} className="text-gray-500" />
+          <Bell size={20} style={{ color: 'rgba(255,255,255,0.7)' }} />
           {notifUnreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-purple-500 ring-[1.5px] ring-[#FDF9F6] flex items-center justify-center text-[8px] font-black text-white px-1">
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full flex items-center justify-center text-[8px] font-black text-black px-1"
+              style={{ background: '#F5C542' }}>
               {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
             </span>
           )}
@@ -346,8 +339,6 @@ function MobileHeader({ notifUnreadCount = 0 }: { notifUnreadCount?: number }) {
     </header>
   );
 }
-
-// ─── Shell ────────────────────────────────────────────────────────────────────
 
 // ─── In-app new-message toast ─────────────────────────────────────────────────
 
@@ -373,17 +364,21 @@ function InAppMsgToast({ toast, onClose }: { toast: MsgToast; onClose: () => voi
       className="fixed top-4 left-1/2 -translate-x-1/2 z-[999] w-[calc(100vw-32px)] max-w-sm"
     >
       <Link href={`/messages/${toast.convId}`} onClick={onClose}>
-        <div className="flex items-center gap-3 bg-white rounded-[22px] shadow-2xl border border-black/[0.06] px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
+        <div
+          className="flex items-center gap-3 rounded-[22px] px-4 py-3 cursor-pointer transition-colors"
+          style={{ background: '#111', border: '1px solid #222', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}
+        >
           <UserAvatar userId={toast.senderId} fallbackName={toast.senderName} size={42} />
           <div className="flex-1 min-w-0">
-            <p className="font-black text-[13.5px] text-gray-900 truncate">{toast.senderName}</p>
-            <p className="text-[12.5px] text-gray-500 truncate">{toast.preview}</p>
+            <p className="font-black text-[13.5px] text-white truncate">{toast.senderName}</p>
+            <p className="text-[12.5px] truncate" style={{ color: '#BDBDBD' }}>{toast.preview}</p>
           </div>
           <button
             onClick={e => { e.preventDefault(); onClose(); }}
-            className="p-1 rounded-full hover:bg-gray-100 transition-colors flex-shrink-0"
+            className="p-1 rounded-full flex-shrink-0"
+            style={{ background: '#222' }}
           >
-            <X size={14} className="text-gray-400" />
+            <X size={14} style={{ color: '#BDBDBD' }} />
           </button>
         </div>
       </Link>
@@ -393,8 +388,6 @@ function InAppMsgToast({ toast, onClose }: { toast: MsgToast; onClose: () => voi
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLoading, currentUser } = useAuth();
-  // Track this user's online presence — updates isOnline on visibility change,
-  // tab close, and unmount so Active Now stays accurate.
   usePresence(currentUser?.id);
   const { conversations } = useConversations();
   const {
@@ -405,39 +398,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const totalUnread = conversations.reduce((n, c) => n + c.unreadCount, 0);
 
-  // Notification badge count
   const [notifUnreadCount, setNotifUnreadCount] = useState(0);
   useEffect(() => {
     if (!currentUser) { setNotifUnreadCount(0); return; }
     if (isFirebaseConfigured) {
       return subscribeUnreadNotificationCount(currentUser.id, setNotifUnreadCount);
     }
-    // Demo mode: only count notifications this user actually triggered via
-    // interactions (stored in localStorage). Static mockNotifications are
-    // pre-seeded demo data that are always unread — including them inflates
-    // the badge with fake counts the user never actually received.
     const demoUnread = demoGetUserNotifs(currentUser.id).filter((n: { read: boolean }) => !n.read).length;
     setNotifUnreadCount(demoUnread);
     return undefined;
   }, [currentUser?.id]);
-  // FCM push notifications — token registration + foreground suppression
-  useFCMToken({
-    onForegroundMessage: () => {
-      // App is in foreground: Firestore real-time listeners already show the
-      // update, so we intentionally suppress the duplicate OS notification.
-    },
-  });
+
+  useFCMToken({ onForegroundMessage: () => {} });
 
   const [msgToast, setMsgToast] = useState<MsgToast | null>(null);
   const prevConvsRef = useRef<typeof conversations>([]);
 
-  // Detect new messages in background conversations (not the one currently open)
   useEffect(() => {
     if (!currentUser) return;
     const prev = prevConvsRef.current;
     for (const conv of conversations) {
       const prevConv = prev.find(c => c.id === conv.id);
-      // New unread appeared AND user is not currently viewing this conversation
       if (
         conv.unreadCount > 0 &&
         (!prevConv || conv.unreadCount > prevConv.unreadCount) &&
@@ -447,13 +428,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         const senderName = conv.lastSenderId
           ? (conv.participants.find(p => p.id === conv.lastSenderId)?.displayName ?? other.displayName)
           : other.displayName;
-        setMsgToast({
-          convId: conv.id,
-          senderName,
-          preview: conv.lastMessage || '…',
-          senderId: conv.lastSenderId ?? other.id,
-        });
-        break; // Show only one toast at a time
+        setMsgToast({ convId: conv.id, senderName, preview: conv.lastMessage || '…', senderId: conv.lastSenderId ?? other.id });
+        break;
       }
     }
     prevConvsRef.current = conversations;
@@ -461,7 +437,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-[#FDF9F6]">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5" style={{ background: '#000' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -470,21 +446,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <NoelavenLogo variant="mark" size="xl" />
           <NoelavenLogo variant="full" size="md" />
-          <p className="text-[11.5px] font-bold tracking-[0.18em] uppercase" style={{ color: '#7C3AED' }}>
+          <p className="text-[11.5px] font-bold tracking-[0.18em] uppercase" style={{ color: '#F5C542' }}>
             Connect. Create. Belong.
           </p>
         </motion.div>
-        <div className="w-6 h-6 rounded-full border-2 border-purple-200 border-t-[#7C3AED] animate-spin" />
+        {/* Gold spinner */}
+        <div className="w-6 h-6 rounded-full border-2 animate-spin"
+          style={{ borderColor: 'rgba(245,197,66,0.2)', borderTopColor: '#F5C542' }} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex">
+    <div className="min-h-screen text-white flex" style={{ background: '#000' }}>
       <Sidebar totalUnread={totalUnread} notifUnreadCount={notifUnreadCount} />
       <MobileHeader notifUnreadCount={notifUnreadCount} />
 
-      {/* pt-14 clears the mobile header on small screens; md:pt-0 removes it on desktop (sidebar handles branding) */}
       <main className="flex-1 md:ml-64 w-full relative pb-20 md:pb-0 pt-14 md:pt-0">
         <AnimatePresence mode="wait">
           <motion.div
@@ -501,18 +478,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <BottomNav totalUnread={totalUnread} notifUnreadCount={notifUnreadCount} />
 
-      {/* In-app new message toast */}
       <AnimatePresence>
         {msgToast && (
-          <InAppMsgToast
-            key={`toast-${msgToast.convId}`}
-            toast={msgToast}
-            onClose={() => setMsgToast(null)}
-          />
+          <InAppMsgToast key={`toast-${msgToast.convId}`} toast={msgToast} onClose={() => setMsgToast(null)} />
         )}
       </AnimatePresence>
 
-      {/* ── Incoming call banner ─────────────────────────────────────────── */}
       <AnimatePresence>
         {incomingCall && !call.callId && (
           <IncomingCallBanner
@@ -527,7 +498,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
 
-      {/* ── Full-screen call overlay (not minimized) ─────────────────────── */}
       <AnimatePresence>
         {(call.callId || call.isRinging) && !call.isMinimized && (
           <CallScreen
@@ -544,7 +514,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
 
-      {/* ── Minimized floating call window ───────────────────────────────── */}
       <AnimatePresence>
         {call.isMinimized && (call.callId || call.isRinging) && (
           <FloatingCallWindow
@@ -557,7 +526,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </AnimatePresence>
 
-      {/* ── Push notification permission prompt ──────────────────────────── */}
       <NotificationPermissionPrompt />
     </div>
   );

@@ -96,7 +96,7 @@ export function MusicPanel({ onAdd }: MusicPanelProps) {
             <button
               key={track.id}
               onClick={() => handlePick(track)}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl active:bg-white/10 transition-colors text-left"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl active:bg-[#111]/10 transition-colors text-left"
               style={{ background: isActive ? 'rgba(255,255,255,0.15)' : 'transparent' }}
             >
               <div

@@ -41,7 +41,7 @@ function StepDots({ step }: { step: 1 | 2 }) {
           key={n}
           animate={{ width: step === n ? 24 : 8 }}
           className="h-2 rounded-full"
-          style={{ background: step >= n ? 'linear-gradient(90deg, #6B73FF, #FF6B9D)' : '#E5E7EB' }}
+          style={{ background: step >= n ? 'linear-gradient(90deg, #C9982A, #F5C542)' : '#E5E7EB' }}
         />
       ))}
     </div>
@@ -73,10 +73,10 @@ function Step1({ displayName, isGoogleUser, handle, setHandle, handleError, onNe
     >
       <StepDots step={1} />
 
-      <h2 className="text-[26px] font-black text-gray-900 tracking-tight leading-tight mb-1.5">
+      <h2 className="text-[26px] font-black text-white tracking-tight leading-tight mb-1.5">
         Make it yours
       </h2>
-      <p className="text-[14px] text-gray-400 font-medium mb-8">
+      <p className="text-[14px] text-[rgba(255,255,255,0.45)] font-medium mb-8">
         Choose how you'll appear on Noelaven.
       </p>
 
@@ -103,12 +103,12 @@ function Step1({ displayName, isGoogleUser, handle, setHandle, handleError, onNe
           )}
           <div
             className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow-md"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', width: 32, height: 32, borderRadius: '50%', border: '3px solid white' }}
+            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', width: 32, height: 32, borderRadius: '50%', border: '3px solid white' }}
           >
             {avatarUrl ? <Check size={14} className="text-white" /> : <Camera size={14} className="text-white" />}
           </div>
         </button>
-        <p className="mt-3 text-[13px] text-gray-400 font-medium">
+        <p className="mt-3 text-[13px] text-[rgba(255,255,255,0.45)] font-medium">
           {isCloudinaryConfigured
             ? (avatarUrl ? 'Tap to change photo' : 'Tap to add a profile photo')
             : 'Your gradient avatar is auto-generated'}
@@ -117,10 +117,10 @@ function Step1({ displayName, isGoogleUser, handle, setHandle, handleError, onNe
 
       {/* Display name (read-only) */}
       <div className="mb-4">
-        <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Display Name</label>
-        <div className="flex items-center bg-gray-50 border border-black/[0.06] rounded-2xl px-4 py-3.5 gap-3">
-          <span className="text-[15px] text-gray-800 font-medium">{displayName}</span>
-          <span className="ml-auto text-[11px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+        <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1 block mb-1.5">Display Name</label>
+        <div className="flex items-center bg-[#111] border border-[#1a1a1a] rounded-2xl px-4 py-3.5 gap-3">
+          <span className="text-[15px] text-white font-medium">{displayName}</span>
+          <span className="ml-auto text-[11px] text-[rgba(255,255,255,0.45)] bg-[#1a1a1a] px-2 py-0.5 rounded-full">
             {isGoogleUser ? 'from Google' : 'from sign-up'}
           </span>
         </div>
@@ -128,27 +128,27 @@ function Step1({ displayName, isGoogleUser, handle, setHandle, handleError, onNe
 
       {/* Handle input */}
       <div className="mb-8">
-        <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">Username (handle)</label>
+        <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1 block mb-1.5">Username (handle)</label>
         <div className={cn(
-          'flex items-center bg-white/80 backdrop-blur-sm border rounded-2xl px-4 py-3.5 gap-2 transition-all',
-          handleError ? 'border-red-300 ring-2 ring-red-100' : 'border-black/[0.08] focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100'
+          'flex items-center bg-[#111] backdrop-blur-sm border rounded-2xl px-4 py-3.5 gap-2 transition-all',
+          handleError ? 'border-red-300 ring-2 ring-red-100' : 'border-[#2a2a2a] focus-within:border-[#F5C542] focus-within:ring-2 focus-within:ring-purple-100'
         )}>
-          <AtSign size={17} className="text-purple-400 flex-shrink-0" />
+          <AtSign size={17} className="text-[#F5C542] flex-shrink-0" />
           <input
             type="text"
             placeholder="yourhandle"
             value={handle}
             onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
             maxLength={30}
-            className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 outline-none"
+            className="flex-1 bg-transparent text-[15px] text-white placeholder:text-[#555] outline-none"
             autoCapitalize="none"
             autoCorrect="off"
           />
-          <span className="text-[12px] text-gray-400">{handle.length}/30</span>
+          <span className="text-[12px] text-[rgba(255,255,255,0.45)]">{handle.length}/30</span>
         </div>
         {handleError
           ? <p className="text-[12px] text-red-500 font-medium mt-1 ml-1">{handleError}</p>
-          : <p className="text-[12px] text-gray-400 mt-1 ml-1">Letters, numbers, and underscores only</p>
+          : <p className="text-[12px] text-[rgba(255,255,255,0.45)] mt-1 ml-1">Letters, numbers, and underscores only</p>
         }
       </div>
 
@@ -156,7 +156,7 @@ function Step1({ displayName, isGoogleUser, handle, setHandle, handleError, onNe
         whileTap={{ scale: 0.98 }}
         onClick={onNext}
         className="w-full text-white font-bold py-4 rounded-2xl text-[15px] flex items-center justify-center gap-2"
-        style={{ background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)', boxShadow: '0 4px 18px rgba(107,115,255,0.35)' }}
+        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
       >
         Continue
         <ChevronRight size={18} strokeWidth={2.5} />
@@ -192,17 +192,17 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
     >
       <StepDots step={2} />
 
-      <h2 className="text-[26px] font-black text-gray-900 tracking-tight leading-tight mb-1.5">
+      <h2 className="text-[26px] font-black text-white tracking-tight leading-tight mb-1.5">
         What are you into?
       </h2>
-      <p className="text-[14px] text-gray-400 font-medium mb-6">
+      <p className="text-[14px] text-[rgba(255,255,255,0.45)] font-medium mb-6">
         Pick at least {MIN_INTERESTS} interests to personalise your feed.
       </p>
 
       {/* Bio */}
       <div className="mb-6">
-        <label className="text-[13px] font-semibold text-gray-600 ml-1 block mb-1.5">
-          Bio <span className="text-gray-400 font-normal">(optional)</span>
+        <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1 block mb-1.5">
+          Bio <span className="text-[rgba(255,255,255,0.45)] font-normal">(optional)</span>
         </label>
         <textarea
           placeholder={`Hey, I'm ${displayName.split(' ')[0]}! Tell people what makes you, you… ✨`}
@@ -210,16 +210,16 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
           onChange={e => setBio(e.target.value)}
           maxLength={160}
           rows={3}
-          className="w-full bg-white/80 backdrop-blur-sm border border-black/[0.08] rounded-2xl px-4 py-3.5 text-[14.5px] text-gray-900 placeholder:text-gray-400 outline-none resize-none leading-relaxed focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+          className="w-full bg-[#111] backdrop-blur-sm border border-[#2a2a2a] rounded-2xl px-4 py-3.5 text-[14.5px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
         />
-        <p className="text-[12px] text-gray-400 mt-1 ml-1 text-right">{bio.length}/160</p>
+        <p className="text-[12px] text-[rgba(255,255,255,0.45)] mt-1 ml-1 text-right">{bio.length}/160</p>
       </div>
 
       {/* Interests */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[13px] font-semibold text-gray-600 ml-1">Your interests</p>
-          <p className={cn('text-[12px] font-semibold', interests.length >= MIN_INTERESTS ? 'text-emerald-500' : 'text-gray-400')}>
+          <p className="text-[13px] font-semibold text-[#BDBDBD] ml-1">Your interests</p>
+          <p className={cn('text-[12px] font-semibold', interests.length >= MIN_INTERESTS ? 'text-emerald-500' : 'text-[rgba(255,255,255,0.45)]')}>
             {interests.length}/{MIN_INTERESTS} min
           </p>
         </div>
@@ -235,11 +235,11 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
                   'flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all border',
                   selected
                     ? 'text-white border-transparent shadow-md'
-                    : 'bg-white text-gray-600 border-black/[0.08] hover:border-purple-200'
+                    : 'bg-[#111] text-[#BDBDBD] border-[#2a2a2a] hover:border-[rgba(245,197,66,0.25)]'
                 )}
                 style={selected ? {
-                  background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)',
-                  boxShadow: '0 3px 10px rgba(107,115,255,0.30)',
+                  background: 'linear-gradient(135deg, #C9982A, #F5C542)',
+                  boxShadow: '0 3px 10px rgba(245,197,66,0.30)',
                 } : {}}
               >
                 <span>{emoji}</span>
@@ -255,7 +255,7 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
       <div className="flex gap-3 mt-auto pt-4">
         <button
           onClick={onBack}
-          className="px-5 py-4 rounded-2xl font-semibold text-[15px] text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+          className="px-5 py-4 rounded-2xl font-semibold text-[15px] text-[#BDBDBD] bg-[#1a1a1a] hover:bg-[#222] transition-colors"
         >
           Back
         </button>
@@ -268,8 +268,8 @@ function Step2({ displayName, bio, setBio, interests, toggleInterest, onBack, on
             !canSubmit && 'opacity-50'
           )}
           style={{
-            background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)',
-            boxShadow: canSubmit ? '0 4px 18px rgba(107,115,255,0.35)' : 'none',
+            background: 'linear-gradient(135deg, #C9982A, #F5C542)',
+            boxShadow: canSubmit ? '0 4px 18px rgba(245,197,66,0.35)' : 'none',
           }}
         >
           {isLoading
@@ -351,7 +351,7 @@ export default function CreateProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-black relative overflow-hidden flex flex-col">
       {/* Hidden file input for avatar upload */}
       <input
         ref={avatarInputRef}

@@ -48,14 +48,14 @@ function AuthenticatedApp() {
         <Route>
           <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6">
             <p className="text-6xl mb-5">🌿</p>
-            <h2 className="text-[22px] font-black text-gray-900 mb-2">Page not found</h2>
-            <p className="text-[14.5px] text-gray-400 mb-8 max-w-[220px] leading-relaxed">
+            <h2 className="text-[22px] font-black text-white mb-2">Page not found</h2>
+            <p className="text-[14.5px] text-[rgba(255,255,255,0.45)] mb-8 max-w-[220px] leading-relaxed">
               Looks like you've wandered off the path.
             </p>
             <a
               href="/"
               className="px-7 py-3 rounded-full text-[14.5px] font-black text-white"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 4px 16px rgba(107,115,255,0.35)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 16px rgba(245,197,66,0.35)' }}
             >
               Back to Home
             </a>
@@ -70,10 +70,10 @@ function AuthenticatedApp() {
 
 function LoadingScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FDF9F6]">
+    <div className="min-h-screen flex items-center justify-center bg-black">
       <div
         className="w-14 h-14 rounded-2xl animate-pulse"
-        style={{ background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)' }}
+        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
       />
     </div>
   );

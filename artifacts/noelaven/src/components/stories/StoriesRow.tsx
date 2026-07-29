@@ -33,9 +33,9 @@ export function StoriesRow({ groups, onAddStory, onViewGroup }: StoriesRowProps)
                   /* Has own story → gradient ring */
                   <div
                     className="p-[2.5px] rounded-full"
-                    style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB, #6B73FF)' }}
+                    style={{ background: 'linear-gradient(135deg, #EC4899, #F5C542, #2563EB)' }}
                   >
-                    <div className="p-[2px] bg-[#FDF9F6] rounded-full">
+                    <div className="p-[2px] bg-black rounded-full">
                       <GradientAvatar
                         name={currentUser.displayName}
                         src={currentUser.avatarUrl || undefined}
@@ -58,13 +58,13 @@ export function StoriesRow({ groups, onAddStory, onViewGroup }: StoriesRowProps)
                 onClick={onAddStory}
                 aria-label="Add story"
                 className="absolute -bottom-0.5 -right-0.5 w-[20px] h-[20px] rounded-full flex items-center justify-center border-2 border-white active:scale-90 transition-transform"
-                style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB)' }}
+                style={{ background: '#F5C542', border: '2px solid #000' }}
               >
                 <span className="text-white text-[10px] font-black leading-none">+</span>
               </button>
             </div>
 
-            <span className="text-[10px] text-gray-400 font-medium">Your story</span>
+            <span className="text-[10px] text-[rgba(255,255,255,0.45)] font-medium">Your story</span>
           </div>
         )}
 
@@ -81,11 +81,11 @@ export function StoriesRow({ groups, onAddStory, onViewGroup }: StoriesRowProps)
                 className="p-[2.5px] rounded-full"
                 style={{
                   background: group.hasUnseen
-                    ? 'linear-gradient(135deg, #FF6B9D 0%, #C44FDB 50%, #6B73FF 100%)'
-                    : '#D1D5DB',
+                    ? 'linear-gradient(135deg, #EC4899 0%, #F5C542 50%, #2563EB 100%)'
+                    : '#333333',
                 }}
               >
-                <div className="p-[2px] bg-[#FDF9F6] rounded-full">
+                <div className="p-[2px] bg-black rounded-full">
                   <UserAvatar
                     userId={group.authorId}
                     fallbackName={group.authorName}
@@ -94,7 +94,7 @@ export function StoriesRow({ groups, onAddStory, onViewGroup }: StoriesRowProps)
                   />
                 </div>
               </div>
-              <span className="text-[10px] text-gray-400 font-medium max-w-[56px] truncate text-center">
+              <span className="text-[10px] text-[rgba(255,255,255,0.45)] font-medium max-w-[56px] truncate text-center">
                 {group.authorName.split(' ')[0]}
               </span>
             </button>

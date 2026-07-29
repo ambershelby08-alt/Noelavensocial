@@ -153,7 +153,7 @@ export function FloatingCallWindow({ call, onEnd, onToggleMute, onRestore }: Pro
           onClick={e => { e.stopPropagation(); onToggleMute(); }}
           className={cn(
             'w-10 h-10 rounded-full flex items-center justify-center transition-colors',
-            call.isMuted ? 'bg-white/25' : 'bg-white/12',
+            call.isMuted ? 'bg-[#111]/25' : 'bg-[#111]/12',
           )}
         >
           {call.isMuted
@@ -175,7 +175,7 @@ export function FloatingCallWindow({ call, onEnd, onToggleMute, onRestore }: Pro
         <button
           onPointerDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); onRestore(); }}
-          className="w-10 h-10 rounded-full bg-white/12 flex items-center justify-center"
+          className="w-10 h-10 rounded-full bg-[#111]/12 flex items-center justify-center"
         >
           <Maximize2 size={15} className="text-white" />
         </button>

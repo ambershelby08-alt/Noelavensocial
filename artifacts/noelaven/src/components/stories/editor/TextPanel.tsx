@@ -7,8 +7,8 @@ import { Bold } from 'lucide-react';
 import type { EditorState, EditorAction, TextLayer } from './types';
 
 const TEXT_COLORS = [
-  '#FFFFFF', '#000000', '#FFD700', '#FF6B9D',
-  '#6B73FF', '#00E5FF', '#69FF47', '#FF4747',
+  '#FFFFFF', '#000000', '#FFD700', '#F5C542',
+  '#F5C542', '#00E5FF', '#69FF47', '#FF4747',
   '#FF9500', '#C44FDB',
 ];
 
@@ -38,7 +38,7 @@ export function TextPanel({ state, dispatch, onAdd }: TextPanelProps) {
         placeholder="Type something…"
         rows={2}
         maxLength={120}
-        className="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-white/30"
+        className="w-full px-3 py-2.5 rounded-xl bg-[#111]/10 border border-white/20 text-white placeholder-white/40 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-white/30"
       />
 
       {/* Colour swatches */}
@@ -97,7 +97,7 @@ export function TextPanel({ state, dispatch, onAdd }: TextPanelProps) {
         onClick={onAdd}
         disabled={!draftText.trim()}
         className="w-full py-2.5 rounded-xl font-bold text-white text-sm active:scale-[0.98] transition-transform disabled:opacity-40"
-        style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB, #6B73FF)' }}
+        style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
       >
         Add to Story ✨
       </button>

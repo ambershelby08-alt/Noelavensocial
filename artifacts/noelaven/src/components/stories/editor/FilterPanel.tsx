@@ -56,8 +56,8 @@ export function FilterPanel({ previewUrl, mediaType, activeFilter, onSelect }: F
 
                 {/* Active check */}
                 {isActive && (
-                  <div className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow">
-                    <Check size={10} strokeWidth={3} className="text-gray-900" />
+                  <div className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-[#111] flex items-center justify-center shadow">
+                    <Check size={10} strokeWidth={3} className="text-white" />
                   </div>
                 )}
               </div>

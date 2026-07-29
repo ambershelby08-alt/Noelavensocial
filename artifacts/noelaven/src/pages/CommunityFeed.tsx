@@ -28,15 +28,15 @@ function fmtNum(n: number) {
 }
 
 const CAT_GRADIENT: Record<string, [string, string]> = {
-  'Design':      ['#FF6B9D', '#C44FDB'],
+  'Design':      ['#F5C542', '#C44FDB'],
   'Technology':  ['#4F75FF', '#6EC6F5'],
-  'Photography': ['#FF8C42', '#FF6B9D'],
+  'Photography': ['#FF8C42', '#F5C542'],
   'Music':       ['#FFD93D', '#FF8C42'],
   'Travel':      ['#3CC2A8', '#4F75FF'],
   'Fitness':     ['#2ECC71', '#3CC2A8'],
-  'Gaming':      ['#9B59B6', '#4F75FF'],
+  'Gaming':      ['#F5C542', '#4F75FF'],
   'Reading':     ['#FF8C42', '#C44FDB'],
-  'Food':        ['#FF6B9D', '#FFD93D'],
+  'Food':        ['#F5C542', '#FFD93D'],
   'Wellness':    ['#3CC2A8', '#C44FDB'],
 };
 
@@ -70,7 +70,7 @@ function QuickComposer({
   }
 
   return (
-    <div className="mx-4 mb-4 bg-white rounded-[22px] border border-black/[0.05] shadow-sm overflow-hidden">
+    <div className="mx-4 mb-4 bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm overflow-hidden">
       <div className="flex gap-3 p-4">
         <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={40} className="flex-shrink-0" />
         <div className="flex-1">
@@ -80,7 +80,7 @@ function QuickComposer({
             onFocus={() => setFocused(true)}
             placeholder={`Share something with ${communityName}…`}
             rows={focused ? 3 : 1}
-            className="w-full bg-gray-50 rounded-xl px-3.5 py-2.5 text-[14px] text-gray-800 placeholder:text-gray-400 outline-none resize-none leading-relaxed transition-all focus:bg-white focus:ring-2 focus:ring-purple-100"
+            className="w-full bg-[#111] rounded-xl px-3.5 py-2.5 text-[14px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed transition-all focus:bg-[#111] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)]"
           />
           <AnimatePresence>
             {focused && (
@@ -91,17 +91,17 @@ function QuickComposer({
                 className="flex items-center justify-between mt-2.5"
               >
                 <div className="flex gap-1">
-                  <button className="p-2 rounded-full text-gray-400 hover:text-purple-500 hover:bg-purple-50 transition-all">
+                  <button className="p-2 rounded-full text-[rgba(255,255,255,0.45)] hover:text-[#F5C542] hover:bg-[rgba(245,197,66,0.08)] transition-all">
                     <ImageIcon size={16} />
                   </button>
-                  <button className="p-2 rounded-full text-gray-400 hover:text-pink-500 hover:bg-pink-50 transition-all">
+                  <button className="p-2 rounded-full text-[rgba(255,255,255,0.45)] hover:text-[#F5C542] hover:bg-pink-50 transition-all">
                     <Sparkles size={16} />
                   </button>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setFocused(false); setText(''); }}
-                    className="px-4 py-1.5 rounded-full text-[13px] font-semibold text-gray-500 hover:bg-gray-100 transition-all"
+                    className="px-4 py-1.5 rounded-full text-[13px] font-semibold text-[#BDBDBD] hover:bg-[#1a1a1a] transition-all"
                   >
                     Cancel
                   </button>
@@ -110,7 +110,7 @@ function QuickComposer({
                     onClick={handlePost}
                     disabled={!text.trim() || posting}
                     className="px-5 py-1.5 rounded-full text-[13px] font-black text-white disabled:opacity-40 flex items-center gap-1.5"
-                    style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 2px 10px rgba(107,115,255,0.3)' }}
+                    style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 2px 10px rgba(245,197,66,0.3)' }}
                   >
                     {posting
                       ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -137,8 +137,8 @@ function ModCard({ userId, from, to }: { userId: string; from: string; to: strin
       <div className="flex items-center gap-3 py-2.5 cursor-pointer group">
         <UserAvatar userId={userId} fallbackName={name} fallbackSrc={user?.avatarUrl || undefined} size={44} />
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-[14px] text-gray-900 group-hover:text-purple-600 transition-colors truncate">{name}</p>
-          <p className="text-[12px] text-gray-400 truncate">@{user?.handle ?? userId}</p>
+          <p className="font-bold text-[14px] text-white group-hover:text-[#F5C542] transition-colors truncate">{name}</p>
+          <p className="text-[12px] text-[rgba(255,255,255,0.45)] truncate">@{user?.handle ?? userId}</p>
         </div>
         <span
           className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black text-white flex-shrink-0"
@@ -179,9 +179,9 @@ function MemberCard({ user, currentUserId }: { user: User; currentUserId?: strin
       </Link>
       <div className="flex-1 min-w-0">
         <Link href={`/profile/${user.id}`}>
-          <p className="font-bold text-[14px] text-gray-900 hover:text-purple-600 transition-colors truncate cursor-pointer">{user.displayName}</p>
+          <p className="font-bold text-[14px] text-white hover:text-[#F5C542] transition-colors truncate cursor-pointer">{user.displayName}</p>
         </Link>
-        <p className="text-[12px] text-gray-400 truncate">@{user.handle} · {fmtNum(user.followers)} followers</p>
+        <p className="text-[12px] text-[rgba(255,255,255,0.45)] truncate">@{user.handle} · {fmtNum(user.followers)} followers</p>
       </div>
       {!isMe && (
         <motion.button
@@ -190,9 +190,9 @@ function MemberCard({ user, currentUserId }: { user: User; currentUserId?: strin
           onClick={handleFollow}
           className={cn(
             'flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[12.5px] font-bold flex-shrink-0 transition-all disabled:opacity-60',
-            following ? 'bg-gray-100 text-gray-600' : 'text-white shadow-sm'
+            following ? 'bg-[#1a1a1a] text-[#BDBDBD]' : 'text-white shadow-sm'
           )}
-          style={!following ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 2px 10px rgba(107,115,255,0.25)' } : {}}
+          style={!following ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 2px 10px rgba(107,115,255,0.25)' } : {}}
         >
           {loading
             ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -212,7 +212,7 @@ function Toast({ message, visible }: { message: string; visible: boolean }) {
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
           className="fixed bottom-28 md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-[13.5px] shadow-xl whitespace-nowrap"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
         >
           <Check size={15} /> {message}
         </motion.div>
@@ -303,7 +303,7 @@ export default function CommunityFeed() {
     : allMembers;
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] pb-36">
+    <div className="min-h-screen bg-black pb-36">
 
       {/* ── Banner ──────────────────────────────────────────────────── */}
       <div className="relative h-56 overflow-hidden">
@@ -321,7 +321,7 @@ export default function CommunityFeed() {
           />
         )}
         {/* Bottom fade */}
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#FDF9F6] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent" />
 
         {/* Back + share */}
         <div className="absolute top-4 left-4">
@@ -362,36 +362,36 @@ export default function CommunityFeed() {
 
       {/* ── Info section ─────────────────────────────────────────────── */}
       <div className="px-4 -mt-4 mb-5">
-        <h1 className="text-[24px] font-black text-gray-900 tracking-tight mb-0.5">{community.name}</h1>
-        <p className="text-[14px] text-gray-500 leading-relaxed mb-4 line-clamp-2">{community.description}</p>
+        <h1 className="text-[24px] font-black text-white tracking-tight mb-0.5">{community.name}</h1>
+        <p className="text-[14px] text-[#BDBDBD] leading-relaxed mb-4 line-clamp-2">{community.description}</p>
 
         {/* Stats row */}
         <div className="flex items-center gap-4 mb-4">
-          <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-medium">
-            <Users size={14} className="text-purple-400" />
-            <span><strong className="text-gray-900 font-black">{fmtNum(community.memberCount)}</strong> members</span>
+          <div className="flex items-center gap-1.5 text-[13px] text-[#BDBDBD] font-medium">
+            <Users size={14} className="text-[#F5C542]" />
+            <span><strong className="text-white font-black">{fmtNum(community.memberCount)}</strong> members</span>
           </div>
-          <div className="w-px h-4 bg-gray-200" />
-          <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-medium">
+          <div className="w-px h-4 bg-[#222]" />
+          <div className="flex items-center gap-1.5 text-[13px] text-[#BDBDBD] font-medium">
             <Flame size={14} className="text-pink-400" />
-            <span><strong className="text-gray-900 font-black">{fmtNum(community.postCount)}</strong> posts</span>
+            <span><strong className="text-white font-black">{fmtNum(community.postCount)}</strong> posts</span>
           </div>
-          <div className="w-px h-4 bg-gray-200" />
-          <div className="flex items-center gap-1.5 text-[13px] text-gray-500 font-medium">
+          <div className="w-px h-4 bg-[#222]" />
+          <div className="flex items-center gap-1.5 text-[13px] text-[#BDBDBD] font-medium">
             <div className="w-2 h-2 rounded-full bg-green-400" />
-            <span><strong className="text-gray-900 font-black">{community.onlineCount}</strong> online</span>
+            <span><strong className="text-white font-black">{community.onlineCount}</strong> online</span>
           </div>
         </div>
 
         {/* Join / Joined */}
         {community.isJoined ? (
           <div className="flex gap-2">
-            <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-black/[0.08] text-gray-700 font-black text-[14px]">
+            <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111] border border-[#2a2a2a] text-[#BDBDBD] font-black text-[14px]">
               <Check size={15} className="text-green-500" /> Joined
             </div>
             <button
               onClick={handleJoin}
-              className="px-5 py-2.5 rounded-full bg-gray-100 text-gray-500 font-semibold text-[13px] hover:bg-red-50 hover:text-red-400 transition-all"
+              className="px-5 py-2.5 rounded-full bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[13px] hover:bg-red-50 hover:text-red-400 transition-all"
             >
               Leave
             </button>
@@ -409,7 +409,7 @@ export default function CommunityFeed() {
       </div>
 
       {/* ── Sticky tabs ──────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[#FDF9F6]/95 backdrop-blur-md border-b border-black/[0.06] px-2">
+      <div className="sticky top-0 z-30 bg-black/95 backdrop-blur-md border-b border-[#1a1a1a] px-2">
         <div className="flex">
           {TABS.map(tab => {
             const active = activeTab === tab;
@@ -419,7 +419,7 @@ export default function CommunityFeed() {
                 onClick={() => setActiveTab(tab)}
                 className={cn(
                   'flex-1 py-3.5 text-[13.5px] font-semibold relative transition-colors',
-                  active ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
+                  active ? 'text-white' : 'text-[rgba(255,255,255,0.45)] hover:text-[#BDBDBD]'
                 )}
               >
                 {tab}
@@ -459,14 +459,14 @@ export default function CommunityFeed() {
                 />
               )}
               {!community.isJoined && (
-                <div className="mx-4 mb-4 flex items-center gap-3 bg-white rounded-[20px] border border-black/[0.05] p-4">
+                <div className="mx-4 mb-4 flex items-center gap-3 bg-[#111] rounded-[20px] border border-[#1a1a1a] p-4">
                   <div
                     className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0 text-xl"
                     style={{ background: `linear-gradient(135deg, ${from}22, ${to}22)` }}
                   >
                     {community.emoji}
                   </div>
-                  <p className="text-[13.5px] text-gray-500 flex-1">
+                  <p className="text-[13.5px] text-[#BDBDBD] flex-1">
                     Join this circle to post and engage with the community.
                   </p>
                   <button
@@ -483,8 +483,8 @@ export default function CommunityFeed() {
                 : (
                   <div className="flex flex-col items-center py-20 text-center px-6">
                     <p className="text-5xl mb-4">{community.emoji}</p>
-                    <h3 className="font-black text-[17px] text-gray-800 mb-1.5">No posts yet</h3>
-                    <p className="text-[14px] text-gray-400 max-w-[200px] leading-relaxed">Be the first to share something with this circle!</p>
+                    <h3 className="font-black text-[17px] text-white mb-1.5">No posts yet</h3>
+                    <p className="text-[14px] text-[rgba(255,255,255,0.45)] max-w-[200px] leading-relaxed">Be the first to share something with this circle!</p>
                   </div>
                 )
               }
@@ -495,27 +495,27 @@ export default function CommunityFeed() {
           {activeTab === 'About' && (
             <div className="px-4 space-y-4">
               {/* Description */}
-              <div className="bg-white rounded-[22px] border border-black/[0.05] shadow-sm p-5">
-                <h3 className="font-black text-[15px] text-gray-900 mb-3">About this Circle</h3>
-                <p className="text-[14.5px] text-gray-600 leading-relaxed">{community.description}</p>
+              <div className="bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm p-5">
+                <h3 className="font-black text-[15px] text-white mb-3">About this Circle</h3>
+                <p className="text-[14.5px] text-[#BDBDBD] leading-relaxed">{community.description}</p>
 
                 {/* Stats grid */}
                 <div className="grid grid-cols-3 gap-3 mt-5">
                   {[
-                    { label: 'Members', value: fmtNum(community.memberCount), icon: Users, color: '#6B73FF' },
-                    { label: 'Posts',   value: fmtNum(community.postCount),   icon: LayoutGrid, color: '#FF6B9D' },
+                    { label: 'Members', value: fmtNum(community.memberCount), icon: Users, color: '#F5C542' },
+                    { label: 'Posts',   value: fmtNum(community.postCount),   icon: LayoutGrid, color: '#F5C542' },
                     { label: 'Online',  value: String(community.onlineCount),  icon: Flame, color: '#2ECC71' },
                   ].map(({ label, value, icon: Icon, color }) => (
-                    <div key={label} className="flex flex-col items-center py-4 rounded-[16px] border border-black/[0.05]" style={{ background: `${color}0d` }}>
+                    <div key={label} className="flex flex-col items-center py-4 rounded-[16px] border border-[#1a1a1a]" style={{ background: `${color}0d` }}>
                       <Icon size={16} style={{ color }} className="mb-1.5" />
-                      <span className="font-black text-[18px] text-gray-900">{value}</span>
-                      <span className="text-[11px] text-gray-400 font-medium">{label}</span>
+                      <span className="font-black text-[18px] text-white">{value}</span>
+                      <span className="text-[11px] text-[rgba(255,255,255,0.45)] font-medium">{label}</span>
                     </div>
                   ))}
                 </div>
 
                 {/* Founded */}
-                <div className="flex items-center gap-2 mt-5 pt-4 border-t border-black/[0.05] text-[13px] text-gray-400">
+                <div className="flex items-center gap-2 mt-5 pt-4 border-t border-[#1a1a1a] text-[13px] text-[rgba(255,255,255,0.45)]">
                   <Calendar size={14} />
                   <span>Founded {format(community.createdAt, 'MMMM yyyy')}</span>
                   <span>·</span>
@@ -527,7 +527,7 @@ export default function CommunityFeed() {
               </div>
 
               {/* Moderators */}
-              <div className="bg-white rounded-[22px] border border-black/[0.05] shadow-sm p-5">
+              <div className="bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <div
                     className="w-7 h-7 rounded-[10px] flex items-center justify-center"
@@ -535,10 +535,10 @@ export default function CommunityFeed() {
                   >
                     <Shield size={14} style={{ color: from }} />
                   </div>
-                  <h3 className="font-black text-[15px] text-gray-900">Moderators</h3>
-                  <span className="ml-auto text-[12px] text-gray-400">{community.moderatorIds.length}</span>
+                  <h3 className="font-black text-[15px] text-white">Moderators</h3>
+                  <span className="ml-auto text-[12px] text-[rgba(255,255,255,0.45)]">{community.moderatorIds.length}</span>
                 </div>
-                <div className="divide-y divide-black/[0.04]">
+                <div className="divide-y divide-[#1a1a1a]">
                   {community.moderatorIds.map(id => (
                     <ModCard key={id} userId={id} from={from} to={to} />
                   ))}
@@ -549,11 +549,11 @@ export default function CommunityFeed() {
               {community.rules.length > 0 && (
                 <button
                   onClick={() => setActiveTab('Rules')}
-                  className="w-full bg-white rounded-[22px] border border-black/[0.05] shadow-sm p-5 text-left"
+                  className="w-full bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm p-5 text-left"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-black text-[15px] text-gray-900">Rules</h3>
-                    <div className="flex items-center gap-1 text-[13px] text-purple-500 font-bold">
+                    <h3 className="font-black text-[15px] text-white">Rules</h3>
+                    <div className="flex items-center gap-1 text-[13px] text-[#F5C542] font-bold">
                       View all <ChevronRight size={14} />
                     </div>
                   </div>
@@ -566,11 +566,11 @@ export default function CommunityFeed() {
                         >
                           {i + 1}
                         </span>
-                        <p className="text-[13.5px] text-gray-600 leading-relaxed">{rule}</p>
+                        <p className="text-[13.5px] text-[#BDBDBD] leading-relaxed">{rule}</p>
                       </div>
                     ))}
                     {community.rules.length > 2 && (
-                      <p className="text-[12.5px] text-gray-400 pl-8">+{community.rules.length - 2} more rules</p>
+                      <p className="text-[12.5px] text-[rgba(255,255,255,0.45)] pl-8">+{community.rules.length - 2} more rules</p>
                     )}
                   </div>
                 </button>
@@ -583,16 +583,16 @@ export default function CommunityFeed() {
             <div className="px-4">
               {/* Search */}
               <div className="relative mb-4">
-                <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]" />
                 <input
                   value={memberSearch}
                   onChange={e => setMemberSearch(e.target.value)}
                   placeholder="Search members…"
-                  className="w-full bg-white border border-black/[0.06] rounded-2xl pl-10 pr-4 py-3 text-[14px] placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all shadow-sm"
+                  className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-4 py-3 text-[14px] placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all shadow-sm"
                 />
                 {memberSearch && (
                   <button onClick={() => setMemberSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <X size={15} className="text-gray-400" />
+                    <X size={15} className="text-[rgba(255,255,255,0.45)]" />
                   </button>
                 )}
               </div>
@@ -600,8 +600,8 @@ export default function CommunityFeed() {
               {/* Mods section */}
               {!memberSearch && modUsers.length > 0 && (
                 <div className="mb-2">
-                  <p className="text-[11.5px] font-black uppercase tracking-wider text-gray-400 mb-1 px-1">Moderators</p>
-                  <div className="bg-white rounded-[20px] border border-black/[0.05] shadow-sm px-4 divide-y divide-black/[0.04]">
+                  <p className="text-[11.5px] font-black uppercase tracking-wider text-[rgba(255,255,255,0.45)] mb-1 px-1">Moderators</p>
+                  <div className="bg-[#111] rounded-[20px] border border-[#1a1a1a] shadow-sm px-4 divide-y divide-[#1a1a1a]">
                     {modUsers.map(u => (
                       <div key={u.id} className="relative">
                         <MemberCard user={u} currentUserId={currentUser?.id} />
@@ -620,18 +620,18 @@ export default function CommunityFeed() {
               {/* All members */}
               <div>
                 {!memberSearch && (
-                  <p className="text-[11.5px] font-black uppercase tracking-wider text-gray-400 mb-1 px-1 mt-3">
+                  <p className="text-[11.5px] font-black uppercase tracking-wider text-[rgba(255,255,255,0.45)] mb-1 px-1 mt-3">
                     Members · {fmtNum(community.memberCount)}
                   </p>
                 )}
-                <div className="bg-white rounded-[20px] border border-black/[0.05] shadow-sm px-4 divide-y divide-black/[0.04]">
+                <div className="bg-[#111] rounded-[20px] border border-[#1a1a1a] shadow-sm px-4 divide-y divide-[#1a1a1a]">
                   {filteredMembers.length > 0
                     ? filteredMembers.map(u => (
                         <MemberCard key={u.id} user={u} currentUserId={currentUser?.id} />
                       ))
                     : (
                       <div className="py-12 text-center">
-                        <p className="text-[14px] text-gray-400">No members match your search.</p>
+                        <p className="text-[14px] text-[rgba(255,255,255,0.45)]">No members match your search.</p>
                       </div>
                     )
                   }
@@ -657,8 +657,8 @@ export default function CommunityFeed() {
                       {community.emoji}
                     </div>
                     <div>
-                      <p className="font-black text-[15px] text-gray-900">{community.name} Rules</p>
-                      <p className="text-[12.5px] text-gray-500 mt-0.5">Please read before posting.</p>
+                      <p className="font-black text-[15px] text-white">{community.name} Rules</p>
+                      <p className="text-[12.5px] text-[#BDBDBD] mt-0.5">Please read before posting.</p>
                     </div>
                   </div>
 
@@ -669,7 +669,7 @@ export default function CommunityFeed() {
                       initial={{ opacity: 0, x: -12 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.06 }}
-                      className="bg-white rounded-[20px] border border-black/[0.05] shadow-sm p-5 flex items-start gap-4"
+                      className="bg-[#111] rounded-[20px] border border-[#1a1a1a] shadow-sm p-5 flex items-start gap-4"
                     >
                       <div
                         className="w-9 h-9 rounded-[12px] flex items-center justify-center text-[15px] font-black text-white flex-shrink-0"
@@ -678,21 +678,21 @@ export default function CommunityFeed() {
                         {i + 1}
                       </div>
                       <div className="flex-1 pt-1">
-                        <p className="text-[14.5px] text-gray-800 leading-relaxed font-medium">{rule}</p>
+                        <p className="text-[14.5px] text-white leading-relaxed font-medium">{rule}</p>
                       </div>
                     </motion.div>
                   ))}
 
                   {/* Footer note */}
-                  <p className="text-[12px] text-gray-400 text-center py-4 px-6 leading-relaxed">
+                  <p className="text-[12px] text-[rgba(255,255,255,0.45)] text-center py-4 px-6 leading-relaxed">
                     Violations may result in post removal or ban. Mods have final say.
                   </p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center py-20 text-center">
                   <p className="text-4xl mb-4">📋</p>
-                  <h3 className="font-black text-[17px] text-gray-800 mb-1.5">No rules yet</h3>
-                  <p className="text-[14px] text-gray-400">This circle is running on vibes alone.</p>
+                  <h3 className="font-black text-[17px] text-white mb-1.5">No rules yet</h3>
+                  <p className="text-[14px] text-[rgba(255,255,255,0.45)]">This circle is running on vibes alone.</p>
                 </div>
               )}
             </div>

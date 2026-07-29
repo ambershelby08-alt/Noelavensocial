@@ -102,27 +102,27 @@ function ConfirmModal({
       <motion.div
         initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        className="w-full max-w-md bg-white rounded-3xl p-5 shadow-2xl"
+        className="w-full max-w-md bg-[#111] rounded-3xl p-5 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className={cn('w-10 h-10 rounded-full flex items-center justify-center', isDanger ? 'bg-red-100' : 'bg-purple-100')}>
-            <Shield size={18} className={isDanger ? 'text-red-500' : 'text-purple-500'} />
+          <div className={cn('w-10 h-10 rounded-full flex items-center justify-center', isDanger ? 'bg-red-100' : 'bg-[rgba(245,197,66,0.15)]')}>
+            <Shield size={18} className={isDanger ? 'text-red-500' : 'text-[#F5C542]'} />
           </div>
           <div>
-            <p className="text-[15px] font-black text-gray-900">{action.label}</p>
-            <p className="text-[12px] text-gray-400">All moderation actions are logged.</p>
+            <p className="text-[15px] font-black text-white">{action.label}</p>
+            <p className="text-[12px] text-[rgba(255,255,255,0.45)]">All moderation actions are logged.</p>
           </div>
         </div>
 
         {action.type === 'suspend' && (
           <div className="mb-3">
-            <label className="text-[11.5px] font-bold text-gray-500 uppercase tracking-wide">Duration</label>
+            <label className="text-[11.5px] font-bold text-[#BDBDBD] uppercase tracking-wide">Duration</label>
             <div className="flex gap-2 mt-2 flex-wrap">
               {[1, 7, 14, 30, 90].map(d => (
                 <button key={d} onClick={() => setDays(d)}
                   className={cn('px-3 py-1.5 rounded-full text-[12.5px] font-bold border transition-all',
-                    days === d ? 'bg-purple-500 text-white border-purple-500' : 'bg-gray-50 text-gray-600 border-gray-200')}>
+                    days === d ? 'bg-[#F5C542] text-white border-[#F5C542]' : 'bg-[#111] text-[#BDBDBD] border-gray-200')}>
                   {d === 1 ? '1 day' : d === 30 ? '30 days' : d === 90 ? '3 months' : `${d} days`}
                 </button>
               ))}
@@ -131,7 +131,7 @@ function ConfirmModal({
         )}
 
         <div className="mb-3">
-          <label className="text-[11.5px] font-bold text-gray-500 uppercase tracking-wide">
+          <label className="text-[11.5px] font-bold text-[#BDBDBD] uppercase tracking-wide">
             {action.type === 'resolve' ? 'Resolution Notes' : 'Reason'}
           </label>
           <textarea
@@ -144,13 +144,13 @@ function ConfirmModal({
               : 'Brief reason for this action…'
             }
             rows={3}
-            className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-black/[0.08] text-[13.5px] text-gray-900 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all bg-gray-50 resize-none"
+            className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[13.5px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all bg-[#111] resize-none"
           />
         </div>
 
         <div className="flex gap-2">
           <button onClick={onCancel}
-            className="flex-1 py-3 rounded-xl border border-black/[0.08] font-bold text-[14px] text-gray-700 hover:bg-gray-50 transition-all">
+            className="flex-1 py-3 rounded-xl border border-[#2a2a2a] font-bold text-[14px] text-[#BDBDBD] hover:bg-[#1a1a1a] transition-all">
             Cancel
           </button>
           <button
@@ -159,7 +159,7 @@ function ConfirmModal({
             title={(!reason.trim() && action.type !== 'assign' && action.type !== 'resolve') ? 'Please enter a reason first' : undefined}
             className={cn(
               'flex-1 py-3 rounded-xl font-bold text-[14px] text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed',
-              isDanger ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-500 hover:bg-purple-600'
+              isDanger ? 'bg-red-500 hover:bg-red-600' : 'bg-[#F5C542] hover:bg-[#F5C542]'
             )}
           >
             {busy ? 'Processing…' : 'Confirm'}
@@ -196,7 +196,7 @@ function ReportCard({
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-[22px] border border-black/[0.04] shadow-sm overflow-hidden"
+      className="bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm overflow-hidden"
     >
       {/* Header */}
       <div className="p-4">
@@ -207,7 +207,7 @@ function ReportCard({
           <div className="flex-1 min-w-0">
             {/* Chips row */}
             <div className="flex items-center gap-1.5 flex-wrap mb-1">
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#1a1a1a] text-[#BDBDBD] capitalize">
                 {targetTypeLabel}
               </span>
               <span
@@ -223,11 +223,11 @@ function ReportCard({
               )}
             </div>
 
-            <p className="text-[14px] font-bold text-gray-900">{report.reason}</p>
+            <p className="text-[14px] font-bold text-white">{report.reason}</p>
             {report.category && report.category !== report.reason && (
-              <p className="text-[12px] text-gray-400">{report.category}</p>
+              <p className="text-[12px] text-[rgba(255,255,255,0.45)]">{report.category}</p>
             )}
-            <p className="text-[11.5px] text-gray-400 mt-0.5">{relDate(report.createdAt)}</p>
+            <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] mt-0.5">{relDate(report.createdAt)}</p>
           </div>
 
           {/* Status chip */}
@@ -242,20 +242,20 @@ function ReportCard({
 
         {/* Evidence preview */}
         {(report.evidence?.textSnapshot || report.targetPreview) && (
-          <div className="mt-3 bg-gray-50 rounded-xl px-3 py-2.5 border-l-2 border-gray-200">
-            <p className="text-[12.5px] text-gray-600 italic line-clamp-3">
+          <div className="mt-3 bg-[#111] rounded-xl px-3 py-2.5 border-l-2 border-gray-200">
+            <p className="text-[12.5px] text-[#BDBDBD] italic line-clamp-3">
               "{report.evidence?.textSnapshot ?? report.targetPreview}"
             </p>
             {report.targetType === 'post' && report.targetId && (
               <Link href={`/post/${report.targetId}`}>
-                <span className="mt-1 inline-block text-[11.5px] font-semibold text-purple-500 hover:underline cursor-pointer">
+                <span className="mt-1 inline-block text-[11.5px] font-semibold text-[#F5C542] hover:underline cursor-pointer">
                   View post →
                 </span>
               </Link>
             )}
             {report.targetType === 'user' && (report.reportedUserId ?? report.targetOwnerId) && (
               <Link href={`/profile/${report.reportedUserId ?? report.targetOwnerId}`}>
-                <span className="mt-1 inline-block text-[11.5px] font-semibold text-purple-500 hover:underline cursor-pointer">
+                <span className="mt-1 inline-block text-[11.5px] font-semibold text-[#F5C542] hover:underline cursor-pointer">
                   View profile →
                 </span>
               </Link>
@@ -264,23 +264,23 @@ function ReportCard({
         )}
 
         {/* Reporter / Reported info */}
-        <div className="mt-3 flex gap-4 text-[11.5px] text-gray-500">
-          <span>Reporter: <span className="font-semibold text-gray-700">{report.reporterId.slice(0, 8)}…</span></span>
+        <div className="mt-3 flex gap-4 text-[11.5px] text-[#BDBDBD]">
+          <span>Reporter: <span className="font-semibold text-[#BDBDBD]">{report.reporterId.slice(0, 8)}…</span></span>
           {(report.reportedUserId ?? report.targetOwnerId) && (
-            <span>Reported: <span className="font-semibold text-gray-700">{(report.reportedUserId ?? report.targetOwnerId)?.slice(0, 8)}…</span></span>
+            <span>Reported: <span className="font-semibold text-[#BDBDBD]">{(report.reportedUserId ?? report.targetOwnerId)?.slice(0, 8)}…</span></span>
           )}
         </div>
 
         {/* Additional details */}
         {report.additionalDetails && (
-          <p className="text-[12px] text-gray-500 mt-2 italic">"{report.additionalDetails}"</p>
+          <p className="text-[12px] text-[#BDBDBD] mt-2 italic">"{report.additionalDetails}"</p>
         )}
 
         {/* Expand toggle */}
         {isActive && (
           <button
             onClick={() => setExpanded(v => !v)}
-            className="mt-3 w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 text-[12.5px] font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+            className="mt-3 w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#111] text-[12.5px] font-semibold text-[#BDBDBD] hover:bg-[#1a1a1a] transition-colors"
           >
             <span>Actions</span>
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -299,7 +299,7 @@ function ReportCard({
           <motion.div
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-gray-100"
+            className="overflow-hidden border-t border-[#222]"
           >
             <div className="p-4 pt-3 grid grid-cols-2 gap-2">
               {/* Assign */}
@@ -357,10 +357,10 @@ function ActionBtn({ label, icon: Icon, color, onClick }: {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-black/[0.06] bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#1a1a1a] bg-[#111] hover:bg-[#1a1a1a] transition-colors text-left"
     >
       <Icon size={14} style={{ color }} className="flex-shrink-0" />
-      <span className="text-[12.5px] font-semibold text-gray-700 leading-tight">{label}</span>
+      <span className="text-[12.5px] font-semibold text-[#BDBDBD] leading-tight">{label}</span>
     </button>
   );
 }
@@ -370,14 +370,14 @@ function ActionBtn({ label, icon: Icon, color, onClick }: {
 function LogEntry({ entry }: { entry: ModerationLog }) {
   const actionColors: Record<string, string> = {
     permanent_ban: '#E74C3C', suspend_30d: '#E67E22', suspend_7d: '#E67E22',
-    suspend_1d: '#FF8C42', send_warning: '#FF8C42', restrict_account: '#9B59B6',
+    suspend_1d: '#FF8C42', send_warning: '#FF8C42', restrict_account: '#F5C542',
     remove_content: '#E74C3C', restore_content: '#27AE60', dismiss: '#95A5A6',
     resolve: '#27AE60', assign: '#2980B9', unban: '#27AE60',
   };
-  const color = actionColors[entry.action] ?? '#6B73FF';
+  const color = actionColors[entry.action] ?? '#F5C542';
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+    <div className="flex items-start gap-3 py-3 border-b border-[#222] last:border-0">
       <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: color + '20' }}>
         <Activity size={12} style={{ color }} />
       </div>
@@ -386,15 +386,15 @@ function LogEntry({ entry }: { entry: ModerationLog }) {
           <span className="text-[12.5px] font-bold" style={{ color }}>
             {entry.action.replace(/_/g, ' ')}
           </span>
-          <span className="text-[11.5px] text-gray-400">{relDate(entry.createdAt)}</span>
+          <span className="text-[11.5px] text-[rgba(255,255,255,0.45)]">{relDate(entry.createdAt)}</span>
         </div>
-        <p className="text-[12.5px] text-gray-600 mt-0.5">
+        <p className="text-[12.5px] text-[#BDBDBD] mt-0.5">
           by <span className="font-semibold">{entry.moderatorId.slice(0, 8)}…</span>
           {' → '}<span className="font-semibold">{entry.targetType}: {entry.targetId.slice(0, 8)}…</span>
         </p>
-        {entry.explanation && <p className="text-[12px] text-gray-400 mt-0.5 italic">"{entry.explanation}"</p>}
+        {entry.explanation && <p className="text-[12px] text-[rgba(255,255,255,0.45)] mt-0.5 italic">"{entry.explanation}"</p>}
         {entry.reason && entry.reason !== entry.explanation && (
-          <p className="text-[12px] text-gray-400 italic">Reason: {entry.reason}</p>
+          <p className="text-[12px] text-[rgba(255,255,255,0.45)] italic">Reason: {entry.reason}</p>
         )}
       </div>
     </div>
@@ -410,15 +410,15 @@ function SuspendedCard({ item, onUnban, type }: {
 }) {
   const when = type === 'banned' ? item.bannedAt : item.suspendedAt;
   return (
-    <div className="bg-white rounded-[18px] border border-black/[0.04] shadow-sm p-4">
+    <div className="bg-[#111] rounded-[18px] border border-[#1a1a1a] shadow-sm p-4">
       <div className="flex items-start gap-3">
         <div className={cn('w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0', type === 'banned' ? 'bg-red-100' : 'bg-orange-100')}>
           {type === 'banned' ? <Ban size={16} className="text-red-500" /> : <Clock size={16} className="text-orange-500" />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13.5px] font-bold text-gray-800 font-mono">{item.userId.slice(0, 20)}…</p>
-          <p className="text-[12px] text-gray-500 mt-0.5">{item.reason}</p>
-          {when && <p className="text-[11.5px] text-gray-400 mt-0.5">{type === 'banned' ? 'Banned' : 'Suspended'} {relDate(when)}</p>}
+          <p className="text-[13.5px] font-bold text-white font-mono">{item.userId.slice(0, 20)}…</p>
+          <p className="text-[12px] text-[#BDBDBD] mt-0.5">{item.reason}</p>
+          {when && <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] mt-0.5">{type === 'banned' ? 'Banned' : 'Suspended'} {relDate(when)}</p>}
           {type === 'suspended' && item.expiresAt && (
             <p className="text-[11.5px] text-orange-500 mt-0.5">
               Expires {new Date(item.expiresAt).toLocaleDateString()}
@@ -581,13 +581,13 @@ export default function ModerationDashboard() {
   // ── Not authorized ──
   if (!checkingAdmin && !isAdmin) {
     return (
-      <div className="min-h-screen bg-[#FDF9F6] flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 text-center">
         <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
           <Shield size={28} className="text-red-400" />
         </div>
-        <h1 className="text-[20px] font-black text-gray-900 mb-2">Access Denied</h1>
-        <p className="text-[14px] text-gray-500 mb-6">You don't have permission to access the moderation dashboard.</p>
-        <Link href="/home"><button className="px-6 py-3 rounded-full bg-purple-500 text-white font-bold text-[14px]">Go Home</button></Link>
+        <h1 className="text-[20px] font-black text-white mb-2">Access Denied</h1>
+        <p className="text-[14px] text-[#BDBDBD] mb-6">You don't have permission to access the moderation dashboard.</p>
+        <Link href="/home"><button className="px-6 py-3 rounded-full bg-[#F5C542] text-white font-bold text-[14px]">Go Home</button></Link>
       </div>
     );
   }
@@ -632,13 +632,13 @@ export default function ModerationDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] pb-32">
+    <div className="min-h-screen bg-black pb-32">
       {/* Toast */}
       <AnimatePresence>
         {toastVisible && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-gray-900 text-white text-[13.5px] font-semibold shadow-xl whitespace-nowrap flex items-center gap-2">
-            <Check size={14} className="text-purple-400" />
+            <Check size={14} className="text-[#F5C542]" />
             {toast}
           </motion.div>
         )}
@@ -657,26 +657,26 @@ export default function ModerationDashboard() {
       </AnimatePresence>
 
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-[#FDF9F6]/95 backdrop-blur-sm border-b border-black/[0.04] px-4 pt-4 pb-3">
+      <div className="sticky top-0 z-40 bg-black/95 backdrop-blur-sm border-b border-[#1a1a1a] px-4 pt-4 pb-3">
         <div className="flex items-center gap-3 mb-3">
           <Link href="/settings">
-            <button className="w-8 h-8 rounded-full bg-white border border-black/[0.06] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
-              <ChevronLeft size={17} className="text-gray-600" />
+            <button className="w-8 h-8 rounded-full bg-[#111] border border-[#1a1a1a] flex items-center justify-center shadow-sm hover:shadow-md transition-all">
+              <ChevronLeft size={17} className="text-[#BDBDBD]" />
             </button>
           </Link>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #7C3AED, #D4AF37)' }}>
+              style={{ background: 'linear-gradient(135deg, #F5C542, #D4AF37)' }}>
               <Crown size={13} className="text-white" />
             </div>
             <div>
-              <h1 className="text-[18px] font-black text-gray-900 leading-tight">Moderation</h1>
-              {isFounder && <p className="text-[11px] text-purple-600 font-bold -mt-0.5">Founder View</p>}
+              <h1 className="text-[18px] font-black text-white leading-tight">Moderation</h1>
+              {isFounder && <p className="text-[11px] text-[#F5C542] font-bold -mt-0.5">Founder View</p>}
             </div>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => loadTab(activeTab)} className="w-8 h-8 rounded-full bg-white border border-black/[0.06] flex items-center justify-center shadow-sm">
-              <RefreshCw size={14} className="text-gray-500" />
+            <button onClick={() => loadTab(activeTab)} className="w-8 h-8 rounded-full bg-[#111] border border-[#1a1a1a] flex items-center justify-center shadow-sm">
+              <RefreshCw size={14} className="text-[#BDBDBD]" />
             </button>
           </div>
         </div>
@@ -685,32 +685,32 @@ export default function ModerationDashboard() {
         {reportTabs.has(activeTab) && (
           <div className="space-y-2 mb-3">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]" />
               <input
                 value={search} onChange={e => { setSearch(e.target.value); setHandleInput(''); setResolvedUid(null); }}
                 placeholder="Search by reason, content, or user UID…"
-                className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-white border border-black/[0.06] text-[13.5px] text-gray-800 outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition-all"
+                className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13.5px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
               />
             </div>
             {/* Handle-to-UID resolver */}
             <div className="relative">
-              <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]" />
               <input
                 value={handleInput}
                 onChange={e => { setHandleInput(e.target.value); setSearch(''); }}
                 placeholder="Filter by @handle…"
-                className="w-full pl-8 pr-3 py-2 rounded-xl bg-white border border-black/[0.06] text-[13px] text-gray-800 outline-none focus:border-purple-300 focus:ring-2 focus:ring-purple-100 transition-all"
+                className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#111] border border-[#1a1a1a] text-[13px] text-white outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
               />
               {handleInput.trim() && (
                 <button onClick={() => { setHandleInput(''); setResolvedUid(null); setHandleLookupState('idle'); }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)] hover:text-[#BDBDBD]">
                   <X size={13} />
                 </button>
               )}
             </div>
             {handleLookupState === 'found' && resolvedHandle && resolvedUid && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-xl text-[12px] text-purple-700 font-medium">
-                <Check size={12} className="text-purple-500" />
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[rgba(245,197,66,0.08)] border border-[rgba(245,197,66,0.25)] rounded-xl text-[12px] text-purple-700 font-medium">
+                <Check size={12} className="text-[#F5C542]" />
                 @{resolvedHandle} → {resolvedUid.slice(0, 12)}…
               </div>
             )}
@@ -728,13 +728,13 @@ export default function ModerationDashboard() {
             return (
               <button key={t.id} onClick={() => setActiveTab(t.id)}
                 className={cn('flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-bold flex-shrink-0 transition-all',
-                  active ? 'text-white shadow-sm' : 'bg-white text-gray-500 border border-gray-100')}
-                style={active ? { background: 'linear-gradient(135deg, #7C3AED, #D4AF37)' } : {}}
+                  active ? 'text-white shadow-sm' : 'bg-[#111] text-[#BDBDBD] border border-[#222]')}
+                style={active ? { background: 'linear-gradient(135deg, #F5C542, #D4AF37)' } : {}}
               >
                 <Icon size={11} />
                 {t.label}
                 {active && reportTabs.has(t.id) && reports.length > 0 && (
-                  <span className="bg-white/25 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                  <span className="bg-[#111]/25 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
                     {reports.length}
                   </span>
                 )}
@@ -747,13 +747,13 @@ export default function ModerationDashboard() {
       <div className="px-4 pt-4 space-y-3">
         {checkingAdmin || loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-[22px] h-28 animate-pulse" />
+            <div key={i} className="bg-[#111] rounded-[22px] h-28 animate-pulse" />
           ))
         ) : activeTab === 'log' ? (
           log.length === 0 ? (
             <EmptyState icon={Activity} title="No actions yet" desc="Moderation actions will appear here." />
           ) : (
-            <div className="bg-white rounded-[22px] border border-black/[0.04] shadow-sm divide-y divide-gray-100 px-4">
+            <div className="bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm divide-y divide-gray-100 px-4">
               {log.map(e => <LogEntry key={e.id} entry={e} />)}
             </div>
           )
@@ -800,11 +800,11 @@ export default function ModerationDashboard() {
 function EmptyState({ icon: Icon, title, desc }: { icon: React.ElementType; title: string; desc: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-        <Icon size={28} className="text-gray-300" />
+      <div className="w-16 h-16 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-4">
+        <Icon size={28} className="text-[rgba(255,255,255,0.35)]" />
       </div>
-      <p className="text-[17px] font-black text-gray-900 mb-2">{title}</p>
-      <p className="text-[13.5px] text-gray-400 max-w-[220px] leading-relaxed">{desc}</p>
+      <p className="text-[17px] font-black text-white mb-2">{title}</p>
+      <p className="text-[13.5px] text-[rgba(255,255,255,0.45)] max-w-[220px] leading-relaxed">{desc}</p>
     </div>
   );
 }

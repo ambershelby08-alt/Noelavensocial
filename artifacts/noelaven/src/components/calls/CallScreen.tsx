@@ -178,13 +178,13 @@ export function CallScreen({
             <div className="absolute top-14 right-4 flex gap-2">
               <button
                 onClick={e => { e.stopPropagation(); onMinimize(); }}
-                className="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+                className="w-8 h-8 rounded-full bg-[#111]/15 backdrop-blur-sm flex items-center justify-center"
               >
                 <Minimize2 size={14} className="text-white" />
               </button>
               <button
                 onClick={e => { e.stopPropagation(); handleFullScreen(); }}
-                className="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center"
+                className="w-8 h-8 rounded-full bg-[#111]/15 backdrop-blur-sm flex items-center justify-center"
               >
                 <Maximize2 size={14} className="text-white" />
               </button>
@@ -199,7 +199,7 @@ export function CallScreen({
                     {[1, 2, 3].map(i => (
                       <motion.div
                         key={i}
-                        className="absolute rounded-full border border-purple-400/40"
+                        className="absolute rounded-full border border-[#F5C542]/40"
                         animate={{ scale: [1, 2.8], opacity: [0.5, 0] }}
                         transition={{ duration: 2, repeat: Infinity, delay: i * 0.65, ease: 'easeOut' }}
                         style={{ width: 120, height: 120 }}
@@ -252,7 +252,7 @@ export function CallScreen({
                 data-testid="call-status"
                 animate={{ opacity: [1, 0.4, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity }}
-                className="text-[13px] text-blue-300 font-semibold mt-1"
+                className="text-[13px] text-[#F5C542] font-semibold mt-1"
               >
                 Connecting…
               </motion.p>
@@ -261,7 +261,7 @@ export function CallScreen({
                 data-testid="call-status"
                 animate={{ opacity: [1, 0.4, 1] }}
                 transition={{ duration: 1.2, repeat: Infinity }}
-                className="text-[13px] text-purple-300 font-semibold mt-1"
+                className="text-[13px] text-[#F5C542] font-semibold mt-1"
               >
                 {isVideo ? '📹 Video calling…' : '📞 Calling…'}
               </motion.p>
@@ -405,7 +405,7 @@ function ControlBtn({
     >
       <div className={cn(
         'w-[54px] h-[54px] rounded-full flex items-center justify-center transition-colors backdrop-blur-sm',
-        active ? 'bg-white/15' : 'bg-white/25'
+        active ? 'bg-[#111]/15' : 'bg-[#111]/25'
       )}>
         {icon}
       </div>
@@ -441,7 +441,7 @@ export function IncomingCallBanner({ callerName, callerAvatar, callerId, type, o
           <motion.div
             animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
             transition={{ duration: 1.2, repeat: Infinity }}
-            className="absolute inset-0 rounded-full bg-purple-500"
+            className="absolute inset-0 rounded-full bg-[#F5C542]"
           />
           <div className="w-12 h-12 rounded-full overflow-hidden relative">
             <UserAvatar userId={callerId} fallbackName={callerName} fallbackSrc={callerAvatar} size={48} />
@@ -449,7 +449,7 @@ export function IncomingCallBanner({ callerName, callerAvatar, callerId, type, o
         </div>
         <div className="flex-1 min-w-0">
           <p data-testid="incoming-caller-name" className="text-white font-black text-[15px] truncate">{callerName}</p>
-          <p className="text-purple-300 text-[12px] font-medium">
+          <p className="text-[#F5C542] text-[12px] font-medium">
             {type === 'voice' ? '📞 Incoming voice call' : '📹 Incoming video call'}
           </p>
         </div>

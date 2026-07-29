@@ -7,6 +7,19 @@
   from { width: 0% }
   to   { width: 100% }
 }
+
+/* Gold shimmer animation */
+@keyframes gold-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Gold pulse */
+@keyframes gold-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,197,66,0.4); }
+  50%       { box-shadow: 0 0 0 8px rgba(245,197,66,0); }
+}
+
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
@@ -70,76 +83,79 @@
   --radius-full: 9999px;
 }
 
+/* ── Premium Black & Gold Theme ───────────────────────────────────── */
 :root {
-  --background: 30 50% 97%;
-  --foreground: 240 10% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 240 10% 10%;
-  --card-border: 30 20% 90%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 10%;
-  --popover-border: 30 20% 90%;
-  --primary: 258 90% 66%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 217 91% 60%;
+  /* Backgrounds */
+  --background: 0 0% 0%;          /* #000000 pure black */
+  --foreground: 0 0% 100%;        /* #FFFFFF */
+
+  /* Cards */
+  --card: 0 0% 7%;                /* #111111 */
+  --card-foreground: 0 0% 100%;
+  --card-border: 0 0% 12%;        /* subtle dark border */
+
+  /* Popovers / sheets */
+  --popover: 0 0% 9%;             /* #181818 */
+  --popover-foreground: 0 0% 100%;
+  --popover-border: 0 0% 14%;
+
+  /* Gold accent as primary */
+  --primary: 43 90% 61%;          /* #F5C542 gold */
+  --primary-foreground: 0 0% 0%;  /* black text on gold */
+  --primary-border: #F5C542;
+
+  /* Secondary surface */
+  --secondary: 0 0% 11%;          /* #1C1C1C */
   --secondary-foreground: 0 0% 100%;
-  --muted: 30 25% 93%;
-  --muted-foreground: 240 5% 46%;
-  --accent: 174 80% 40%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 84.2% 60.2%;
+  --secondary-border: #2a2a2a;
+
+  /* Muted */
+  --muted: 0 0% 10%;              /* #1A1A1A */
+  --muted-foreground: 0 0% 74%;   /* #BDBDBD */
+  --muted-border: #222222;
+
+  /* Accent (gold, same as primary) */
+  --accent: 43 90% 61%;
+  --accent-foreground: 0 0% 0%;
+  --accent-border: #F5C542;
+
+  /* Destructive */
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --border: 30 18% 88%;
-  --input: 30 18% 88%;
-  --ring: 258 90% 66%;
-  
-  --sidebar: 0 0% 100%;
-  --sidebar-foreground: 240 10% 10%;
-  --sidebar-border: 240 5.9% 90%;
-  --sidebar-primary: 258 90% 66%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 4.8% 95.9%;
-  --sidebar-accent-foreground: 240 10% 10%;
-  --sidebar-ring: 258 90% 66%;
+  --destructive-border: #ef4444;
+
+  /* Borders / inputs */
+  --border: 0 0% 14%;             /* #242424 */
+  --input: 0 0% 14%;
+  --ring: 43 90% 61%;             /* gold focus ring */
+
+  /* Sidebar */
+  --sidebar: 0 0% 4%;             /* #0A0A0A */
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-border: 0 0% 12%;
+  --sidebar-primary: 43 90% 61%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-primary-border: #F5C542;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-accent-border: #222;
+  --sidebar-ring: 43 90% 61%;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: 1rem;
+
+  /* Brand tokens */
+  --gold: #F5C542;
+  --gold-dim: #C9982A;
+  --surface-card: #111111;
+  --surface-secondary: #181818;
+  --text-primary: #FFFFFF;
+  --text-secondary: #BDBDBD;
 }
 
-.dark {
-  --background: 248 24% 7%;
-  --foreground: 0 0% 98%;
-  --card: 248 24% 10%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 248 24% 18%;
-  --popover: 248 24% 10%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 248 24% 18%;
-  --primary: 258 90% 70%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 217 91% 65%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 248 24% 15%;
-  --muted-foreground: 240 5% 65%;
-  --accent: 174 80% 45%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 248 24% 18%;
-  --input: 248 24% 18%;
-  --ring: 258 90% 70%;
-  
-  --sidebar: 248 24% 9%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 248 24% 18%;
-  --sidebar-primary: 258 90% 70%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 248 24% 15%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-ring: 258 90% 70%;
-}
+/* No separate dark block needed — the app is always dark */
 
 @layer base {
   * {
@@ -147,13 +163,47 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    background-color: #000000;
+    color: #FFFFFF;
   }
 }
 
+/* ── Utility classes ───────────────────────────────────────────────── */
+
+/* Gold gradient text */
 .gradient-text {
-  @apply text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent;
+  background: linear-gradient(135deg, #F5C542, #FFE08A, #F5C542);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
+/* Gold gradient background */
 .gradient-bg {
-  @apply bg-gradient-to-br from-primary via-secondary to-accent;
+  background: linear-gradient(135deg, #F5C542, #C9982A);
+}
+
+/* Rainbow ring — only for logo / story rings */
+.rainbow-ring {
+  background: conic-gradient(#EC4899, #7C3AED, #2563EB, #06B6D4, #10B981, #F59E0B, #EC4899);
+}
+
+/* Gold shimmer effect */
+.gold-shimmer {
+  background: linear-gradient(90deg, #C9982A 0%, #F5C542 40%, #FFE08A 50%, #F5C542 60%, #C9982A 100%);
+  background-size: 200% auto;
+  animation: gold-shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card shadow — subtle dark */
+.card-shadow {
+  box-shadow: 0 2px 16px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* Gold glow */
+.gold-glow {
+  box-shadow: 0 0 20px rgba(245,197,66,0.35), 0 0 60px rgba(245,197,66,0.12);
 }

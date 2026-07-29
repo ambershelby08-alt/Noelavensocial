@@ -43,23 +43,23 @@ export function ReactorsModal({ reactions, resolveUser, onClose }: ReactorsModal
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-        className="fixed inset-x-0 bottom-0 z-[85] bg-white rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed inset-x-0 bottom-0 z-[85] bg-[#111] rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: '72dvh' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+          <div className="w-10 h-1 rounded-full bg-[#222]" />
         </div>
 
         <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
-          <p className="font-black text-[17px] text-gray-900">
+          <p className="font-black text-[17px] text-white">
             {totalCount} {totalCount === 1 ? 'Reaction' : 'Reactions'}
           </p>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+            className="w-8 h-8 rounded-full bg-[#1a1a1a] flex items-center justify-center hover:bg-[#222] transition-colors"
           >
-            <X size={15} className="text-gray-600" />
+            <X size={15} className="text-[#BDBDBD]" />
           </button>
         </div>
 
@@ -76,8 +76,8 @@ export function ReactorsModal({ reactions, resolveUser, onClose }: ReactorsModal
                   onClick={() => setActiveEmoji(emoji)}
                   className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-bold transition-all ${
                     active
-                      ? 'bg-purple-100 text-purple-700 ring-1 ring-purple-300'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      ? 'bg-[rgba(245,197,66,0.15)] text-purple-700 ring-1 ring-purple-300'
+                      : 'bg-[#1a1a1a] text-[#BDBDBD] hover:bg-[#222]'
                   }`}
                 >
                   <span className="text-[15px]">{isAll ? '✦' : emoji}</span>
@@ -88,14 +88,14 @@ export function ReactorsModal({ reactions, resolveUser, onClose }: ReactorsModal
           </div>
         )}
 
-        <div className="h-px bg-gray-100 flex-shrink-0" />
+        <div className="h-px bg-[#1a1a1a] flex-shrink-0" />
 
         <div className="flex-1 overflow-y-auto px-5 py-2">
           <AnimatePresence mode="popLayout">
             {displayed.length === 0 ? (
               <motion.p
                 key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="text-center text-gray-400 text-[14px] py-10"
+                className="text-center text-[rgba(255,255,255,0.45)] text-[14px] py-10"
               >
                 No reactions yet
               </motion.p>
@@ -122,10 +122,10 @@ export function ReactorsModal({ reactions, resolveUser, onClose }: ReactorsModal
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-[14px] text-gray-900 truncate">
+                      <p className="font-bold text-[14px] text-white truncate">
                         {user?.displayName ?? 'Someone'}
                       </p>
-                      <p className="text-[12px] text-purple-500 font-medium">
+                      <p className="text-[12px] text-[#F5C542] font-medium">
                         {emoji} {getLabelForEmoji(emoji)}
                       </p>
                     </div>

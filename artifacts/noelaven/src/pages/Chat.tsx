@@ -89,7 +89,7 @@ function DateSeparator({ date }: { date: Date }) {
   return (
     <div className="flex items-center gap-3 my-4 px-4">
       <div className="flex-1 h-px bg-black/[0.06]" />
-      <span className="text-[11.5px] font-semibold text-gray-400 whitespace-nowrap px-1">{fmtDate(date)}</span>
+      <span className="text-[11.5px] font-semibold text-[rgba(255,255,255,0.45)] whitespace-nowrap px-1">{fmtDate(date)}</span>
       <div className="flex-1 h-px bg-black/[0.06]" />
     </div>
   );
@@ -106,7 +106,7 @@ function TypingIndicator({ user }: { user: User }) {
       className="flex items-end gap-2 px-4 mb-1"
     >
       <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={(user as any).avatarUrl || undefined} size={28} className="flex-shrink-0 mb-0.5" />
-      <div className="px-4 py-3 bg-white rounded-[20px] rounded-bl-sm border border-black/[0.05] shadow-sm">
+      <div className="px-4 py-3 bg-[#111] rounded-[20px] rounded-bl-sm border border-[#1a1a1a] shadow-sm">
         <div className="flex gap-1.5 items-center h-4">
           {[0, 1, 2].map(i => (
             <motion.div key={i} className="w-2 h-2 rounded-full bg-gray-400"
@@ -137,11 +137,11 @@ function QuotedPreview({ preview, isMe }: {
       className={cn(
         'px-3 py-2 mb-2 rounded-xl border-l-[3px] text-[12.5px] leading-tight max-w-full',
         isMe
-          ? 'bg-white/20 border-white/70 text-white/90'
-          : 'bg-gray-100 border-purple-400 text-gray-600'
+          ? 'bg-[#111]/20 border-white/70 text-white/90'
+          : 'bg-[#1a1a1a] border-[#F5C542] text-[#BDBDBD]'
       )}
     >
-      <div className={cn('font-bold mb-0.5 text-[11.5px]', isMe ? 'text-white/80' : 'text-purple-500')}>
+      <div className={cn('font-bold mb-0.5 text-[11.5px]', isMe ? 'text-white/80' : 'text-[#F5C542]')}>
         {preview.senderName}
       </div>
       <div className="truncate">{previewText}</div>
@@ -177,7 +177,7 @@ function VoiceWaveform({ bars, isMe, progress = 0 }: {
             x={x} y={y} width={barW} height={h}
             rx={1}
             fill={isMe ? (isPast ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)')
-                       : (isPast ? '#6B73FF' : '#C4C0FF')}
+                       : (isPast ? '#F5C542' : '#C4C0FF')}
           />
         );
       })}
@@ -227,13 +227,13 @@ function VoiceMessageBubble({ msg, isMe }: { msg: LocalMsg; isMe: boolean }) {
         onClick={togglePlay}
         className={cn(
           'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-colors',
-          isMe ? 'bg-white/25 text-white hover:bg-white/35' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+          isMe ? 'bg-[#111]/25 text-white hover:bg-[#111]/35' : 'bg-[rgba(245,197,66,0.15)] text-[#F5C542] hover:bg-[rgba(245,197,66,0.2)]'
         )}
       >
         {playing ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
       </button>
       <VoiceWaveform bars={bars} isMe={isMe} progress={progress} />
-      <span className={cn('text-[11.5px] font-semibold flex-shrink-0', isMe ? 'text-white/80' : 'text-gray-400')}>
+      <span className={cn('text-[11.5px] font-semibold flex-shrink-0', isMe ? 'text-white/80' : 'text-[rgba(255,255,255,0.45)]')}>
         {formatVoiceDuration(duration)}
       </span>
     </div>
@@ -250,9 +250,9 @@ function ImageBubble({ msg, isMe, onOpen }: { msg: LocalMsg; isMe: boolean; onOp
     return (
       <div
         className="relative overflow-hidden rounded-[18px] w-52 h-44 flex items-center justify-center"
-        style={{ background: isMe ? 'rgba(107,115,255,0.35)' : '#F3F0FF' }}
+        style={{ background: isMe ? 'rgba(245,197,66,0.35)' : '#F3F0FF' }}
       >
-        <ImageIcon size={22} className={isMe ? 'text-white/70' : 'text-purple-400'} />
+        <ImageIcon size={22} className={isMe ? 'text-white/70' : 'text-[#F5C542]'} />
       </div>
     );
   }
@@ -263,8 +263,8 @@ function ImageBubble({ msg, isMe, onOpen }: { msg: LocalMsg; isMe: boolean; onOp
       onClick={() => onOpen?.(url)}
     >
       {!loaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-200 z-10 rounded-[18px]">
-          <Loader2 size={20} className="text-gray-400 animate-spin" />
+        <div className="absolute inset-0 flex items-center justify-center bg-[#222] z-10 rounded-[18px]">
+          <Loader2 size={20} className="text-[rgba(255,255,255,0.45)] animate-spin" />
         </div>
       )}
       <img
@@ -287,17 +287,17 @@ function PostShareBubble({ post, isMe }: {
     <div
       className={cn(
         'rounded-[16px] overflow-hidden border w-64',
-        isMe ? 'bg-white/20 border-white/30' : 'bg-white border-black/[0.07]'
+        isMe ? 'bg-[#111]/20 border-white/30' : 'bg-[#111] border-black/[0.07]'
       )}
     >
       {post.imageUrl && (
         <img src={post.imageUrl} alt="" className="w-full h-32 object-cover" />
       )}
       <div className="px-3 py-2.5">
-        <div className={cn('text-[11px] font-semibold mb-1', isMe ? 'text-white/70' : 'text-purple-500')}>
+        <div className={cn('text-[11px] font-semibold mb-1', isMe ? 'text-white/70' : 'text-[#F5C542]')}>
           📌 {post.authorName}
         </div>
-        <p className={cn('text-[13px] line-clamp-2 leading-snug', isMe ? 'text-white/90' : 'text-gray-700')}>
+        <p className={cn('text-[13px] line-clamp-2 leading-snug', isMe ? 'text-white/90' : 'text-[#BDBDBD]')}>
           {post.content}
         </p>
       </div>
@@ -322,7 +322,7 @@ function ReactionDisplay({ reactions, currentUserId, onReact, isMe }: {
           <motion.button key={emoji} whileTap={{ scale: 0.88 }} onClick={() => onReact(emoji)}
             className={cn(
               'flex items-center gap-1 px-2.5 py-[3px] rounded-full text-[12.5px] font-semibold border transition-all',
-              active ? 'bg-purple-100 border-purple-200 text-purple-700' : 'bg-white border-black/[0.06] text-gray-600 hover:bg-gray-50'
+              active ? 'bg-[rgba(245,197,66,0.15)] border-[rgba(245,197,66,0.25)] text-purple-700' : 'bg-[#111] border-[#1a1a1a] text-[#BDBDBD] hover:bg-[#111]'
             )}
           >
             <span>{emoji}</span><span>{users.length}</span>
@@ -348,7 +348,7 @@ function ReactionPicker({ isMe, reactions, currentUserId, onReact }: {
       exit={{ opacity: 0, scale: 0.7, y: 10 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       className={cn(
-        'absolute -top-14 flex items-center gap-0.5 bg-white rounded-full shadow-2xl border border-black/[0.08] px-2 py-1.5 z-20',
+        'absolute -top-14 flex items-center gap-0.5 bg-[#111] rounded-full shadow-2xl border border-[#2a2a2a] px-2 py-1.5 z-20',
         isMe ? 'right-0' : 'left-0'
       )}
     >
@@ -357,7 +357,7 @@ function ReactionPicker({ isMe, reactions, currentUserId, onReact }: {
         return (
           <motion.button key={emoji} whileHover={{ scale: 1.3, y: -3 }} whileTap={{ scale: 0.85 }}
             onClick={() => onReact(emoji)}
-            className={cn('w-9 h-9 rounded-full flex items-center justify-center text-[18px] transition-colors', active ? 'bg-purple-100' : 'hover:bg-gray-100')}
+            className={cn('w-9 h-9 rounded-full flex items-center justify-center text-[18px] transition-colors', active ? 'bg-[rgba(245,197,66,0.15)]' : 'hover:bg-[#1a1a1a]')}
           >
             {emoji}
           </motion.button>
@@ -415,13 +415,13 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
     const isVideo_ = msg.callType === 'video';
     return (
       <div className="flex items-center justify-center py-1">
-        <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gray-100/80 rounded-full text-[12px] text-gray-500 border border-black/[0.04]">
+        <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1a1a1a]/80 rounded-full text-[12px] text-[#BDBDBD] border border-[#1a1a1a]">
           {missed ? (
             <PhoneMissed size={13} className="text-red-400 flex-shrink-0" />
           ) : isVideo_ ? (
-            <Video size={13} className="text-purple-400 flex-shrink-0" />
+            <Video size={13} className="text-[#F5C542] flex-shrink-0" />
           ) : (
-            <Phone size={13} className="text-purple-400 flex-shrink-0" />
+            <Phone size={13} className="text-[#F5C542] flex-shrink-0" />
           )}
           <span className={missed ? 'text-red-400 font-medium' : ''}>{msg.content}</span>
         </div>
@@ -433,7 +433,7 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
   if (msg.deletedForEveryone) {
     return (
       <div className={cn('flex', isMe ? 'justify-end' : 'justify-start')}>
-        <span className="text-[12.5px] text-gray-400 italic px-3 py-2 bg-gray-100 rounded-2xl border border-black/[0.04]">
+        <span className="text-[12.5px] text-[rgba(255,255,255,0.45)] italic px-3 py-2 bg-[#1a1a1a] rounded-2xl border border-[#1a1a1a]">
           This message was deleted
         </span>
       </div>
@@ -451,7 +451,7 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
 
       {/* Forwarded label */}
       {msg.forwardedFrom && (
-        <div className={cn('flex items-center gap-1 mb-1 text-[11px] text-gray-400', isMe ? 'justify-end' : 'justify-start')}>
+        <div className={cn('flex items-center gap-1 mb-1 text-[11px] text-[rgba(255,255,255,0.45)]', isMe ? 'justify-end' : 'justify-start')}>
           <Forward size={11} />
           <span>Forwarded from <strong>{msg.forwardedFrom.senderName}</strong></span>
         </div>
@@ -469,11 +469,11 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
         className={cn(
           'cursor-pointer relative select-none',
           bubbleRadius,
-          isMedia ? '' : (isMe ? 'px-4 py-2.5 text-white' : 'px-4 py-2.5 bg-white border border-black/[0.06] text-gray-800 shadow-sm')
+          isMedia ? '' : (isMe ? 'px-4 py-2.5 text-white' : 'px-4 py-2.5 bg-[#111] border border-[#1a1a1a] text-white shadow-sm')
         )}
         style={!isMedia && isMe ? {
           background: 'linear-gradient(135deg, #6B73FF 0%, #9B59B6 50%, #FF6B9D 100%)',
-          boxShadow: '0 3px 14px rgba(107,115,255,0.30)',
+          boxShadow: '0 3px 14px rgba(245,197,66,0.30)',
         } : {}}
       >
         {/* Reply quote */}
@@ -483,8 +483,8 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
 
         {/* Content */}
         {isVoice ? (
-          <div className={cn('px-3 py-2.5 rounded-[22px]', isMe ? 'text-white' : 'bg-white border border-black/[0.06] shadow-sm', bubbleRadius)}
-            style={isMe ? { background: 'linear-gradient(135deg, #6B73FF 0%, #9B59B6 50%, #FF6B9D 100%)', boxShadow: '0 3px 14px rgba(107,115,255,0.30)' } : {}}>
+          <div className={cn('px-3 py-2.5 rounded-[22px]', isMe ? 'text-white' : 'bg-[#111] border border-[#1a1a1a] shadow-sm', bubbleRadius)}
+            style={isMe ? { background: 'linear-gradient(135deg, #6B73FF 0%, #9B59B6 50%, #FF6B9D 100%)', boxShadow: '0 3px 14px rgba(245,197,66,0.30)' } : {}}>
             <VoiceMessageBubble msg={msg} isMe={isMe} />
           </div>
         ) : isImage ? (
@@ -508,13 +508,13 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
 
         {/* Edited label */}
         {msg.editedAt && !isMedia && (
-          <span className={cn('text-[10.5px] ml-1', isMe ? 'text-white/60' : 'text-gray-400')}>(edited)</span>
+          <span className={cn('text-[10.5px] ml-1', isMe ? 'text-white/60' : 'text-[rgba(255,255,255,0.45)]')}>(edited)</span>
         )}
 
         {/* Pending spinner / failed indicator */}
         {msg.pending && !msg.failed && (
           <div className="absolute -bottom-1 -right-1">
-            <Loader2 size={12} className="text-gray-400 animate-spin" />
+            <Loader2 size={12} className="text-[rgba(255,255,255,0.45)] animate-spin" />
           </div>
         )}
         {msg.failed && (
@@ -534,7 +534,7 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
               return <UserAvatar key={rid} userId={reader.id} fallbackName={reader.displayName} fallbackSrc={(reader as any).avatarUrl || undefined} size={14} />;
             })}
           </div>
-          <span className="text-[10px] text-purple-400 font-semibold">Read</span>
+          <span className="text-[10px] text-[#F5C542] font-semibold">Read</span>
         </div>
       )}
       {isMe && isLast && !readByOthers.length && (
@@ -548,9 +548,9 @@ function MessageBubble({ msg, isMe, isFirst, isLast, isGroup, participants, curr
               Tap to retry
             </button>
           ) : msg.pending ? (
-            <span className="text-[10px] text-gray-400">Sending…</span>
+            <span className="text-[10px] text-[rgba(255,255,255,0.45)]">Sending…</span>
           ) : (
-            <CheckCheck size={12} className="text-purple-400" />
+            <CheckCheck size={12} className="text-[#F5C542]" />
           )}
         </div>
       )}
@@ -606,19 +606,19 @@ function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCop
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[28px] shadow-2xl pb-8"
+        className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl pb-8"
       >
         <div className="flex justify-center pt-3 pb-4">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
         </div>
         {/* Quick reactions at top */}
-        <div className="flex justify-center gap-2 px-5 pb-4 border-b border-black/[0.05]">
+        <div className="flex justify-center gap-2 px-5 pb-4 border-b border-[#1a1a1a]">
           {QUICK_REACTIONS.map(emoji => {
             const active = msg.reactions?.[emoji]?.includes(msg.senderId);
             return (
               <motion.button key={emoji} whileTap={{ scale: 0.85 }} whileHover={{ scale: 1.2, y: -3 }}
                 onClick={() => { onReact(emoji); onClose(); }}
-                className={cn('w-11 h-11 rounded-full flex items-center justify-center text-[22px] transition-colors', active ? 'bg-purple-100' : 'hover:bg-gray-100')}
+                className={cn('w-11 h-11 rounded-full flex items-center justify-center text-[22px] transition-colors', active ? 'bg-[rgba(245,197,66,0.15)]' : 'hover:bg-[#1a1a1a]')}
               >
                 {emoji}
               </motion.button>
@@ -630,10 +630,10 @@ function BubbleActionSheet({ msg, isMe, isGroup, onClose, onReply, onEdit, onCop
             <button key={a.id} onClick={() => handle(a.id)}
               className={cn(
                 'w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-colors',
-                a.danger ? 'hover:bg-red-50 text-red-500' : 'hover:bg-black/[0.04] text-gray-800'
+                a.danger ? 'hover:bg-red-50 text-red-500' : 'hover:bg-black/[0.04] text-white'
               )}
             >
-              <span className={a.danger ? 'text-red-400' : 'text-gray-500'}>{a.icon}</span>
+              <span className={a.danger ? 'text-red-400' : 'text-[#BDBDBD]'}>{a.icon}</span>
               <span className={cn('font-semibold text-[15px]', a.danger && 'text-red-500')}>{a.label}</span>
             </button>
           ))}
@@ -664,17 +664,17 @@ function ReplyBanner({ msg, participants, onCancel }: {
       initial={{ height: 0, opacity: 0 }}
       animate={{ height: 'auto', opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
-      className="px-4 py-2.5 bg-purple-50 border-t border-purple-100 flex items-center gap-3"
+      className="px-4 py-2.5 bg-[rgba(245,197,66,0.08)] border-t border-[rgba(245,197,66,0.2)] flex items-center gap-3"
     >
-      <CornerUpLeft size={16} className="text-purple-400 flex-shrink-0" />
+      <CornerUpLeft size={16} className="text-[#F5C542] flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="text-[11.5px] font-bold text-purple-500 mb-0.5">
+        <div className="text-[11.5px] font-bold text-[#F5C542] mb-0.5">
           Replying to {sender?.displayName ?? 'Unknown'}
         </div>
-        <div className="text-[12.5px] text-gray-500 truncate">{preview}</div>
+        <div className="text-[12.5px] text-[#BDBDBD] truncate">{preview}</div>
       </div>
-      <button onClick={onCancel} className="p-1.5 rounded-full hover:bg-purple-100 transition-colors">
-        <X size={15} className="text-gray-400" />
+      <button onClick={onCancel} className="p-1.5 rounded-full hover:bg-[rgba(245,197,66,0.15)] transition-colors">
+        <X size={15} className="text-[rgba(255,255,255,0.45)]" />
       </button>
     </motion.div>
   );
@@ -695,7 +695,7 @@ function EditBanner({ onCancel }: { onCancel: () => void }) {
         <div className="text-[12.5px] font-bold text-amber-600">Editing message</div>
       </div>
       <button onClick={onCancel} className="p-1.5 rounded-full hover:bg-amber-100 transition-colors">
-        <X size={15} className="text-gray-400" />
+        <X size={15} className="text-[rgba(255,255,255,0.45)]" />
       </button>
     </motion.div>
   );
@@ -711,24 +711,24 @@ function EmojiPanel({ onSelect, onClose }: { onSelect: (e: string) => void; onCl
       animate={{ height: 260, opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-      className="bg-white border-t border-black/[0.06] overflow-hidden flex-shrink-0"
+      className="bg-[#111] border-t border-[#1a1a1a] overflow-hidden flex-shrink-0"
     >
       <div className="flex items-center gap-1 px-4 pt-3 pb-2">
         {EMOJI_CATS.map((cat, i) => (
           <button key={cat.label} onClick={() => setActiveCat(i)}
-            className={cn('px-3 py-1.5 rounded-xl text-[18px] transition-colors', activeCat === i ? 'bg-purple-100' : 'hover:bg-gray-100')}>
+            className={cn('px-3 py-1.5 rounded-xl text-[18px] transition-colors', activeCat === i ? 'bg-[rgba(245,197,66,0.15)]' : 'hover:bg-[#1a1a1a]')}>
             {cat.icon}
           </button>
         ))}
-        <button onClick={onClose} className="ml-auto p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-          <X size={16} className="text-gray-400" />
+        <button onClick={onClose} className="ml-auto p-1.5 rounded-lg hover:bg-[#1a1a1a] transition-colors">
+          <X size={16} className="text-[rgba(255,255,255,0.45)]" />
         </button>
       </div>
       <div className="px-3 overflow-y-auto" style={{ maxHeight: 196 }}>
         <div className="grid grid-cols-8 gap-0.5">
           {EMOJI_CATS[activeCat].emojis.map(emoji => (
             <button key={emoji} onClick={() => onSelect(emoji)}
-              className="w-10 h-10 flex items-center justify-center text-[20px] hover:bg-gray-100 rounded-xl transition-colors">
+              className="w-10 h-10 flex items-center justify-center text-[20px] hover:bg-[#1a1a1a] rounded-xl transition-colors">
               {emoji}
             </button>
           ))}
@@ -751,7 +751,7 @@ function AttachmentSheet({ onPhotoSelect, onClose }: {
       initial={{ y: 20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 20, opacity: 0 }}
-      className="bg-white border-t border-black/[0.06] px-6 py-4 flex-shrink-0"
+      className="bg-[#111] border-t border-[#1a1a1a] px-6 py-4 flex-shrink-0"
     >
       <input
         ref={fileRef}
@@ -765,14 +765,14 @@ function AttachmentSheet({ onPhotoSelect, onClose }: {
       />
       <div className="grid grid-cols-3 gap-4">
         {[
-          { icon: Camera,    label: 'Camera',  color: '#6B73FF', action: () => { fileRef.current?.setAttribute('capture', 'environment'); fileRef.current?.click(); } },
-          { icon: ImageIcon, label: 'Gallery', color: '#FF6B9D', action: () => { fileRef.current?.removeAttribute('capture'); fileRef.current?.click(); } },
+          { icon: Camera,    label: 'Camera',  color: '#F5C542', action: () => { fileRef.current?.setAttribute('capture', 'environment'); fileRef.current?.click(); } },
+          { icon: ImageIcon, label: 'Gallery', color: '#F5C542', action: () => { fileRef.current?.removeAttribute('capture'); fileRef.current?.click(); } },
         ].map(opt => (
           <button key={opt.label} onClick={opt.action} className="flex flex-col items-center gap-2">
             <div className="w-14 h-14 rounded-[18px] flex items-center justify-center" style={{ background: `${opt.color}22` }}>
               <opt.icon size={24} style={{ color: opt.color }} />
             </div>
-            <span className="text-[12px] font-semibold text-gray-600">{opt.label}</span>
+            <span className="text-[12px] font-semibold text-[#BDBDBD]">{opt.label}</span>
           </button>
         ))}
       </div>
@@ -792,7 +792,7 @@ function VoiceRecordingUI({ duration, onStop, onCancel }: {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 8 }}
-      className="flex items-center gap-3 px-4 py-3 bg-white border-t border-black/[0.05]"
+      className="flex items-center gap-3 px-4 py-3 bg-[#111] border-t border-[#1a1a1a]"
     >
       <motion.div
         animate={{ opacity: [1, 0.3, 1] }}
@@ -802,12 +802,12 @@ function VoiceRecordingUI({ duration, onStop, onCancel }: {
       <span className="text-[15px] font-semibold text-red-500 flex-1">
         Recording {formatVoiceDuration(duration)}
       </span>
-      <button onClick={onCancel} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-        <Trash2 size={18} className="text-gray-400" />
+      <button onClick={onCancel} className="p-2 rounded-full hover:bg-[#1a1a1a] transition-colors">
+        <Trash2 size={18} className="text-[rgba(255,255,255,0.45)]" />
       </button>
       <button onClick={onStop}
         className="px-4 py-2 rounded-full text-white text-[13.5px] font-bold transition-all"
-        style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}>
+        style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}>
         Send
       </button>
     </motion.div>
@@ -848,7 +848,7 @@ function SafetyMenuSheet({ isGroup, isDirect, onMute, onBlock, onReport, onLeave
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[28px] shadow-2xl pb-8"
+        className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl pb-8"
       >
         <div className="flex justify-center pt-3 pb-4">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
@@ -858,10 +858,10 @@ function SafetyMenuSheet({ isGroup, isDirect, onMute, onBlock, onReport, onLeave
             <button key={a.id} onClick={() => handle(a.id)}
               className={cn(
                 'w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-colors',
-                a.danger ? 'hover:bg-red-50 text-red-500' : 'hover:bg-black/[0.04] text-gray-800'
+                a.danger ? 'hover:bg-red-50 text-red-500' : 'hover:bg-black/[0.04] text-white'
               )}
             >
-              <span className={a.danger ? 'text-red-400' : 'text-gray-500'}>{a.icon}</span>
+              <span className={a.danger ? 'text-red-400' : 'text-[#BDBDBD]'}>{a.icon}</span>
               <span className={cn('font-semibold text-[15px]', a.danger && 'text-red-500')}>{a.label}</span>
             </button>
           ))}
@@ -881,8 +881,8 @@ function ScrollDownBtn({ onClick, newCount }: { onClick: () => void; newCount?: 
       exit={{ scale: 0, opacity: 0 }}
       onClick={onClick}
       className={cn(
-        'flex items-center gap-1.5 px-3 h-9 rounded-full shadow-lg border border-black/[0.08] z-10',
-        newCount ? 'bg-purple-500 text-white pr-3.5' : 'bg-white text-gray-600',
+        'flex items-center gap-1.5 px-3 h-9 rounded-full shadow-lg border border-[#2a2a2a] z-10',
+        newCount ? 'bg-[#F5C542] text-white pr-3.5' : 'bg-[#111] text-[#BDBDBD]',
       )}
     >
       <ChevronDown size={16} />
@@ -944,7 +944,7 @@ function ForwardPickerSheet({
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-[75] bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed inset-x-0 bottom-0 z-[75] bg-black rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: '72vh' }}
       >
         {/* Handle */}
@@ -953,17 +953,17 @@ function ForwardPickerSheet({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={18} className="text-gray-500" />
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+            <X size={18} className="text-[#BDBDBD]" />
           </button>
-          <span className="font-black text-[16px] text-gray-900">Forward message</span>
+          <span className="font-black text-[16px] text-white">Forward message</span>
           <button
             disabled={selected.size === 0}
             onClick={() => onSend(Array.from(selected))}
             className={cn(
               'text-[14px] font-black transition-colors',
-              selected.size > 0 ? 'text-purple-600' : 'text-gray-300'
+              selected.size > 0 ? 'text-[#F5C542]' : 'text-[rgba(255,255,255,0.35)]'
             )}
           >
             Send{selected.size > 0 ? ` (${selected.size})` : ''}
@@ -971,26 +971,26 @@ function ForwardPickerSheet({
         </div>
 
         {/* Preview of the message being forwarded */}
-        <div className="mx-5 mt-3 mb-2 flex-shrink-0 px-4 py-2.5 bg-purple-50 rounded-2xl border border-purple-100">
+        <div className="mx-5 mt-3 mb-2 flex-shrink-0 px-4 py-2.5 bg-[rgba(245,197,66,0.08)] rounded-2xl border border-[rgba(245,197,66,0.2)]">
           <div className="flex items-center gap-2 mb-0.5">
-            <Forward size={13} className="text-purple-400" />
-            <span className="text-[11px] font-bold text-purple-500">Forwarding</span>
+            <Forward size={13} className="text-[#F5C542]" />
+            <span className="text-[11px] font-bold text-[#F5C542]">Forwarding</span>
           </div>
-          <p className="text-[12.5px] text-gray-600 truncate">{preview}</p>
+          <p className="text-[12.5px] text-[#BDBDBD] truncate">{preview}</p>
         </div>
 
         {/* Search bar */}
         <div className="mx-5 mb-2 flex-shrink-0">
-          <div className="flex items-center gap-2 bg-gray-100 rounded-2xl px-4 py-2.5 focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-200 transition-all border border-transparent focus-within:border-purple-200">
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="text-gray-400 flex-shrink-0"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/><path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-2xl px-4 py-2.5 focus-within:bg-[#111] focus-within:ring-2 focus-within:ring-purple-200 transition-all border border-transparent focus-within:border-[rgba(245,197,66,0.25)]">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="text-[rgba(255,255,255,0.45)] flex-shrink-0"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/><path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search conversations…"
-              className="flex-1 bg-transparent text-[14px] text-gray-900 placeholder:text-gray-400 outline-none"
+              className="flex-1 bg-transparent text-[14px] text-white placeholder:text-[#555] outline-none"
             />
             {query && (
-              <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setQuery('')} className="text-[rgba(255,255,255,0.45)] hover:text-[#BDBDBD]">
                 <X size={14} />
               </button>
             )}
@@ -1000,7 +1000,7 @@ function ForwardPickerSheet({
         {/* Conversation list */}
         <div className="overflow-y-auto flex-1 px-4 pb-3 space-y-2">
           {filtered.length === 0 ? (
-            <p className="text-center text-gray-400 text-[14px] py-10">
+            <p className="text-center text-[rgba(255,255,255,0.45)] text-[14px] py-10">
               {query ? 'No matches found' : 'No conversations yet'}
             </p>
           ) : filtered.map(conv => {
@@ -1014,7 +1014,7 @@ function ForwardPickerSheet({
                 onClick={() => toggle(conv.id)}
                 className={cn(
                   'w-full flex items-center gap-3.5 px-4 py-3 rounded-[18px] border transition-all text-left',
-                  sel ? 'bg-purple-50 border-purple-200' : 'bg-white border-black/[0.05]'
+                  sel ? 'bg-[rgba(245,197,66,0.08)] border-[rgba(245,197,66,0.25)]' : 'bg-[#111] border-[#1a1a1a]'
                 )}
               >
                 <UserAvatar
@@ -1024,12 +1024,12 @@ function ForwardPickerSheet({
                   size={44}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[14.5px] text-gray-900 truncate">{name}</p>
-                  <p className="text-[12px] text-gray-400 truncate">{conv.lastMessage || 'No messages yet'}</p>
+                  <p className="font-bold text-[14.5px] text-white truncate">{name}</p>
+                  <p className="text-[12px] text-[rgba(255,255,255,0.45)] truncate">{conv.lastMessage || 'No messages yet'}</p>
                 </div>
                 <div className={cn(
                   'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-                  sel ? 'border-purple-500 bg-purple-500' : 'border-gray-300'
+                  sel ? 'border-[#F5C542] bg-[#F5C542]' : 'border-gray-300'
                 )}>
                   {sel && <Check size={11} className="text-white" />}
                 </div>
@@ -1202,9 +1202,9 @@ export default function Chat() {
 
   if (!isLoading && !conversation) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#FDF9F6]">
-        <p className="text-gray-400">Conversation not found</p>
-        <Link href="/messages" className="mt-3 text-purple-500 font-semibold">← Back to Chats</Link>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black">
+        <p className="text-[rgba(255,255,255,0.45)]">Conversation not found</p>
+        <Link href="/messages" className="mt-3 text-[#F5C542] font-semibold">← Back to Chats</Link>
       </div>
     );
   }
@@ -1632,10 +1632,10 @@ export default function Chat() {
     >
 
       {/* ── Header — flex-shrink-0 keeps it pinned; no sticky needed ── */}
-      <header className="flex-shrink-0 flex items-center gap-3 px-3 py-3 bg-white/95 backdrop-blur-xl border-b border-black/[0.05] shadow-sm z-10">
+      <header className="flex-shrink-0 flex items-center gap-3 px-3 py-3 bg-black/95 backdrop-blur-xl border-b border-[#1a1a1a] shadow-sm z-10">
         <Link href="/messages">
-          <button className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors flex-shrink-0">
-            <ArrowLeft size={20} className="text-gray-700" />
+          <button className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#1a1a1a] transition-colors flex-shrink-0">
+            <ArrowLeft size={20} className="text-[#BDBDBD]" />
           </button>
         </Link>
 
@@ -1663,9 +1663,9 @@ export default function Chat() {
           className={`flex-1 min-w-0 ${!isGroup && other ? 'cursor-pointer' : ''}`}
           onClick={!isGroup && other ? () => setLocation(`/profile/${other.id}`) : undefined}
         >
-          <h2 className="font-black text-[15px] text-gray-900 truncate leading-tight">{title}</h2>
+          <h2 className="font-black text-[15px] text-white truncate leading-tight">{title}</h2>
           {headerSubtitle && (
-            <p className={`text-[12px] font-semibold leading-tight ${otherPresence.isOnline || isGroup ? 'text-green-500' : 'text-gray-400'}`}>
+            <p className={`text-[12px] font-semibold leading-tight ${otherPresence.isOnline || isGroup ? 'text-green-500' : 'text-[rgba(255,255,255,0.45)]'}`}>
               {headerSubtitle}
             </p>
           )}
@@ -1678,13 +1678,13 @@ export default function Chat() {
               <button
                 data-testid="start-voice-call-btn"
                 onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'voice')}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] hover:text-[#BDBDBD] transition-colors">
                 <Phone size={18} />
               </button>
               <button
                 data-testid="start-video-call-btn"
                 onClick={() => other && startCall(other.id, other.displayName, other.avatarUrl ?? '', convId, 'video')}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] hover:text-[#BDBDBD] transition-colors">
                 <Video size={20} />
               </button>
             </>
@@ -1692,11 +1692,11 @@ export default function Chat() {
           <button
             onClick={() => setMediaGalleryOpen(true)}
             title="Media gallery"
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+            className="w-9 h-9 rounded-full flex items-center justify-center text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] hover:text-[#BDBDBD] transition-colors">
             <GalleryHorizontal size={18} />
           </button>
           <button onClick={() => setSafetySheet(true)}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+            className="w-9 h-9 rounded-full flex items-center justify-center text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] hover:text-[#BDBDBD] transition-colors">
             <MoreHorizontal size={20} />
           </button>
         </div>
@@ -1728,7 +1728,7 @@ export default function Chat() {
             shifts the container's height or causes scroll-position jumps */}
         {loadingOlder && (
           <div className="flex items-center justify-center py-3">
-            <Loader2 size={18} className="text-purple-400 animate-spin" />
+            <Loader2 size={18} className="text-[#F5C542] animate-spin" />
           </div>
         )}
         <div className="py-4 space-y-1">
@@ -1756,7 +1756,7 @@ export default function Chat() {
                 )}
                 <div className={cn('flex flex-col gap-1 max-w-[72%]', isMe ? 'items-end' : 'items-start')}>
                   {isGroup && !isMe && (
-                    <span className="text-[11.5px] font-semibold text-gray-400 ml-1 mb-0.5">{senderName}</span>
+                    <span className="text-[11.5px] font-semibold text-[rgba(255,255,255,0.45)] ml-1 mb-0.5">{senderName}</span>
                   )}
                   {group.msgs.map((msg, mi) => (
                     <div key={msg.id} className={cn('flex flex-col', isMe ? 'items-end' : 'items-start')}>
@@ -1783,13 +1783,13 @@ export default function Chat() {
                       />
                     </div>
                   ))}
-                  <span className="text-[10.5px] text-gray-400 mt-0.5 mx-1">
+                  <span className="text-[10.5px] text-[rgba(255,255,255,0.45)] mt-0.5 mx-1">
                     {format(group.msgs[group.msgs.length - 1].createdAt, 'h:mm a')}
                   </span>
                   {/* Seen receipt — shown only below the last message group from the current user */}
                   {isMe && si === lastMeSlotIdx && seenByOthers && (
-                    <span className="text-[10.5px] text-blue-500 mt-0.5 mr-1 flex items-center gap-0.5 self-end">
-                      <CheckCheck size={11} className="text-blue-500" /> Seen
+                    <span className="text-[10.5px] text-[#F5C542] mt-0.5 mr-1 flex items-center gap-0.5 self-end">
+                      <CheckCheck size={11} className="text-[#F5C542]" /> Seen
                     </span>
                   )}
                 </div>
@@ -1838,7 +1838,7 @@ export default function Chat() {
       {/* ── Input bar ───────────────────────────────────────────────── */}
       {!voiceRecorder.isRecording && (
         <div
-          className="sticky bottom-0 z-20 bg-white/95 backdrop-blur-xl border-t border-black/[0.05] flex-shrink-0"
+          className="sticky bottom-0 z-20 bg-black/95 backdrop-blur-xl border-t border-[#1a1a1a] flex-shrink-0"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           {/* Reply banner */}
@@ -1856,15 +1856,15 @@ export default function Chat() {
               onClick={() => { setAttachOpen(v => !v); setEmojiOpen(false); }}
               disabled={uploadingMedia}
               className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all mb-0.5',
-                attachOpen ? 'text-white shadow-md' : 'text-gray-400 hover:text-purple-500 hover:bg-purple-50'
+                attachOpen ? 'text-white shadow-md' : 'text-[rgba(255,255,255,0.45)] hover:text-[#F5C542] hover:bg-[rgba(245,197,66,0.08)]'
               )}
-              style={attachOpen ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+              style={attachOpen ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
             >
               {uploadingMedia ? <Loader2 size={20} className="animate-spin" /> : <ImageIcon size={21} />}
             </motion.button>
 
             {/* Text input */}
-            <div className="flex-1 flex items-end bg-gray-100 rounded-[22px] px-4 py-2.5 gap-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-200 transition-all border border-transparent focus-within:border-purple-200">
+            <div className="flex-1 flex items-end bg-[#1a1a1a] rounded-[22px] px-4 py-2.5 gap-2 focus-within:bg-[#111] focus-within:ring-2 focus-within:ring-purple-200 transition-all border border-transparent focus-within:border-[rgba(245,197,66,0.25)]">
               <textarea
                 ref={textareaRef}
                 value={inputVal}
@@ -1872,12 +1872,12 @@ export default function Chat() {
                 onKeyDown={handleKeyDown}
                 placeholder={editingMsg ? 'Edit message…' : 'Message…'}
                 rows={1}
-                className="flex-1 bg-transparent outline-none resize-none text-[15px] text-gray-900 placeholder:text-gray-400 leading-[1.4] max-h-[120px] overflow-y-auto"
+                className="flex-1 bg-transparent outline-none resize-none text-[15px] text-white placeholder:text-[#555] leading-[1.4] max-h-[120px] overflow-y-auto"
                 style={{ lineHeight: '1.4' }}
               />
               <motion.button whileTap={{ scale: 0.88 }}
                 onClick={() => { setEmojiOpen(v => !v); setAttachOpen(false); }}
-                className={cn('flex-shrink-0 text-gray-400 hover:text-purple-500 transition-colors self-end mb-0.5', emojiOpen && 'text-purple-500')}
+                className={cn('flex-shrink-0 text-[rgba(255,255,255,0.45)] hover:text-[#F5C542] transition-colors self-end mb-0.5', emojiOpen && 'text-[#F5C542]')}
               >
                 <Smile size={20} />
               </motion.button>
@@ -1891,7 +1891,7 @@ export default function Chat() {
                   whileTap={{ scale: 0.88 }}
                   onClick={handleSend}
                   className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 shadow-md mb-0.5 text-white"
-                  style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.40)' }}
+                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(107,115,255,0.40)' }}
                 >
                   {editingMsg ? <Check size={18} /> : <Send size={17} className="ml-0.5 -mt-0.5" />}
                 </motion.button>
@@ -1900,7 +1900,7 @@ export default function Chat() {
                   initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }}
                   whileTap={{ scale: 0.88 }}
                   onClick={voiceRecorder.start}
-                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-100 text-gray-500 hover:bg-purple-50 hover:text-purple-500 transition-all mb-0.5"
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#1a1a1a] text-[#BDBDBD] hover:bg-[rgba(245,197,66,0.08)] hover:text-[#F5C542] transition-all mb-0.5"
                 >
                   <Mic size={19} />
                 </motion.button>
@@ -1968,7 +1968,7 @@ export default function Chat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-2 px-5 py-3 rounded-full shadow-xl text-white text-[13.5px] font-semibold pointer-events-none"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 6px 24px rgba(107,115,255,0.45)' }}
+            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 6px 24px rgba(245,197,66,0.45)' }}
           >
             <CheckCircle size={15} />
             Forwarded to {forwardDone} chat{forwardDone !== 1 ? 's' : ''}
@@ -1986,17 +1986,17 @@ export default function Chat() {
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="fixed inset-x-0 bottom-0 z-[85] bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col"
+              className="fixed inset-x-0 bottom-0 z-[85] bg-black rounded-t-[28px] shadow-2xl flex flex-col"
               style={{ maxHeight: '80vh' }}
             >
               <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
                 <div className="w-10 h-1 rounded-full bg-gray-300" />
               </div>
-              <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
-                <button onClick={() => setMediaGalleryOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-                  <X size={18} className="text-gray-500" />
+              <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
+                <button onClick={() => setMediaGalleryOpen(false)} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+                  <X size={18} className="text-[#BDBDBD]" />
                 </button>
-                <span className="font-black text-[16px] text-gray-900">Media</span>
+                <span className="font-black text-[16px] text-white">Media</span>
                 <div className="w-8" />
               </div>
               {(() => {
@@ -2009,8 +2009,8 @@ export default function Chat() {
                   return (
                     <div className="flex flex-col items-center justify-center flex-1 py-16 text-center px-6">
                       <GalleryHorizontal size={40} className="text-gray-200 mb-4" />
-                      <p className="font-bold text-[15px] text-gray-500 mb-1">No media yet</p>
-                      <p className="text-[13px] text-gray-400">Photos and videos shared in this conversation will appear here.</p>
+                      <p className="font-bold text-[15px] text-[#BDBDBD] mb-1">No media yet</p>
+                      <p className="text-[13px] text-[rgba(255,255,255,0.45)]">Photos and videos shared in this conversation will appear here.</p>
                     </div>
                   );
                 }
@@ -2024,7 +2024,7 @@ export default function Chat() {
                             key={m.id}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => { setViewingPhoto(url); setMediaGalleryOpen(false); }}
-                            className="relative aspect-square rounded-[12px] overflow-hidden bg-gray-100"
+                            className="relative aspect-square rounded-[12px] overflow-hidden bg-[#1a1a1a]"
                           >
                             {m.type === 'video' ? (
                               <div className="w-full h-full flex items-center justify-center bg-gray-900">
@@ -2053,7 +2053,7 @@ export default function Chat() {
         >
           {/* Close */}
           <button
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-[#111]/10 flex items-center justify-center text-white hover:bg-[#111]/20 transition-colors z-10"
             onClick={() => setViewingPhoto(null)}
           >
             ✕
@@ -2096,7 +2096,7 @@ export default function Chat() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleDownloadPhoto(viewingPhoto)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-white/15 text-white text-[13px] font-semibold rounded-full hover:bg-white/25 transition-colors"
+                      className="flex items-center gap-1.5 px-4 py-2 bg-[#111]/15 text-white text-[13px] font-semibold rounded-full hover:bg-[#111]/25 transition-colors"
                     >
                       <RefreshCw size={14} />
                       Retry
@@ -2113,7 +2113,7 @@ export default function Chat() {
                             }
                           } catch { /* ignore */ }
                         }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-white/15 text-white text-[13px] font-semibold rounded-full hover:bg-white/25 transition-colors"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-[#111]/15 text-white text-[13px] font-semibold rounded-full hover:bg-[#111]/25 transition-colors"
                       >
                         <Share2 size={14} />
                         Share
@@ -2129,7 +2129,7 @@ export default function Chat() {
                   exit={{ opacity: 0 }}
                   onClick={() => handleDownloadPhoto(viewingPhoto)}
                   disabled={dlState === 'loading'}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white/15 text-white text-[13px] font-semibold rounded-full hover:bg-white/25 active:scale-95 transition-all disabled:opacity-60"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#111]/15 text-white text-[13px] font-semibold rounded-full hover:bg-[#111]/25 active:scale-95 transition-all disabled:opacity-60"
                 >
                   {dlState === 'loading' ? (
                     <Loader2 size={15} className="animate-spin" />

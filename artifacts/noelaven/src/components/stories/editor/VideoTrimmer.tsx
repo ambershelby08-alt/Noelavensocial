@@ -65,9 +65,9 @@ export function VideoTrimmer({ duration, trim, videoRef, onChange, onDone }: Vid
       <div className="flex items-center justify-between">
         <span className="text-white/70 text-xs font-semibold tracking-wide">Trim</span>
         <div className="flex gap-1.5 text-xs font-medium text-white/70">
-          <span className="bg-white/10 px-2 py-0.5 rounded-md">{fmt(trim.start)}</span>
+          <span className="bg-[#111]/10 px-2 py-0.5 rounded-md">{fmt(trim.start)}</span>
           <span className="text-white/30 self-center">–</span>
-          <span className="bg-white/10 px-2 py-0.5 rounded-md">{fmt(trim.end)}</span>
+          <span className="bg-[#111]/10 px-2 py-0.5 rounded-md">{fmt(trim.end)}</span>
           <span className="text-white/30 self-center">/ {fmt(duration)}</span>
         </div>
       </div>
@@ -126,7 +126,7 @@ export function VideoTrimmer({ duration, trim, videoRef, onChange, onDone }: Vid
       <button
         onClick={onDone}
         className="w-full py-2.5 rounded-xl text-sm font-bold text-white active:scale-[0.98] transition-transform mt-1"
-        style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB)' }}
+        style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED)' }}
       >
         Done Trimming
       </button>

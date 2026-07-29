@@ -270,21 +270,21 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-[#111] rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: 'min(80dvh, 80vh)' }}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+          <div className="w-10 h-1 rounded-full bg-[#222]" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pb-3 pt-1 border-b border-gray-100 flex-shrink-0">
-          <span className="font-bold text-gray-900 text-[15px]">
-            Comments{!loading && <span className="text-gray-400 font-normal ml-1">({comments.length})</span>}
+        <div className="flex items-center justify-between px-5 pb-3 pt-1 border-b border-[#222] flex-shrink-0">
+          <span className="font-bold text-white text-[15px]">
+            Comments{!loading && <span className="text-[rgba(255,255,255,0.45)] font-normal ml-1">({comments.length})</span>}
           </span>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={18} className="text-gray-500" />
+          <button onClick={onClose} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+            <X size={18} className="text-[#BDBDBD]" />
           </button>
         </div>
 
@@ -292,8 +292,8 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
         {post.commentsDisabled ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 px-5 py-10 overflow-y-auto">
             <MessageCircleOff size={36} className="text-gray-200" />
-            <p className="text-[14px] font-semibold text-gray-400">Comments are turned off</p>
-            <p className="text-[12px] text-gray-300 text-center leading-relaxed">The author has disabled comments on this post.</p>
+            <p className="text-[14px] font-semibold text-[rgba(255,255,255,0.45)]">Comments are turned off</p>
+            <p className="text-[12px] text-[rgba(255,255,255,0.35)] text-center leading-relaxed">The author has disabled comments on this post.</p>
           </div>
         ) : loading ? (
           <div className="flex-1 flex items-center justify-center py-10 overflow-y-auto">
@@ -304,8 +304,8 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
             {comments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2">
                 <MessageCircle size={32} className="text-gray-200" />
-                <p className="text-[14px] text-gray-400 font-medium">No comments yet</p>
-                <p className="text-[12px] text-gray-300">Be the first to share your thoughts!</p>
+                <p className="text-[14px] text-[rgba(255,255,255,0.45)] font-medium">No comments yet</p>
+                <p className="text-[12px] text-[rgba(255,255,255,0.35)]">Be the first to share your thoughts!</p>
               </div>
             ) : comments.map((c, i) => (
               <motion.div
@@ -319,15 +319,15 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                   <UserAvatar userId={c.authorId} fallbackName={c.author.displayName} fallbackSrc={c.author.avatarUrl || undefined} size={34} className="cursor-pointer hover:opacity-90 transition-opacity" />
                 </Link>
                 <div className="flex-1">
-                  <div className="bg-gray-50 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+                  <div className="bg-[#111] rounded-2xl rounded-tl-sm px-3.5 py-2.5">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <Link href={`/profile/${c.authorId}`}><p className="font-semibold text-[13px] text-gray-900 hover:underline">{c.author.displayName}</p></Link>
+                      <Link href={`/profile/${c.authorId}`}><p className="font-semibold text-[13px] text-white hover:underline">{c.author.displayName}</p></Link>
                       <FounderBadge userId={c.authorId} size="xs" />
                     </div>
-                    <p className="text-[13.5px] text-gray-700 leading-relaxed">{c.text}</p>
+                    <p className="text-[13.5px] text-[#BDBDBD] leading-relaxed">{c.text}</p>
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 px-1">
-                    <span className="text-[11px] text-gray-400">{formatRelativeTime(c.createdAt)}</span>
+                    <span className="text-[11px] text-[rgba(255,255,255,0.45)]">{formatRelativeTime(c.createdAt)}</span>
                     <CommentReactionButton
                       reactions={c.reactions ?? {}}
                       myReaction={myReactionEmoji(c.reactions ?? {}, currentUser?.id ?? '')}
@@ -335,14 +335,14 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                     />
                     <button
                       onClick={() => { setReplyingTo(c); setTimeout(() => inputRef.current?.focus(), 100); }}
-                      className="text-[11px] text-gray-400 font-semibold hover:text-purple-500 transition-colors"
+                      className="text-[11px] text-[rgba(255,255,255,0.45)] font-semibold hover:text-[#F5C542] transition-colors"
                     >
                       Reply
                     </button>
                     {c.replyCount > 0 && (
                       <button
                         onClick={() => toggleReplies(c.id)}
-                        className="text-[11px] text-purple-400 font-medium hover:text-purple-600 transition-colors flex items-center gap-0.5"
+                        className="text-[11px] text-[#F5C542] font-medium hover:text-[#F5C542] transition-colors flex items-center gap-0.5"
                       >
                         {expandedCommentId === c.id ? '▲' : '▼'}&nbsp;
                         {c.replyCount} {c.replyCount === 1 ? 'reply' : 'replies'}
@@ -352,28 +352,28 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
 
                   {/* ── Reply rows ──────────────────────────────────────── */}
                   {expandedCommentId === c.id && (
-                    <div className="mt-2 ml-1 border-l-2 border-purple-100 pl-3 space-y-2">
+                    <div className="mt-2 ml-1 border-l-2 border-[rgba(245,197,66,0.2)] pl-3 space-y-2">
                       {repliesLoading && commentReplies.length === 0 ? (
                         <div className="py-1 flex items-center gap-2">
                           <div className="w-3.5 h-3.5 border-2 border-gray-200 border-t-purple-400 rounded-full animate-spin" />
-                          <span className="text-[11px] text-gray-400">Loading replies…</span>
+                          <span className="text-[11px] text-[rgba(255,255,255,0.45)]">Loading replies…</span>
                         </div>
                       ) : commentReplies.length === 0 ? (
-                        <p className="text-[11px] text-gray-400 py-1">No replies yet.</p>
+                        <p className="text-[11px] text-[rgba(255,255,255,0.45)] py-1">No replies yet.</p>
                       ) : commentReplies.map(r => (
                         <div key={r.id} className="flex gap-2">
                           <Link href={`/profile/${r.authorId}`} className="flex-shrink-0 mt-0.5">
                             <UserAvatar userId={r.authorId} fallbackName={r.authorName} fallbackSrc={r.authorAvatar || undefined} size={26} className="cursor-pointer hover:opacity-90 transition-opacity" />
                           </Link>
                           <div className="flex-1">
-                            <div className="bg-purple-50/60 rounded-2xl rounded-tl-sm px-3 py-2">
+                            <div className="bg-[rgba(245,197,66,0.08)]/60 rounded-2xl rounded-tl-sm px-3 py-2">
                               <Link href={`/profile/${r.authorId}`}>
-                                <p className="font-semibold text-[12px] text-gray-900 hover:underline leading-tight">{r.authorName}</p>
+                                <p className="font-semibold text-[12px] text-white hover:underline leading-tight">{r.authorName}</p>
                               </Link>
-                              <p className="text-[12.5px] text-gray-700 leading-relaxed mt-0.5">{r.text}</p>
+                              <p className="text-[12.5px] text-[#BDBDBD] leading-relaxed mt-0.5">{r.text}</p>
                             </div>
                             <div className="flex items-center gap-2 mt-1 px-1">
-                              <span className="text-[10px] text-gray-400">{formatRelativeTime(r.createdAt)}</span>
+                              <span className="text-[10px] text-[rgba(255,255,255,0.45)]">{formatRelativeTime(r.createdAt)}</span>
                               <CommentReactionButton
                                 reactions={r.reactions ?? {}}
                                 myReaction={myReactionEmoji(r.reactions ?? {}, currentUser?.id ?? '')}
@@ -394,23 +394,23 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
         {/* Composer — pinned above safe-area, always visible */}
         {!post.commentsDisabled && (
           <div
-            className="px-4 pt-3 border-t border-gray-100 flex-shrink-0"
+            className="px-4 pt-3 border-t border-[#222] flex-shrink-0"
             style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)' }}
           >
             {replyingTo && (
               <div className="flex items-center gap-2 mb-2 px-1">
-                <MessageCircle size={12} className="text-purple-400 flex-shrink-0" />
-                <span className="flex-1 text-[12px] text-purple-500 font-semibold truncate">
+                <MessageCircle size={12} className="text-[#F5C542] flex-shrink-0" />
+                <span className="flex-1 text-[12px] text-[#F5C542] font-semibold truncate">
                   Replying to @{replyingTo.author.handle}
                 </span>
-                <button onClick={() => setReplyingTo(null)} className="p-0.5 rounded-full hover:bg-gray-100">
-                  <X size={13} className="text-gray-400" />
+                <button onClick={() => setReplyingTo(null)} className="p-0.5 rounded-full hover:bg-[#1a1a1a]">
+                  <X size={13} className="text-[rgba(255,255,255,0.45)]" />
                 </button>
               </div>
             )}
             <div className="flex items-end gap-2.5">
               {currentUser && <GradientAvatar name={currentUser.displayName} src={currentUser.avatarUrl || undefined} size={36} className="flex-shrink-0 mb-0.5" />}
-              <div className="flex-1 bg-gray-50 rounded-2xl px-3.5 py-2.5 flex items-end gap-2">
+              <div className="flex-1 bg-[#111] rounded-2xl px-3.5 py-2.5 flex items-end gap-2">
                 <textarea
                   ref={inputRef}
                   value={text}
@@ -418,7 +418,7 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
                   placeholder={replyingTo ? `Reply to ${replyingTo.author.displayName}…` : 'Add a kind comment… 💛'}
                   rows={1}
-                  className="flex-1 bg-transparent resize-none outline-none text-[14px] text-gray-800 placeholder:text-gray-400 max-h-24"
+                  className="flex-1 bg-transparent resize-none outline-none text-[14px] text-white placeholder:text-[#555] max-h-24"
                   style={{ lineHeight: '1.5' }}
                 />
                 <motion.button
@@ -427,9 +427,9 @@ function CommentsDrawer({ post, onClose, onCommentAdded }: CommentsDrawerProps) 
                   disabled={!text.trim()}
                   className={cn(
                     'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all',
-                    text.trim() ? 'text-white shadow-md' : 'bg-gray-200 text-gray-400'
+                    text.trim() ? 'text-white shadow-md' : 'bg-[#222] text-[rgba(255,255,255,0.45)]'
                   )}
-                  style={text.trim() ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.4)' } : {}}
+                  style={text.trim() ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(107,115,255,0.4)' } : {}}
                 >
                   <Send size={14} />
                 </motion.button>
@@ -465,21 +465,21 @@ function ShareSheet({ post, onClose, onShared, onSendToChats }: ShareSheetProps)
     {
       icon: copied ? Check : LinkIcon,
       label: copied ? 'Copied!' : 'Copy link',
-      color: '#6B73FF',
+      color: '#F5C542',
       bg: '#EEF0FF',
       action: copyLink,
     },
     {
       icon: Users,
       label: 'Share to Circles',
-      color: '#9B59B6',
+      color: '#F5C542',
       bg: '#F5EEF8',
       action: () => { onShared(post.id); onClose(); },
     },
     {
       icon: MessageSquare,
       label: 'Send via Chats',
-      color: '#FF6B9D',
+      color: '#F5C542',
       bg: '#FFF0F6',
       action: () => { onSendToChats?.(); },
     },
@@ -500,15 +500,15 @@ function ShareSheet({ post, onClose, onShared, onSendToChats }: ShareSheetProps)
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-[#111] rounded-t-[28px] shadow-2xl"
       >
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+          <div className="w-10 h-1 rounded-full bg-[#222]" />
         </div>
 
         <div className="px-5 pb-2 pt-1">
-          <p className="font-bold text-gray-900 text-[15px] mb-0.5">Share post</p>
-          <p className="text-[13px] text-gray-400 truncate">"{post.content.slice(0, 60)}…"</p>
+          <p className="font-bold text-white text-[15px] mb-0.5">Share post</p>
+          <p className="text-[13px] text-[rgba(255,255,255,0.45)] truncate">"{post.content.slice(0, 60)}…"</p>
         </div>
 
         <div className="grid grid-cols-4 gap-3 px-5 py-4">
@@ -525,7 +525,7 @@ function ShareSheet({ post, onClose, onShared, onSendToChats }: ShareSheetProps)
               >
                 <Icon size={22} style={{ color }} strokeWidth={2} />
               </div>
-              <span className="text-[11px] text-gray-500 font-medium text-center leading-tight">{label}</span>
+              <span className="text-[11px] text-[#BDBDBD] font-medium text-center leading-tight">{label}</span>
             </motion.button>
           ))}
         </div>
@@ -533,7 +533,7 @@ function ShareSheet({ post, onClose, onShared, onSendToChats }: ShareSheetProps)
         <div className="px-5" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px] hover:bg-gray-200 transition-colors"
+            className="w-full py-3 rounded-2xl bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[15px] hover:bg-[#222] transition-colors"
           >
             Cancel
           </button>
@@ -608,7 +608,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-[#111] rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: '90vh' }}
       >
         {/* Hidden image input */}
@@ -623,25 +623,25 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
         {/* ── Fixed top: handle + header + prompt ────────────────────────── */}
         <div className="flex-shrink-0">
           <div className="flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 rounded-full bg-gray-200" />
+            <div className="w-10 h-1 rounded-full bg-[#222]" />
           </div>
           <div className="flex items-center justify-between px-5 pt-2 pb-3">
             <div className="flex items-center gap-2">
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
               >
                 <Sparkles size={13} className="text-white" />
               </div>
-              <span className="font-black text-gray-900 text-[15px]">Daily Spark</span>
+              <span className="font-black text-white text-[15px]">Daily Spark</span>
             </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-              <X size={18} className="text-gray-500" />
+            <button onClick={onClose} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+              <X size={18} className="text-[#BDBDBD]" />
             </button>
           </div>
           <div className="mx-5 mb-3 px-4 py-3 rounded-2xl" style={{ background: 'linear-gradient(135deg, #EEF0FF, #FFF0F6)' }}>
-            <p className="text-[13px] font-semibold text-gray-500 mb-0.5">Today's prompt</p>
-            <p className="text-[15px] font-bold text-gray-800">"{spark}"</p>
+            <p className="text-[13px] font-semibold text-[#BDBDBD] mb-0.5">Today's prompt</p>
+            <p className="text-[15px] font-bold text-white">"{spark}"</p>
           </div>
         </div>
 
@@ -664,7 +664,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
                 placeholder="Share your spark with the world… ✨"
                 rows={4}
                 maxLength={500}
-                className="w-full bg-gray-50 rounded-2xl px-4 py-3 text-[14.5px] text-gray-800 placeholder:text-gray-400 outline-none resize-none leading-relaxed"
+                className="w-full bg-[#111] rounded-2xl px-4 py-3 text-[14.5px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed"
               />
               {text.length > 400 && (
                 <p className={`text-right text-[11px] font-medium mt-0.5 ${text.length >= 500 ? 'text-red-500' : 'text-amber-500'}`}>
@@ -689,7 +689,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
         </div>
 
         {/* ── Sticky footer: photo button + submit ───────────────────────── */}
-        <div className="flex-shrink-0 px-5 pt-3 border-t border-gray-100" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}>
+        <div className="flex-shrink-0 px-5 pt-3 border-t border-[#222]" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}>
           {/* Audience selector */}
           <div className="flex gap-1.5 mb-3">
             {AUDIENCE_OPTIONS.map(opt => (
@@ -698,7 +698,7 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
                 onClick={() => setAudience(opt.value)}
                 className={cn(
                   'flex items-center gap-1 px-2 py-1.5 rounded-full text-[11px] font-bold transition-all flex-1 justify-center',
-                  audience === opt.value ? 'text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  audience === opt.value ? 'text-white shadow-sm' : 'bg-[#1a1a1a] text-[#BDBDBD] hover:bg-[#222]'
                 )}
                 style={audience === opt.value ? { background: 'linear-gradient(135deg, #6B73FF, #9B59B6)' } : {}}
               >
@@ -715,21 +715,21 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
             disabled={imageUploading || !isCloudinaryConfigured}
             className={cn(
               'w-full flex items-center gap-3 mb-3 px-4 py-3 rounded-2xl transition-colors',
-              isCloudinaryConfigured ? 'bg-gray-50 active:bg-gray-100' : 'bg-gray-50 opacity-50 cursor-not-allowed'
+              isCloudinaryConfigured ? 'bg-[#111] active:bg-[#1a1a1a]' : 'bg-[#111] opacity-50 cursor-not-allowed'
             )}
             title={isCloudinaryConfigured ? 'Add photo' : 'Image upload not configured'}
           >
             <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <ImageIcon size={18} className={cn(imageUrl ? 'text-blue-500' : 'text-blue-400')} />
+              <ImageIcon size={18} className={cn(imageUrl ? 'text-[#F5C542]' : 'text-[#F5C542]')} />
             </div>
-            <span className={cn('text-[14px] font-semibold', imageUrl ? 'text-blue-500' : 'text-gray-500')}>
+            <span className={cn('text-[14px] font-semibold', imageUrl ? 'text-[#F5C542]' : 'text-[#BDBDBD]')}>
               {imageUrl ? 'Replace photo' : 'Add a photo'}
             </span>
             {imageUploading && (
               <div className="ml-auto w-4 h-4 border-2 border-gray-300 border-t-blue-400 rounded-full animate-spin" />
             )}
             {imageUrl && !imageUploading && (
-              <span className="ml-auto text-[12px] text-blue-400 font-semibold">✓ Added</span>
+              <span className="ml-auto text-[12px] text-[#F5C542] font-semibold">✓ Added</span>
             )}
           </motion.button>
 
@@ -752,11 +752,11 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
                 disabled={!canPost || imageUploading}
                 className={cn(
                   'w-full py-3.5 rounded-2xl font-bold text-[15px] transition-all',
-                  canPost && !imageUploading ? 'text-white shadow-lg' : 'bg-gray-100 text-gray-400'
+                  canPost && !imageUploading ? 'text-white shadow-lg' : 'bg-[#1a1a1a] text-[rgba(255,255,255,0.45)]'
                 )}
                 style={
                   canPost && !imageUploading
-                    ? { background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)', boxShadow: '0 4px 18px rgba(107,115,255,0.35)' }
+                    ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }
                     : {}
                 }
               >
@@ -775,9 +775,9 @@ function SparkModal({ spark, onClose, onPosted }: SparkModalProps) {
 type ToastVariant = 'success' | 'error' | 'info';
 
 const TOAST_STYLES: Record<ToastVariant, { bg: string; shadow: string }> = {
-  success: { bg: 'linear-gradient(135deg, #6B73FF, #FF6B9D)',  shadow: '0 8px 24px rgba(107,115,255,0.4)' },
+  success: { bg: 'linear-gradient(135deg, #C9982A, #F5C542)',  shadow: '0 8px 24px rgba(107,115,255,0.4)' },
   error:   { bg: 'linear-gradient(135deg, #FF5E5E, #FF8C42)',  shadow: '0 8px 24px rgba(255,94,94,0.4)'   },
-  info:    { bg: 'linear-gradient(135deg, #6B73FF, #4F75FF)',  shadow: '0 8px 24px rgba(107,115,255,0.3)' },
+  info:    { bg: 'linear-gradient(135deg, #6B73FF, #4F75FF)',  shadow: '0 8px 24px rgba(245,197,66,0.3)' },
 };
 
 function Toast({
@@ -837,10 +837,10 @@ export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, 
         className="mx-4 mb-5 rounded-[28px] overflow-hidden relative shadow-lg"
         style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
       >
-        <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-white/10 blur-2xl -mr-10 -mt-10 pointer-events-none" />
+        <div className="absolute top-0 right-0 w-36 h-36 rounded-full bg-[#111]/10 blur-2xl -mr-10 -mt-10 pointer-events-none" />
         <div className="relative z-10 p-6 flex items-center gap-4">
           <motion.div
-            className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0"
+            className="w-14 h-14 rounded-full bg-[#111]/20 flex items-center justify-center flex-shrink-0"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', damping: 10, stiffness: 220, delay: 0.08 }}
@@ -880,16 +880,16 @@ export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, 
       className="mx-4 mb-5 rounded-[28px] overflow-hidden relative shadow-lg"
       style={{ background: 'linear-gradient(135deg, #6B73FF 0%, #9B59B6 45%, #FF6B9D 100%)' }}
     >
-      <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-white/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-white/10 blur-2xl -ml-10 -mb-10 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-48 h-48 rounded-full bg-[#111]/10 blur-3xl -mr-16 -mt-16 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-[#111]/10 blur-2xl -ml-10 -mb-10 pointer-events-none" />
       <div className="relative z-10 p-6">
         <div className="flex items-center gap-2 mb-3.5">
-          <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1">
+          <div className="flex items-center gap-1.5 bg-[#111]/20 backdrop-blur-sm rounded-full px-3 py-1">
             <Sparkles size={12} className="text-yellow-200" />
             <span className="text-white/90 text-[10px] font-black uppercase tracking-[0.12em]">Daily Spark</span>
           </div>
           {streak > 0 && (
-            <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-full px-2.5 py-1">
+            <div className="flex items-center gap-1 bg-[#111]/20 backdrop-blur-sm rounded-full px-2.5 py-1">
               <Flame size={11} className="text-orange-200" />
               <span className="text-white/90 text-[10px] font-bold">{streak}d streak</span>
             </div>
@@ -900,13 +900,13 @@ export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, 
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={onRespond}
-            className="bg-white text-purple-600 px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-md"
+            className="bg-[#111] text-[#F5C542] px-6 py-2.5 rounded-full font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-md"
           >
             Respond ✨
           </motion.button>
           <button
             onClick={() => setDismissed(true)}
-            className="bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors"
+            className="bg-[#111]/20 hover:bg-[#111]/30 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors"
           >
             Skip
           </button>
@@ -921,28 +921,28 @@ export function DailySpark({ onRespond, spark, hasAnsweredToday, justCompleted, 
 function SparkSkeletonCard({ index = 0 }: { index?: number }) {
   return (
     <div
-      className="mx-4 mb-4 bg-white rounded-[24px] p-4 border border-black/[0.04] shadow-sm overflow-hidden"
+      className="mx-4 mb-4 bg-[#111] rounded-[24px] p-4 border border-[#1a1a1a] shadow-sm overflow-hidden"
       style={{ animationDelay: `${index * 80}ms` }}
     >
       <div className="flex items-center gap-3 mb-3.5">
         {/* Avatar */}
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-150 animate-pulse flex-shrink-0" />
         <div className="flex-1 space-y-2">
-          <div className="h-3.5 bg-gray-100 animate-pulse rounded-full w-28" />
-          <div className="h-2.5 bg-gray-100 animate-pulse rounded-full w-20" />
+          <div className="h-3.5 bg-[#1a1a1a] animate-pulse rounded-full w-28" />
+          <div className="h-2.5 bg-[#1a1a1a] animate-pulse rounded-full w-20" />
         </div>
       </div>
       {/* Content lines */}
       <div className="space-y-2 mb-4">
-        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-full" />
-        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-[90%]" />
-        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-[70%]" />
+        <div className="h-3 bg-[#1a1a1a] animate-pulse rounded-full w-full" />
+        <div className="h-3 bg-[#1a1a1a] animate-pulse rounded-full w-[90%]" />
+        <div className="h-3 bg-[#1a1a1a] animate-pulse rounded-full w-[70%]" />
       </div>
       {/* Action row */}
       <div className="flex gap-5 pt-3 border-t border-gray-50">
-        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-10" />
-        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-10" />
-        <div className="h-3 bg-gray-100 animate-pulse rounded-full w-10" />
+        <div className="h-3 bg-[#1a1a1a] animate-pulse rounded-full w-10" />
+        <div className="h-3 bg-[#1a1a1a] animate-pulse rounded-full w-10" />
+        <div className="h-3 bg-[#1a1a1a] animate-pulse rounded-full w-10" />
       </div>
     </div>
   );
@@ -1073,13 +1073,13 @@ function CommunityReveal({
       >
         <div
           className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
         >
           <Sparkles size={18} className="text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-black text-gray-900 text-[14px] leading-snug">✨ Community responses unlocked!</p>
-          <p className="text-[12px] text-gray-500 mt-0.5">
+          <p className="font-black text-white text-[14px] leading-snug">✨ Community responses unlocked!</p>
+          <p className="text-[12px] text-[#BDBDBD] mt-0.5">
             {total > 1 ? `${total} people answered today's spark` : 'Be the first to inspire others!'}
           </p>
         </div>
@@ -1096,12 +1096,12 @@ function CommunityReveal({
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="mx-4 mb-4 px-4 py-3.5 rounded-[20px] border border-purple-100 bg-purple-50/60 flex items-start gap-3"
+          className="mx-4 mb-4 px-4 py-3.5 rounded-[20px] border border-[rgba(245,197,66,0.2)] bg-[rgba(245,197,66,0.08)]/60 flex items-start gap-3"
         >
           <span className="text-2xl leading-none mt-0.5">🌅</span>
           <div>
             <p className="text-[13px] font-bold text-purple-700">Memory Lane</p>
-            <p className="text-[12px] text-purple-600/80 mt-0.5 leading-relaxed">
+            <p className="text-[12px] text-[#F5C542]/80 mt-0.5 leading-relaxed">
               You answered this same prompt {memoryLane.yearsAgo === 1 ? 'one year' : `${memoryLane.yearsAgo} years`} ago today!
             </p>
           </div>
@@ -1112,7 +1112,7 @@ function CommunityReveal({
       {badges.length > 0 && (
         <div className="px-4 mb-4 flex flex-wrap gap-2">
           {badges.map(b => (
-            <span key={b} className="text-[11.5px] font-bold text-purple-600 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full">
+            <span key={b} className="text-[11.5px] font-bold text-[#F5C542] bg-[rgba(245,197,66,0.08)] border border-[rgba(245,197,66,0.2)] px-3 py-1 rounded-full">
               {b}
             </span>
           ))}
@@ -1121,7 +1121,7 @@ function CommunityReveal({
 
       {/* ── Section header + sort tabs ──────────────────────────────────────── */}
       <div className="px-4 mb-3 flex items-center justify-between">
-        <h2 className="font-black text-[16px] text-gray-900">Today's Community Sparks</h2>
+        <h2 className="font-black text-[16px] text-white">Today's Community Sparks</h2>
         <div className="flex gap-1">
           {SORT_TABS.map(t => (
             <button
@@ -1129,9 +1129,9 @@ function CommunityReveal({
               onClick={() => setSort(t.key)}
               className={cn(
                 'px-2.5 py-1 rounded-full text-[11px] font-bold transition-all',
-                sort === t.key ? 'text-white' : 'text-gray-400 bg-gray-100 hover:bg-gray-200'
+                sort === t.key ? 'text-white' : 'text-[rgba(255,255,255,0.45)] bg-[#1a1a1a] hover:bg-[#222]'
               )}
-              style={sort === t.key ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+              style={sort === t.key ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
             >
               {t.label}
             </button>
@@ -1146,10 +1146,10 @@ function CommunityReveal({
           // Firestore error or 2 s timeout — show what went wrong and let the user retry.
           <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-3 text-center">
             <span className="text-3xl">⏳</span>
-            <p className="font-bold text-gray-700 text-[14px]">
+            <p className="font-bold text-[#BDBDBD] text-[14px]">
               {error ? 'Could not load responses' : 'Taking longer than usual…'}
             </p>
-            <p className="text-gray-400 text-[12.5px] max-w-[240px] leading-relaxed">
+            <p className="text-[rgba(255,255,255,0.45)] text-[12.5px] max-w-[240px] leading-relaxed">
               {error
                 ? 'A Firestore error occurred. Tap below to try again.'
                 : 'Check your connection, then tap below to try again.'}
@@ -1160,7 +1160,7 @@ function CommunityReveal({
             <button
               onClick={retry}
               className="px-6 py-2.5 rounded-full text-[13px] font-bold text-white mt-1"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
             >
               Retry
             </button>
@@ -1177,14 +1177,14 @@ function CommunityReveal({
           <span className="text-3xl">
             {sort === 'everyone' ? '🌱' : sort === 'following' ? '🔭' : '🤝'}
           </span>
-          <p className="font-bold text-gray-700 text-[14px]">
+          <p className="font-bold text-[#BDBDBD] text-[14px]">
             {sort === 'everyone'
               ? 'No other responses yet'
               : sort === 'following'
               ? 'No responses from people you follow'
               : 'No responses from your mutuals yet'}
           </p>
-          <p className="text-gray-400 text-[12.5px] max-w-[220px] leading-relaxed">
+          <p className="text-[rgba(255,255,255,0.45)] text-[12.5px] max-w-[220px] leading-relaxed">
             {sort === 'everyone'
               ? 'Share today\'s spark — invite your community!'
               : sort === 'following'
@@ -1215,7 +1215,7 @@ function CommunityReveal({
           {rest.length > 0 && (
             <>
               <div className="px-4 my-2">
-                <span className="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider">More responses</span>
+                <span className="text-[10.5px] font-bold text-[rgba(255,255,255,0.45)] uppercase tracking-wider">More responses</span>
               </div>
               {rest.map((post, idx) => (
                 <PostCard
@@ -1288,7 +1288,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
 
   return (
     <motion.div
-      className="mx-4 mb-5 p-4 rounded-[24px] bg-white border border-black/[0.04] transition-all duration-300"
+      className="mx-4 mb-5 p-4 rounded-[24px] bg-[#111] border border-[#1a1a1a] transition-all duration-300"
       animate={{
         boxShadow: isExpanded
           ? '0 8px 32px rgba(107,115,255,0.10), 0 2px 8px rgba(0,0,0,0.04)'
@@ -1319,7 +1319,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
             value={content}
             onChange={e => setContent(e.target.value.slice(0, 500))}
             onFocus={() => setIsExpanded(true)}
-            className="w-full bg-transparent resize-none outline-none text-gray-800 text-[15px] placeholder:text-gray-400 min-h-[44px] pt-2.5 leading-relaxed"
+            className="w-full bg-transparent resize-none outline-none text-white text-[15px] placeholder:text-[#555] min-h-[44px] pt-2.5 leading-relaxed"
             rows={isExpanded ? 3 : 1}
             maxLength={500}
           />
@@ -1344,7 +1344,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
 
           {/* Uploading indicator */}
           {imageUploading && (
-            <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-400">
+            <div className="mt-2 flex items-center gap-2 text-[13px] text-[rgba(255,255,255,0.45)]">
               <div className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
               Uploading image…
             </div>
@@ -1354,7 +1354,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100"
+              className="flex items-center justify-between mt-3 pt-3 border-t border-[#222]"
             >
               <div className="flex items-center gap-0.5">
                 <button
@@ -1362,23 +1362,23 @@ export function PostComposer({ onPost }: PostComposerProps) {
                   disabled={imageUploading || !isCloudinaryConfigured}
                   className={cn(
                     'p-2 rounded-full transition-colors',
-                    isCloudinaryConfigured ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-40 cursor-not-allowed'
+                    isCloudinaryConfigured ? 'hover:bg-[#111] cursor-pointer' : 'opacity-40 cursor-not-allowed'
                   )}
                   title={isCloudinaryConfigured ? 'Add image' : 'Image upload not configured'}
                 >
-                  <ImageIcon size={18} className={imageUrl ? 'text-blue-500' : 'text-blue-400'} />
+                  <ImageIcon size={18} className={imageUrl ? 'text-[#F5C542]' : 'text-[#F5C542]'} />
                 </button>
-                <button className="p-2 hover:bg-gray-50 rounded-full transition-colors" title="Add emoji">
+                <button className="p-2 hover:bg-[#111] rounded-full transition-colors" title="Add emoji">
                   <Smile size={18} className="text-yellow-400" />
                 </button>
-                <button className="p-2 hover:bg-gray-50 rounded-full transition-colors" title="Add location">
+                <button className="p-2 hover:bg-[#111] rounded-full transition-colors" title="Add location">
                   <MapPin size={18} className="text-pink-400" />
                 </button>
                 {/* Audience picker */}
                 <div className="relative ml-1.5">
                   <button
                     onClick={() => setShowAudiencePicker(v => !v)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold border border-purple-200 text-purple-600 bg-purple-50/60 hover:bg-purple-100 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold border border-[rgba(245,197,66,0.25)] text-[#F5C542] bg-[rgba(245,197,66,0.08)]/60 hover:bg-[rgba(245,197,66,0.15)] transition-colors"
                   >
                     {AUDIENCE_OPTIONS.find(o => o.value === postAudience)?.icon}
                     <span className="ml-0.5">{AUDIENCE_OPTIONS.find(o => o.value === postAudience)?.label}</span>
@@ -1391,7 +1391,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 4 }}
                         transition={{ duration: 0.12 }}
-                        className="absolute bottom-full left-0 mb-1.5 bg-white rounded-2xl shadow-xl border border-gray-100 p-1.5 z-50 min-w-[130px]"
+                        className="absolute bottom-full left-0 mb-1.5 bg-[#111] rounded-2xl shadow-xl border border-[#222] p-1.5 z-50 min-w-[130px]"
                       >
                         {AUDIENCE_OPTIONS.map(opt => (
                           <button
@@ -1399,12 +1399,12 @@ export function PostComposer({ onPost }: PostComposerProps) {
                             onClick={() => { setPostAudience(opt.value); setShowAudiencePicker(false); }}
                             className={cn(
                               'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold transition-colors',
-                              postAudience === opt.value ? 'bg-purple-50 text-purple-600' : 'text-gray-700 hover:bg-gray-50'
+                              postAudience === opt.value ? 'bg-[rgba(245,197,66,0.08)] text-[#F5C542]' : 'text-[#BDBDBD] hover:bg-[#111]'
                             )}
                           >
                             {opt.icon}
                             <span>{opt.label}</span>
-                            {postAudience === opt.value && <Check size={12} className="ml-auto text-purple-500" />}
+                            {postAudience === opt.value && <Check size={12} className="ml-auto text-[#F5C542]" />}
                           </button>
                         ))}
                       </motion.div>
@@ -1415,7 +1415,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => { setContent(''); setImageUrl(''); setIsExpanded(false); }}
-                  className="px-3 py-1.5 rounded-full text-[13px] font-semibold text-gray-400 hover:bg-gray-100 transition-colors"
+                  className="px-3 py-1.5 rounded-full text-[13px] font-semibold text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] transition-colors"
                 >
                   Cancel
                 </button>
@@ -1425,11 +1425,11 @@ export function PostComposer({ onPost }: PostComposerProps) {
                   disabled={!canPost || imageUploading}
                   className={cn(
                     'px-5 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-1.5',
-                    (!canPost || imageUploading) && 'bg-gray-100 text-gray-400'
+                    (!canPost || imageUploading) && 'bg-[#1a1a1a] text-[rgba(255,255,255,0.45)]'
                   )}
                   style={
                     canPost && !imageUploading
-                      ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', color: '#fff', boxShadow: '0 4px 14px rgba(107,115,255,0.35)' }
+                      ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)', color: '#fff', boxShadow: '0 4px 14px rgba(245,197,66,0.35)' }
                       : {}
                   }
                 >
@@ -1479,12 +1479,12 @@ function MenuRow({ icon: Icon, label, iconBg, iconColor, destructive = false, on
     <motion.button
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50 border-t border-gray-50 first:border-t-0"
+      className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-[#111] border-t border-gray-50 first:border-t-0"
     >
       <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: iconBg }}>
         <Icon size={17} style={{ color: iconColor }} />
       </div>
-      <span className={cn('text-[15px] font-medium flex-1 text-left', destructive ? 'text-red-500' : 'text-gray-800')}>
+      <span className={cn('text-[15px] font-medium flex-1 text-left', destructive ? 'text-red-500' : 'text-white')}>
         {label}
       </span>
     </motion.button>
@@ -1529,10 +1529,10 @@ function PostMenu({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-[#111] rounded-t-[28px] shadow-2xl"
       >
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+          <div className="w-10 h-1 rounded-full bg-[#222]" />
         </div>
 
         {/* ── Main menu ────────────────────────────────────────────────── */}
@@ -1541,11 +1541,11 @@ function PostMenu({
             <div className="flex items-center gap-3 px-5 pb-3">
               <UserAvatar userId={post.authorId} fallbackName={post.author.displayName} fallbackSrc={post.author.avatarUrl || undefined} size={38} />
               <div className="min-w-0">
-                <p className="font-bold text-[14px] text-gray-900 truncate">{post.author.displayName}</p>
-                <p className="text-[12px] text-gray-400 line-clamp-1">{post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}</p>
+                <p className="font-bold text-[14px] text-white truncate">{post.author.displayName}</p>
+                <p className="text-[12px] text-[rgba(255,255,255,0.45)] line-clamp-1">{post.content.slice(0, 60)}{post.content.length > 60 ? '…' : ''}</p>
               </div>
             </div>
-            <div className="border-t border-gray-100" />
+            <div className="border-t border-[#222]" />
 
             {isOwner ? (
               <>
@@ -1573,7 +1573,7 @@ function PostMenu({
             )}
 
             <div className="px-5 py-4">
-              <button onClick={onClose} className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px] active:bg-gray-200">
+              <button onClick={onClose} className="w-full py-3 rounded-2xl bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[15px] active:bg-[#222]">
                 Cancel
               </button>
             </div>
@@ -1588,8 +1588,8 @@ function PostMenu({
                 <Trash2 size={20} className="text-red-500" />
               </div>
               <div>
-                <p className="font-bold text-[16px] text-gray-900">Delete this post?</p>
-                <p className="text-[13px] text-gray-400">This action can't be undone.</p>
+                <p className="font-bold text-[16px] text-white">Delete this post?</p>
+                <p className="text-[13px] text-[rgba(255,255,255,0.45)]">This action can't be undone.</p>
               </div>
             </div>
             <button
@@ -1603,7 +1603,7 @@ function PostMenu({
               }
               Delete post
             </button>
-            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]">
+            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[15px]">
               Cancel
             </button>
           </div>
@@ -1617,8 +1617,8 @@ function PostMenu({
                 <UserX size={20} className="text-red-500" />
               </div>
               <div>
-                <p className="font-bold text-[16px] text-gray-900">{isBlocked ? 'Unblock' : 'Block'} @{post.author.handle}?</p>
-                <p className="text-[13px] text-gray-400">{isBlocked ? 'They can see your content again.' : "They won't be able to see your posts or contact you."}</p>
+                <p className="font-bold text-[16px] text-white">{isBlocked ? 'Unblock' : 'Block'} @{post.author.handle}?</p>
+                <p className="text-[13px] text-[rgba(255,255,255,0.45)]">{isBlocked ? 'They can see your content again.' : "They won't be able to see your posts or contact you."}</p>
               </div>
             </div>
             <button
@@ -1629,7 +1629,7 @@ function PostMenu({
               {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <UserX size={16} />}
               {isBlocked ? 'Unblock' : 'Block'}
             </button>
-            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]">Cancel</button>
+            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[15px]">Cancel</button>
           </div>
         )}
 
@@ -1638,11 +1638,11 @@ function PostMenu({
           <div className="px-5 pb-6">
             <div className="flex items-center gap-3 mb-5 pt-1">
               <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                <VolumeX size={20} className="text-blue-500" />
+                <VolumeX size={20} className="text-[#F5C542]" />
               </div>
               <div>
-                <p className="font-bold text-[16px] text-gray-900">{isMuted ? 'Unmute' : 'Mute'} @{post.author.handle}?</p>
-                <p className="text-[13px] text-gray-400">{isMuted ? 'Their posts will reappear in your feed.' : "Their posts won't appear in your feed."}</p>
+                <p className="font-bold text-[16px] text-white">{isMuted ? 'Unmute' : 'Mute'} @{post.author.handle}?</p>
+                <p className="text-[13px] text-[rgba(255,255,255,0.45)]">{isMuted ? 'Their posts will reappear in your feed.' : "Their posts won't appear in your feed."}</p>
               </div>
             </div>
             <button
@@ -1653,7 +1653,7 @@ function PostMenu({
               {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <VolumeX size={16} />}
               {isMuted ? 'Unmute' : 'Mute'}
             </button>
-            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]">Cancel</button>
+            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[15px]">Cancel</button>
           </div>
         )}
 
@@ -1665,8 +1665,8 @@ function PostMenu({
                 <UserMinus size={20} className="text-orange-500" />
               </div>
               <div>
-                <p className="font-bold text-[16px] text-gray-900">Unfollow @{post.author.handle}?</p>
-                <p className="text-[13px] text-gray-400">Their posts won't appear in your feed.</p>
+                <p className="font-bold text-[16px] text-white">Unfollow @{post.author.handle}?</p>
+                <p className="text-[13px] text-[rgba(255,255,255,0.45)]">Their posts won't appear in your feed.</p>
               </div>
             </div>
             <button
@@ -1680,7 +1680,7 @@ function PostMenu({
               }
               Unfollow
             </button>
-            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-[15px]">
+            <button onClick={() => setStep('main')} className="w-full py-3 rounded-2xl bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[15px]">
               Cancel
             </button>
           </div>
@@ -1736,7 +1736,7 @@ function EditPostSheet({ post, onSave, onClose }: EditPostSheetProps) {
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[60] bg-white rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[60] bg-[#111] rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: '90vh' }}
       >
         <input
@@ -1750,22 +1750,22 @@ function EditPostSheet({ post, onSave, onClose }: EditPostSheetProps) {
         {/* Handle + header */}
         <div className="flex-shrink-0">
           <div className="flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 rounded-full bg-gray-200" />
+            <div className="w-10 h-1 rounded-full bg-[#222]" />
           </div>
-          <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-gray-100">
-            <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-              <X size={18} className="text-gray-500" />
+          <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-[#222]">
+            <button onClick={onClose} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+              <X size={18} className="text-[#BDBDBD]" />
             </button>
-            <span className="font-black text-[15px] text-gray-900">Edit post</span>
+            <span className="font-black text-[15px] text-white">Edit post</span>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={handleSave}
               disabled={!canSave || imageUploading}
               className={cn(
                 'px-4 py-1.5 rounded-full text-[13px] font-bold transition-all',
-                canSave && !imageUploading ? 'text-white' : 'bg-gray-100 text-gray-400'
+                canSave && !imageUploading ? 'text-white' : 'bg-[#1a1a1a] text-[rgba(255,255,255,0.45)]'
               )}
-              style={canSave && !imageUploading ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+              style={canSave && !imageUploading ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
             >
               Save
             </motion.button>
@@ -1790,7 +1790,7 @@ function EditPostSheet({ post, onSave, onClose }: EditPostSheetProps) {
                 placeholder="What's on your mind?"
                 rows={5}
                 autoFocus
-                className="w-full bg-transparent text-[14.5px] text-gray-800 placeholder:text-gray-400 outline-none resize-none leading-relaxed"
+                className="w-full bg-transparent text-[14.5px] text-white placeholder:text-[#555] outline-none resize-none leading-relaxed"
               />
               {imageUrl && (
                 <div className="relative mt-2 rounded-2xl overflow-hidden">
@@ -1804,7 +1804,7 @@ function EditPostSheet({ post, onSave, onClose }: EditPostSheetProps) {
                 </div>
               )}
               {imageUploading && (
-                <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-400">
+                <div className="mt-2 flex items-center gap-2 text-[13px] text-[rgba(255,255,255,0.45)]">
                   <div className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
                   Uploading…
                 </div>
@@ -1814,21 +1814,21 @@ function EditPostSheet({ post, onSave, onClose }: EditPostSheetProps) {
         </div>
 
         {/* Photo row footer */}
-        <div className="flex-shrink-0 px-5 pt-2 border-t border-gray-100" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}>
+        <div className="flex-shrink-0 px-5 pt-2 border-t border-[#222]" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}>
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => isCloudinaryConfigured && imageInputRef.current?.click()}
             disabled={imageUploading || !isCloudinaryConfigured}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-50 active:bg-gray-100 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#111] active:bg-[#1a1a1a] transition-colors"
           >
             <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <ImageIcon size={18} className="text-blue-400" />
+              <ImageIcon size={18} className="text-[#F5C542]" />
             </div>
-            <span className={cn('text-[14px] font-semibold', imageUrl ? 'text-blue-500' : 'text-gray-500')}>
+            <span className={cn('text-[14px] font-semibold', imageUrl ? 'text-[#F5C542]' : 'text-[#BDBDBD]')}>
               {imageUrl ? 'Replace photo' : 'Add a photo'}
             </span>
             {imageUrl && !imageUploading && (
-              <span className="ml-auto text-[12px] text-blue-400 font-semibold">✓ Added</span>
+              <span className="ml-auto text-[12px] text-[#F5C542] font-semibold">✓ Added</span>
             )}
           </motion.button>
         </div>
@@ -1877,7 +1877,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.07, 0.35), duration: 0.3 }}
-      className="mx-4 mb-4 p-4 rounded-[24px] bg-white border border-black/[0.04] shadow-sm hover:shadow-md transition-all duration-200"
+      className="mx-4 mb-4 p-4 rounded-[24px] bg-[#111] border border-[#1a1a1a] shadow-sm hover:shadow-md transition-all duration-200"
     >
       {/* Author */}
       <div className="flex items-center justify-between mb-3">
@@ -1887,39 +1887,39 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
           </Link>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <Link href={`/profile/${post.authorId}`} className="font-bold text-[14px] text-gray-900 hover:underline">
+              <Link href={`/profile/${post.authorId}`} className="font-bold text-[14px] text-white hover:underline">
                 {authorDisplayName}
               </Link>
               <FounderBadge userId={post.authorId} size="sm" />
               {post.communityId && (
-                <span className="text-[11px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                <span className="text-[11px] font-semibold text-[#F5C542] bg-[rgba(245,197,66,0.08)] px-2 py-0.5 rounded-full">
                   Community
                 </span>
               )}
             </div>
-            <p className="text-[11.5px] text-gray-400 font-medium mt-0.5">
+            <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] font-medium mt-0.5">
               {formatRelativeTime(post.createdAt)}{post.mood && ` · Feeling ${post.mood}`}
             </p>
           </div>
         </div>
         <button
           onClick={() => onOpenMenu?.(post)}
-          className="p-1.5 hover:bg-gray-50 rounded-full transition-colors"
+          className="p-1.5 hover:bg-[#111] rounded-full transition-colors"
         >
-          <MoreHorizontal size={17} className="text-gray-400" />
+          <MoreHorizontal size={17} className="text-[rgba(255,255,255,0.45)]" />
         </button>
       </div>
 
       {/* Spark context badge */}
       {post.sparkPrompt && (
         <div className="mb-2.5 flex items-center gap-1.5 px-3 py-1.5 rounded-xl w-fit" style={{ background: 'linear-gradient(135deg, #EEF0FF, #FFF0F6)' }}>
-          <Sparkles size={11} className="text-purple-500 flex-shrink-0" />
-          <span className="text-[11.5px] font-semibold text-purple-600 truncate max-w-[230px]">"{post.sparkPrompt}"</span>
+          <Sparkles size={11} className="text-[#F5C542] flex-shrink-0" />
+          <span className="text-[11.5px] font-semibold text-[#F5C542] truncate max-w-[230px]">"{post.sparkPrompt}"</span>
         </div>
       )}
 
       {/* Content */}
-      <p className="text-[14.5px] leading-relaxed text-gray-800 mb-3 whitespace-pre-wrap">{post.content}</p>
+      <p className="text-[14.5px] leading-relaxed text-white mb-3 whitespace-pre-wrap">{post.content}</p>
 
       {post.imageUrl && (
         <div
@@ -1943,7 +1943,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
           {/* Comment */}
           <button
             onClick={() => onOpenComments?.(post)}
-            className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-blue-50 hover:text-blue-500 transition-all"
+            className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-[rgba(255,255,255,0.45)] hover:bg-blue-50 hover:text-[#F5C542] transition-all"
           >
             <MessageCircle size={16} />
             <span>{commentsCount}</span>
@@ -1952,7 +1952,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
           {/* Share */}
           <button
             onClick={() => onOpenShare?.(post)}
-            className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-gray-400 hover:bg-purple-50 hover:text-purple-500 transition-all"
+            className="flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-full text-[rgba(255,255,255,0.45)] hover:bg-[rgba(245,197,66,0.08)] hover:text-[#F5C542] transition-all"
           >
             <Share2 size={16} />
             <span>{sharesCount}</span>
@@ -1965,7 +1965,7 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
           onClick={handleSave}
           className={cn(
             'p-2 rounded-full transition-all',
-            saved ? 'text-purple-500 bg-purple-50' : 'text-gray-300 hover:bg-gray-50 hover:text-gray-500'
+            saved ? 'text-[#F5C542] bg-[rgba(245,197,66,0.08)]' : 'text-[rgba(255,255,255,0.35)] hover:bg-[#111] hover:text-[#BDBDBD]'
           )}
         >
           <Bookmark size={16} className={cn(saved && 'fill-purple-500 stroke-purple-500')} />
@@ -2202,10 +2202,10 @@ export default function Home() {
       <div className="px-4 pt-7 pb-5 md:hidden">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[13px] font-semibold text-gray-400 mb-0.5">{greeting} 👋</p>
-            <h1 className="text-[24px] font-black tracking-tight text-gray-900 leading-tight">
+            <p className="text-[13px] font-semibold text-[rgba(255,255,255,0.45)] mb-0.5">{greeting} 👋</p>
+            <h1 className="text-[24px] font-black tracking-tight text-white leading-tight">
               Hey,{' '}
-              <span style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              <span style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                 {firstName}
               </span>
             </h1>
@@ -2358,19 +2358,19 @@ export default function Home() {
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="fixed inset-x-0 bottom-0 z-[75] bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col"
+              className="fixed inset-x-0 bottom-0 z-[75] bg-black rounded-t-[28px] shadow-2xl flex flex-col"
               style={{ maxHeight: '70vh' }}
               key="conv-picker"
             >
               <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
                 <div className="w-10 h-1 rounded-full bg-gray-300" />
               </div>
-              <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
                 <button onClick={() => { setConvPickerPost(null); }}
-                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-                  <X size={18} className="text-gray-500" />
+                  className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+                  <X size={18} className="text-[#BDBDBD]" />
                 </button>
-                <span className="font-black text-[16px] text-gray-900">Send to Chats</span>
+                <span className="font-black text-[16px] text-white">Send to Chats</span>
                 <button
                   disabled={convPickerSent.size === 0}
                   onClick={async () => {
@@ -2393,14 +2393,14 @@ export default function Home() {
                     setSharePost(null);
                     showToast(`Sent to ${sentCopy.size} chat${sentCopy.size > 1 ? 's' : ''}! 📌`);
                   }}
-                  className={cn('text-[14px] font-black transition-colors', convPickerSent.size > 0 ? 'text-purple-600' : 'text-gray-300')}
+                  className={cn('text-[14px] font-black transition-colors', convPickerSent.size > 0 ? 'text-[#F5C542]' : 'text-[rgba(255,255,255,0.35)]')}
                 >
                   Send{convPickerSent.size > 0 ? ` (${convPickerSent.size})` : ''}
                 </button>
               </div>
               <div className="overflow-y-auto flex-1 px-4 py-3 space-y-2">
                 {allConvs.length === 0 ? (
-                  <p className="text-center text-gray-400 text-[14px] py-10">No conversations yet</p>
+                  <p className="text-center text-[rgba(255,255,255,0.45)] text-[14px] py-10">No conversations yet</p>
                 ) : allConvs.map(conv => {
                   const other = conv.participants.find(p => p.id !== currentUser?.id) ?? conv.participants[0];
                   const name = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
@@ -2416,17 +2416,17 @@ export default function Home() {
                       })}
                       className={cn(
                         'w-full flex items-center gap-3.5 px-4 py-3 rounded-[18px] border transition-all text-left',
-                        selected ? 'bg-purple-50 border-purple-200' : 'bg-white border-black/[0.05]'
+                        selected ? 'bg-[rgba(245,197,66,0.08)] border-[rgba(245,197,66,0.25)]' : 'bg-[#111] border-[#1a1a1a]'
                       )}
                     >
                       <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={(other as any).avatarUrl || undefined} size={44} />
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-[14.5px] text-gray-900 truncate">{name}</p>
-                        <p className="text-[12px] text-gray-400 truncate">{conv.lastMessage || 'No messages yet'}</p>
+                        <p className="font-bold text-[14.5px] text-white truncate">{name}</p>
+                        <p className="text-[12px] text-[rgba(255,255,255,0.45)] truncate">{conv.lastMessage || 'No messages yet'}</p>
                       </div>
                       <div className={cn(
                         'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-                        selected ? 'border-purple-500 bg-purple-500' : 'border-gray-300'
+                        selected ? 'border-[#F5C542] bg-[#F5C542]' : 'border-gray-300'
                       )}>
                         {selected && <Check size={11} className="text-white" />}
                       </div>

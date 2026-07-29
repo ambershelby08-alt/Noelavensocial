@@ -61,11 +61,11 @@ function ActiveUsersRow({ users }: { users: OnlineUser[] }) {
       <div className="mb-5 px-4">
         <div className="flex items-center gap-1.5 mb-2">
           <div className="w-2 h-2 rounded-full bg-gray-300" />
-          <span className="text-[12.5px] font-bold text-gray-400 uppercase tracking-wider">
+          <span className="text-[12.5px] font-bold text-[rgba(255,255,255,0.45)] uppercase tracking-wider">
             Active Now
           </span>
         </div>
-        <p className="text-[13px] text-gray-400">No one is active right now.</p>
+        <p className="text-[13px] text-[rgba(255,255,255,0.45)]">No one is active right now.</p>
       </div>
     );
   }
@@ -74,7 +74,7 @@ function ActiveUsersRow({ users }: { users: OnlineUser[] }) {
     <div className="mb-5">
       <div className="flex items-center gap-1.5 mb-3 px-4">
         <div className="w-2 h-2 rounded-full bg-green-400" />
-        <span className="text-[12.5px] font-bold text-gray-500 uppercase tracking-wider">
+        <span className="text-[12.5px] font-bold text-[#BDBDBD] uppercase tracking-wider">
           Active Now
         </span>
       </div>
@@ -95,7 +95,7 @@ function ActiveUsersRow({ users }: { users: OnlineUser[] }) {
                 {/* Green dot — only shown when user is actually online */}
                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
               </div>
-              <span className="text-[11.5px] text-gray-600 font-medium truncate max-w-[52px] text-center">
+              <span className="text-[11.5px] text-[#BDBDBD] font-medium truncate max-w-[52px] text-center">
                 {user.displayName.split(' ')[0]}
               </span>
             </motion.div>
@@ -173,7 +173,7 @@ function ConvActionSheet({
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[28px] shadow-2xl pb-8"
+        className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl pb-8"
       >
         <div className="flex justify-center pt-3 pb-4">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
@@ -185,10 +185,10 @@ function ConvActionSheet({
               onClick={() => handle(a.id)}
               className={cn(
                 'w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-colors',
-                a.danger ? 'hover:bg-red-50 text-red-500' : 'hover:bg-black/[0.04] text-gray-800'
+                a.danger ? 'hover:bg-red-50 text-red-500' : 'hover:bg-black/[0.04] text-white'
               )}
             >
-              <span className={a.danger ? 'text-red-400' : 'text-gray-500'}>{a.icon}</span>
+              <span className={a.danger ? 'text-red-400' : 'text-[#BDBDBD]'}>{a.icon}</span>
               <span className={cn('font-semibold text-[15px]', a.danger && 'text-red-500')}>{a.label}</span>
             </button>
           ))}
@@ -238,7 +238,7 @@ function ConvItem({
         onMouseDown={startPress}
         onMouseUp={endPress}
         onMouseLeave={endPress}
-        className="flex items-center gap-3.5 px-4 py-3.5 bg-white rounded-[22px] border border-black/[0.04] shadow-sm hover:shadow-md transition-all cursor-pointer"
+        className="flex items-center gap-3.5 px-4 py-3.5 bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm hover:shadow-md transition-all cursor-pointer"
       >
         {/* Avatar */}
         <div className="relative flex-shrink-0">
@@ -264,7 +264,7 @@ function ConvItem({
           {unread && (
             <div
               className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black text-white px-1"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
             >
               {conv.unreadCount}
             </div>
@@ -275,24 +275,24 @@ function ConvItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between gap-2 mb-0.5">
             <div className="flex items-center gap-1.5 min-w-0">
-              {isPinned && <Pin size={11} className="text-purple-400 flex-shrink-0" />}
-              <span className={cn('text-[15px] truncate', unread ? 'font-black text-gray-900' : 'font-semibold text-gray-800')}>
+              {isPinned && <Pin size={11} className="text-[#F5C542] flex-shrink-0" />}
+              <span className={cn('text-[15px] truncate', unread ? 'font-black text-white' : 'font-semibold text-white')}>
                 {name}
               </span>
-              {isMuted && <BellOff size={11} className="text-gray-300 flex-shrink-0" />}
+              {isMuted && <BellOff size={11} className="text-[rgba(255,255,255,0.35)] flex-shrink-0" />}
             </div>
-            <span className={cn('text-[11.5px] flex-shrink-0', unread ? 'text-purple-500 font-bold' : 'text-gray-400')}>
+            <span className={cn('text-[11.5px] flex-shrink-0', unread ? 'text-[#F5C542] font-bold' : 'text-[rgba(255,255,255,0.45)]')}>
               {fmtTime(conv.lastMessageAt)}
             </span>
           </div>
-          <p className={cn('text-[13.5px] truncate', unread ? 'font-semibold text-gray-700' : 'text-gray-400')}>
+          <p className={cn('text-[13.5px] truncate', unread ? 'font-semibold text-[#BDBDBD]' : 'text-[rgba(255,255,255,0.45)]')}>
             {lastMsgLabel(conv)}
           </p>
         </div>
 
         {/* Unread dot */}
         {unread && !isMuted && (
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }} />
+          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }} />
         )}
       </motion.div>
     </Link>
@@ -334,28 +334,28 @@ function ComposeDrawer({
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 z-50 bg-[#FDF9F6] rounded-t-[28px] shadow-2xl flex flex-col"
+        className="fixed inset-x-0 bottom-0 z-50 bg-black rounded-t-[28px] shadow-2xl flex flex-col"
         style={{ maxHeight: '80vh' }}
       >
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
         </div>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-black/[0.06] flex-shrink-0">
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
-            <X size={18} className="text-gray-500" />
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a] flex-shrink-0">
+          <button onClick={onClose} className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors">
+            <X size={18} className="text-[#BDBDBD]" />
           </button>
-          <span className="font-black text-[16px] text-gray-900">New Message</span>
+          <span className="font-black text-[16px] text-white">New Message</span>
           <div className="w-8" />
         </div>
         <div className="px-5 pt-3 pb-2 flex-shrink-0">
           <div className="relative">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search people…"
               autoFocus
-              className="w-full bg-white border border-black/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-[14px] placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+              className="w-full bg-[#111] border border-[#2a2a2a] rounded-xl pl-9 pr-4 py-2.5 text-[14px] placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all"
             />
           </div>
         </div>
@@ -364,14 +364,14 @@ function ComposeDrawer({
           style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}
         >
           {filtered.length === 0 && (
-            <p className="text-center text-[14px] text-gray-400 py-8">No people found</p>
+            <p className="text-center text-[14px] text-[rgba(255,255,255,0.45)] py-8">No people found</p>
           )}
           {filtered.map((user, i) => (
             <motion.button
               key={user.id}
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
               onClick={() => handleSelect(user)}
-              className="w-full flex items-center gap-3 py-3 hover:bg-white rounded-xl px-2 transition-colors"
+              className="w-full flex items-center gap-3 py-3 hover:bg-[#111] rounded-xl px-2 transition-colors"
             >
               <div className="relative">
                 <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={46} />
@@ -381,12 +381,12 @@ function ComposeDrawer({
                 )}
               </div>
               <div className="flex-1 text-left">
-                <p className="font-bold text-[14.5px] text-gray-900">{user.displayName}</p>
-                <p className="text-[12.5px] text-gray-400">@{user.handle}</p>
+                <p className="font-bold text-[14.5px] text-white">{user.displayName}</p>
+                <p className="text-[12.5px] text-[rgba(255,255,255,0.45)]">@{user.handle}</p>
               </div>
               <span
                 className="flex-shrink-0 px-3 py-1.5 rounded-full text-[12px] font-bold text-white"
-                style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
               >
                 Start Chat
               </span>
@@ -441,30 +441,30 @@ export default function Messages() {
     .reduce((n, c) => n + c.unreadCount, 0);
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] pb-36">
+    <div className="min-h-screen bg-black pb-36">
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[#FDF9F6]/95 backdrop-blur-md border-b border-black/[0.05] px-4 pt-5 pb-4">
+      <div className="sticky top-0 z-30 bg-black/95 backdrop-blur-md border-b border-[#1a1a1a] px-4 pt-5 pb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-[26px] font-black text-gray-900 tracking-tight flex items-center gap-2">
+            <h1 className="text-[26px] font-black text-white tracking-tight flex items-center gap-2">
               Chats
               {totalUnread > 0 && (
                 <span
                   className="text-[11px] font-black text-white px-2 py-0.5 rounded-full"
-                  style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
                 >
                   {totalUnread}
                 </span>
               )}
             </h1>
-            <p className="text-[13px] text-gray-400 font-medium">Your conversations</p>
+            <p className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Your conversations</p>
           </div>
           <motion.button
             whileTap={{ scale: 0.92 }}
             onClick={() => setCompose(true)}
             className="w-11 h-11 rounded-full flex items-center justify-center shadow-md text-white"
-            style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 3px 12px rgba(107,115,255,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 3px 12px rgba(245,197,66,0.35)' }}
           >
             <PenSquare size={18} />
           </motion.button>
@@ -472,16 +472,16 @@ export default function Messages() {
 
         {/* Search */}
         <div className="relative">
-          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="w-full bg-white border border-black/[0.06] rounded-2xl pl-10 pr-10 py-3 text-[14px] text-gray-800 placeholder:text-gray-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all shadow-sm"
+            className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-10 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#F5C542] focus:ring-2 focus:ring-[rgba(245,197,66,0.15)] transition-all shadow-sm"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-              <X size={15} className="text-gray-400" />
+              <X size={15} className="text-[rgba(255,255,255,0.45)]" />
             </button>
           )}
         </div>
@@ -494,8 +494,8 @@ export default function Messages() {
         {/* Conversations */}
         <div className="px-4 space-y-2">
           {search && (
-            <p className="text-[13px] text-gray-400 font-medium mb-3">
-              {sorted.length} result{sorted.length !== 1 ? 's' : ''} for "<span className="text-gray-700">{search}</span>"
+            <p className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium mb-3">
+              {sorted.length} result{sorted.length !== 1 ? 's' : ''} for "<span className="text-[#BDBDBD]">{search}</span>"
             </p>
           )}
 
@@ -503,17 +503,17 @@ export default function Messages() {
             <div className="flex flex-col items-center py-24 text-center">
               <div className="w-16 h-16 rounded-[22px] flex items-center justify-center mb-4"
                 style={{ background: 'linear-gradient(135deg, #6B73FF22, #FF6B9D22)' }}>
-                <MessageCircle size={28} className="text-purple-400" />
+                <MessageCircle size={28} className="text-[#F5C542]" />
               </div>
-              <h3 className="font-black text-[17px] text-gray-800 mb-1.5">No conversations</h3>
-              <p className="text-[14px] text-gray-400 max-w-[200px] leading-relaxed">
+              <h3 className="font-black text-[17px] text-white mb-1.5">No conversations</h3>
+              <p className="text-[14px] text-[rgba(255,255,255,0.45)] max-w-[200px] leading-relaxed">
                 {search ? 'Try a different search.' : 'Start a conversation with someone!'}
               </p>
               {!search && (
                 <button
                   onClick={() => setCompose(true)}
                   className="mt-6 px-6 py-3 rounded-full text-[14px] font-black text-white"
-                  style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
                 >
                   + New Message
                 </button>
@@ -541,7 +541,7 @@ export default function Messages() {
             <div className="mt-4">
               <button
                 onClick={() => setShowArchived(v => !v)}
-                className="w-full flex items-center justify-between px-2 py-3 text-gray-500 hover:text-gray-700 transition-colors"
+                className="w-full flex items-center justify-between px-2 py-3 text-[#BDBDBD] hover:text-[#BDBDBD] transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <Archive size={16} />

@@ -72,7 +72,7 @@ export function NotificationPermissionPrompt() {
           <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-[205] bg-[#FDF9F6] rounded-t-[28px] shadow-2xl px-6 pb-10 pt-5"
+            className="fixed inset-x-0 bottom-0 z-[205] bg-black rounded-t-[28px] shadow-2xl px-6 pb-10 pt-5"
             style={{ paddingBottom: 'max(40px, env(safe-area-inset-bottom, 40px))' }}
           >
             {/* Handle */}
@@ -83,7 +83,7 @@ export function NotificationPermissionPrompt() {
             {/* Dismiss button */}
             <button
               onClick={dismiss}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#1a1a1a] flex items-center justify-center text-[#BDBDBD] hover:bg-[#222] transition-colors"
             >
               <X size={15} />
             </button>
@@ -91,25 +91,25 @@ export function NotificationPermissionPrompt() {
             {/* Icon */}
             <div
               className="w-16 h-16 rounded-[22px] flex items-center justify-center mb-4 mx-auto"
-              style={{ background: 'linear-gradient(135deg, #6B73FF 0%, #FF6B9D 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
             >
               <Bell size={28} className="text-white" />
             </div>
 
             {/* Heading */}
-            <h2 className="text-[20px] font-black text-gray-900 text-center mb-1">
+            <h2 className="text-[20px] font-black text-white text-center mb-1">
               Stay in the loop
             </h2>
-            <p className="text-[14px] text-gray-500 text-center mb-6 leading-relaxed">
+            <p className="text-[14px] text-[#BDBDBD] text-center mb-6 leading-relaxed">
               Get notified when something happens that matters to you — no spam, just the good stuff.
             </p>
 
             {/* Benefits */}
             <div className="space-y-3 mb-7">
               {[
-                { icon: MessageCircle, color: '#6B73FF', label: 'New messages and replies' },
-                { icon: Heart,         color: '#FF6B9D', label: 'Reactions to your posts' },
-                { icon: UserPlus,      color: '#9B59B6', label: 'New followers and mentions' },
+                { icon: MessageCircle, color: '#F5C542', label: 'New messages and replies' },
+                { icon: Heart,         color: '#F5C542', label: 'Reactions to your posts' },
+                { icon: UserPlus,      color: '#F5C542', label: 'New followers and mentions' },
               ].map(({ icon: Icon, color, label }) => (
                 <div key={label} className="flex items-center gap-3">
                   <div
@@ -118,7 +118,7 @@ export function NotificationPermissionPrompt() {
                   >
                     <Icon size={18} style={{ color }} />
                   </div>
-                  <span className="text-[14px] text-gray-700 font-medium">{label}</span>
+                  <span className="text-[14px] text-[#BDBDBD] font-medium">{label}</span>
                 </div>
               ))}
             </div>
@@ -128,7 +128,7 @@ export function NotificationPermissionPrompt() {
               onClick={enable}
               disabled={loading}
               className="w-full py-4 rounded-2xl font-black text-[15px] text-white mb-3 flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 4px 18px rgba(107,115,255,0.35)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
             >
               {loading
                 ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -137,7 +137,7 @@ export function NotificationPermissionPrompt() {
             </button>
             <button
               onClick={dismiss}
-              className="w-full py-3 rounded-2xl font-semibold text-[14px] text-gray-500 bg-gray-100 hover:bg-gray-150 transition-colors"
+              className="w-full py-3 rounded-2xl font-semibold text-[14px] text-[#BDBDBD] bg-[#1a1a1a] hover:bg-gray-150 transition-colors"
             >
               Maybe later
             </button>

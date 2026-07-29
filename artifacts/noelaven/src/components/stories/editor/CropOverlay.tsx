@@ -145,7 +145,7 @@ export function CropOverlay({ crop, onChange, onApply, onCancel }: CropOverlayPr
         <button
           onClick={onApply}
           className="px-6 py-2 rounded-full text-sm font-bold text-white"
-          style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB)' }}
+          style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED)' }}
         >
           Apply Crop ✓
         </button>

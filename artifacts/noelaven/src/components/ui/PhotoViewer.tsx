@@ -145,7 +145,7 @@ export function PhotoViewer({ src, alt = 'Photo', isPrivate = false, onClose }: 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             onClick={e => e.stopPropagation()}
-            className="absolute bottom-8 left-4 right-4 bg-white rounded-[24px] shadow-2xl overflow-hidden"
+            className="absolute bottom-8 left-4 right-4 bg-[#111] rounded-[24px] shadow-2xl overflow-hidden"
           >
             {!isPrivate && (
               <a
@@ -153,43 +153,43 @@ export function PhotoViewer({ src, alt = 'Photo', isPrivate = false, onClose }: 
                 download="noelaven-photo.jpg"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 px-5 py-4 active:bg-gray-50"
+                className="flex items-center gap-3 px-5 py-4 active:bg-[#111]"
                 onClick={() => setShowMenu(false)}
               >
                 <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <Download size={17} className="text-blue-500" />
+                  <Download size={17} className="text-[#F5C542]" />
                 </div>
-                <span className="text-[15px] font-medium text-gray-800">Save image</span>
+                <span className="text-[15px] font-medium text-white">Save image</span>
               </a>
             )}
             <button
               onClick={() => { shareImage(); setShowMenu(false); }}
-              className="w-full flex items-center gap-3 px-5 py-4 active:bg-gray-50 border-t border-gray-100"
+              className="w-full flex items-center gap-3 px-5 py-4 active:bg-[#111] border-t border-[#222]"
             >
-              <div className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
-                <Share2 size={17} className="text-purple-500" />
+              <div className="w-9 h-9 rounded-full bg-[rgba(245,197,66,0.08)] flex items-center justify-center flex-shrink-0">
+                <Share2 size={17} className="text-[#F5C542]" />
               </div>
-              <span className="text-[15px] font-medium text-gray-800">Share</span>
+              <span className="text-[15px] font-medium text-white">Share</span>
             </button>
             <button
               onClick={copyLink}
-              className="w-full flex items-center gap-3 px-5 py-4 active:bg-gray-50 border-t border-gray-100"
+              className="w-full flex items-center gap-3 px-5 py-4 active:bg-[#111] border-t border-[#222]"
             >
-              <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+              <div className="w-9 h-9 rounded-full bg-[#1a1a1a] flex items-center justify-center flex-shrink-0">
                 {copied
                   ? <Check size={17} className="text-green-500" />
-                  : <LinkIcon size={17} className="text-gray-500" />
+                  : <LinkIcon size={17} className="text-[#BDBDBD]" />
                 }
               </div>
-              <span className="text-[15px] font-medium text-gray-800">
+              <span className="text-[15px] font-medium text-white">
                 {copied ? 'Link copied!' : 'Copy image link'}
               </span>
             </button>
             <button
               onClick={() => setShowMenu(false)}
-              className="w-full flex items-center justify-center px-5 py-4 bg-gray-50 border-t border-gray-100"
+              className="w-full flex items-center justify-center px-5 py-4 bg-[#111] border-t border-[#222]"
             >
-              <span className="text-[15px] font-semibold text-gray-500">Cancel</span>
+              <span className="text-[15px] font-semibold text-[#BDBDBD]">Cancel</span>
             </button>
           </motion.div>
         )}

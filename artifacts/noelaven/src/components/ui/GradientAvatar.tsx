@@ -1,12 +1,12 @@
 import React from 'react';
 
 const GRADIENT_PAIRS: [string, string][] = [
-  ['#FF6B9D', '#C44FDB'],   // pink → purple
+  ['#F5C542', '#C44FDB'],   // pink → purple
   ['#4F75FF', '#6EC6F5'],   // blue → sky
-  ['#FF8C42', '#FF6B9D'],   // coral → pink
+  ['#FF8C42', '#F5C542'],   // coral → pink
   ['#3CC2A8', '#4F75FF'],   // teal → blue
   ['#FFD93D', '#FF8C42'],   // yellow → orange
-  ['#9B59B6', '#E056A4'],   // purple → magenta
+  ['#F5C542', '#E056A4'],   // purple → magenta
   ['#2ECC71', '#3CC2A8'],   // green → teal
 ];
 

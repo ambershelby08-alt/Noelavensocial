@@ -68,16 +68,16 @@ function CommentRow({
         />
       </Link>
       <div className="flex-1 min-w-0">
-        <div className="bg-gray-50 rounded-[16px] px-3.5 py-2.5">
+        <div className="bg-[#111] rounded-[16px] px-3.5 py-2.5">
           <Link href={`/profile/${comment.authorId}`}>
-            <span className="font-bold text-[13px] text-gray-900 hover:underline">
+            <span className="font-bold text-[13px] text-white hover:underline">
               {comment.author.displayName}
             </span>
           </Link>
-          <p className="text-[13.5px] text-gray-700 mt-0.5 leading-snug">{comment.text}</p>
+          <p className="text-[13.5px] text-[#BDBDBD] mt-0.5 leading-snug">{comment.text}</p>
         </div>
         <div className="flex items-center gap-4 mt-1.5 ml-1">
-          <span className="text-[11.5px] text-gray-400">
+          <span className="text-[11.5px] text-[rgba(255,255,255,0.45)]">
             {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
           </span>
           <CommentReactionButton
@@ -201,22 +201,22 @@ export default function PostDetail() {
 
   if (postLoading) {
     return (
-      <div className="min-h-screen bg-[#FDF9F6] flex items-center justify-center">
-        <Loader2 size={28} className="text-purple-400 animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 size={28} className="text-[#F5C542] animate-spin" />
       </div>
     );
   }
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-[#FDF9F6] flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 text-center">
         <p className="text-6xl mb-4">🌿</p>
-        <h2 className="text-[20px] font-black text-gray-900 mb-2">Post not found</h2>
-        <p className="text-[14px] text-gray-400 mb-8">It may have been deleted or never existed.</p>
+        <h2 className="text-[20px] font-black text-white mb-2">Post not found</h2>
+        <p className="text-[14px] text-[rgba(255,255,255,0.45)] mb-8">It may have been deleted or never existed.</p>
         <button
           onClick={() => setLocation('/')}
           className="px-6 py-2.5 rounded-full text-[14px] font-black text-white"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
         >
           Back to Home
         </button>
@@ -225,19 +225,19 @@ export default function PostDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] pb-32">
+    <div className="min-h-screen bg-black pb-32">
 
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#FDF9F6]/90 backdrop-blur-md border-b border-black/[0.04] px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-20 bg-black/90 backdrop-blur-md border-b border-[#1a1a1a] px-4 py-3 flex items-center gap-3">
         <button
           onClick={() => window.history.length > 1 ? window.history.back() : setLocation('/')}
-          className="p-1.5 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+          className="p-1.5 hover:bg-[#1a1a1a] rounded-full transition-colors flex-shrink-0"
         >
-          <ArrowLeft size={20} className="text-gray-700" />
+          <ArrowLeft size={20} className="text-[#BDBDBD]" />
         </button>
         <div>
-          <h1 className="font-black text-[16px] text-gray-900">Post</h1>
-          <p className="text-[12px] text-gray-400">
+          <h1 className="font-black text-[16px] text-white">Post</h1>
+          <p className="text-[12px] text-[rgba(255,255,255,0.45)]">
             {formatDistanceToNow(post.createdAt, { addSuffix: true })}
           </p>
         </div>
@@ -255,15 +255,15 @@ export default function PostDetail() {
       {/* Comments section */}
       <div className="px-4 mt-1">
         <div className="flex items-center gap-2 mb-4">
-          <MessageCircle size={16} className="text-purple-500" />
-          <h2 className="font-black text-[15px] text-gray-900">
+          <MessageCircle size={16} className="text-[#F5C542]" />
+          <h2 className="font-black text-[15px] text-white">
             {comments.length > 0 ? `${comments.length} Comment${comments.length !== 1 ? 's' : ''}` : 'Comments'}
           </h2>
         </div>
 
         {commentsLoading ? (
           <div className="flex justify-center py-10">
-            <Loader2 size={22} className="text-purple-400 animate-spin" />
+            <Loader2 size={22} className="text-[#F5C542] animate-spin" />
           </div>
         ) : comments.length === 0 ? (
           <motion.div
@@ -271,11 +271,11 @@ export default function PostDetail() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center py-14 text-center"
           >
-            <div className="w-14 h-14 rounded-[20px] bg-gray-100 flex items-center justify-center mb-3">
-              <Sparkles size={24} className="text-gray-300" />
+            <div className="w-14 h-14 rounded-[20px] bg-[#1a1a1a] flex items-center justify-center mb-3">
+              <Sparkles size={24} className="text-[rgba(255,255,255,0.35)]" />
             </div>
-            <p className="font-bold text-[15px] text-gray-700 mb-1">Be the first to comment</p>
-            <p className="text-[13px] text-gray-400">Share your thoughts below.</p>
+            <p className="font-bold text-[15px] text-[#BDBDBD] mb-1">Be the first to comment</p>
+            <p className="text-[13px] text-[rgba(255,255,255,0.45)]">Share your thoughts below.</p>
           </motion.div>
         ) : (
           <AnimatePresence initial={false}>
@@ -294,7 +294,7 @@ export default function PostDetail() {
       {/* Compose bar */}
       {currentUser && (
         <div className="fixed bottom-20 md:bottom-4 left-0 right-0 px-4 z-20">
-          <div className="flex items-end gap-2.5 bg-white rounded-[20px] border border-black/[0.07] shadow-lg px-3 py-2">
+          <div className="flex items-end gap-2.5 bg-[#111] rounded-[20px] border border-black/[0.07] shadow-lg px-3 py-2">
             <UserAvatar
               userId={currentUser.id}
               fallbackName={currentUser.displayName}
@@ -309,7 +309,7 @@ export default function PostDetail() {
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               rows={1}
               placeholder="Write a comment…"
-              className="flex-1 resize-none text-[14px] bg-transparent outline-none text-gray-800 placeholder:text-gray-400 max-h-24 py-1.5"
+              className="flex-1 resize-none text-[14px] bg-transparent outline-none text-white placeholder:text-[#555] max-h-24 py-1.5"
               style={{ fieldSizing: 'content' } as React.CSSProperties}
             />
             <motion.button
@@ -317,7 +317,7 @@ export default function PostDetail() {
               onClick={handleSend}
               disabled={!text.trim() || sending}
               className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white mb-0.5 disabled:opacity-40 transition-opacity"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
             >
               {sending
                 ? <Loader2 size={15} className="animate-spin" />

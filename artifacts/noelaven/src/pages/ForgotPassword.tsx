@@ -24,7 +24,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-black relative overflow-hidden flex flex-col">
       {/* Background blobs */}
       <div className="absolute top-[-15%] left-[-20%] w-[70%] h-[70%] rounded-full pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(107,115,255,0.18) 0%, rgba(60,194,168,0.10) 40%, transparent 70%)' }} />
@@ -34,7 +34,7 @@ export default function ForgotPassword() {
       <div className="relative z-10 flex-1 flex flex-col px-6 pt-14 pb-8 max-w-sm mx-auto w-full">
         {/* Back */}
         <Link href="/login">
-          <button className="flex items-center gap-1.5 text-[14px] font-semibold text-gray-500 hover:text-gray-800 transition-colors mb-10 self-start">
+          <button className="flex items-center gap-1.5 text-[14px] font-semibold text-[#BDBDBD] hover:text-white transition-colors mb-10 self-start">
             <ArrowLeft size={16} />
             Back to Sign In
           </button>
@@ -53,26 +53,26 @@ export default function ForgotPassword() {
               {/* Icon */}
               <NoelavenLogo variant="mark" size="lg" className="mb-6" />
 
-              <h1 className="text-[28px] font-black text-gray-900 tracking-tight leading-tight mb-2">
+              <h1 className="text-[28px] font-black text-white tracking-tight leading-tight mb-2">
                 Forgot your<br />password?
               </h1>
-              <p className="text-[14px] text-gray-400 font-medium mb-8 leading-relaxed">
+              <p className="text-[14px] text-[rgba(255,255,255,0.45)] font-medium mb-8 leading-relaxed">
                 No worries — we'll send a reset link to your email. Check your inbox in a moment.
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[13px] font-semibold text-gray-600 ml-1">Email address</label>
-                  <div className={`flex items-center bg-white/80 backdrop-blur-sm border rounded-2xl px-4 py-3.5 gap-3 transition-all
-                    ${error ? 'border-red-300 ring-2 ring-red-100' : 'border-black/[0.08] focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100'}`}
+                  <label className="text-[13px] font-semibold text-[#BDBDBD] ml-1">Email address</label>
+                  <div className={`flex items-center bg-[#111] backdrop-blur-sm border rounded-2xl px-4 py-3.5 gap-3 transition-all
+                    ${error ? 'border-red-300 ring-2 ring-red-100' : 'border-[#2a2a2a] focus-within:border-[#F5C542] focus-within:ring-2 focus-within:ring-purple-100'}`}
                   >
-                    <Mail size={17} className="text-gray-400 flex-shrink-0" />
+                    <Mail size={17} className="text-[rgba(255,255,255,0.45)] flex-shrink-0" />
                     <input
                       type="email"
                       placeholder="hello@noelaven.com"
                       value={email}
                       onChange={e => { setEmail(e.target.value); setError(''); }}
-                      className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 outline-none"
+                      className="flex-1 bg-transparent text-[15px] text-white placeholder:text-[#555] outline-none"
                       autoComplete="email"
                     />
                   </div>
@@ -84,7 +84,7 @@ export default function ForgotPassword() {
                   disabled={loading}
                   whileTap={{ scale: 0.98 }}
                   className="w-full text-white font-bold py-4 rounded-2xl text-[15px] transition-all disabled:opacity-70 flex items-center justify-center mt-2"
-                  style={{ background: 'linear-gradient(135deg, #6B73FF, #9B59B6, #FF6B9D)', boxShadow: '0 4px 18px rgba(107,115,255,0.35)' }}
+                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 18px rgba(245,197,66,0.35)' }}
                 >
                   {loading
                     ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -110,20 +110,20 @@ export default function ForgotPassword() {
                 <CheckCircle2 size={44} className="text-white" />
               </motion.div>
 
-              <h2 className="text-[26px] font-black text-gray-900 tracking-tight mb-3">
+              <h2 className="text-[26px] font-black text-white tracking-tight mb-3">
                 Check your inbox
               </h2>
-              <p className="text-[14px] text-gray-400 font-medium leading-relaxed mb-2">
+              <p className="text-[14px] text-[rgba(255,255,255,0.45)] font-medium leading-relaxed mb-2">
                 We've sent a reset link to
               </p>
-              <p className="text-[15px] font-bold text-purple-600 mb-8">
+              <p className="text-[15px] font-bold text-[#F5C542] mb-8">
                 {email}
               </p>
-              <p className="text-[12.5px] text-gray-400 mb-8 leading-relaxed max-w-[240px]">
+              <p className="text-[12.5px] text-[rgba(255,255,255,0.45)] mb-8 leading-relaxed max-w-[240px]">
                 Didn't receive it? Check your spam folder or{' '}
                 <button
                   onClick={() => setSent(false)}
-                  className="text-purple-500 font-semibold underline underline-offset-2"
+                  className="text-[#F5C542] font-semibold underline underline-offset-2"
                 >
                   try again
                 </button>
@@ -134,7 +134,7 @@ export default function ForgotPassword() {
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   className="px-8 py-3.5 rounded-2xl font-bold text-[15px] text-white shadow-md"
-                  style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)', boxShadow: '0 4px 16px rgba(107,115,255,0.30)' }}
+                  style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)', boxShadow: '0 4px 16px rgba(245,197,66,0.30)' }}
                 >
                   Back to Sign In
                 </motion.button>

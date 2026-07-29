@@ -64,7 +64,7 @@ function ReportCard({ report }: { report: Report }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-[22px] border border-black/[0.04] shadow-sm p-4"
+      className="bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm p-4"
     >
       {/* Header row */}
       <div className="flex items-start gap-3 mb-3">
@@ -73,7 +73,7 @@ function ReportCard({ report }: { report: Report }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[12px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+            <span className="text-[12px] font-bold px-2 py-0.5 rounded-full bg-[#1a1a1a] text-[#BDBDBD]">
               {TYPE_LABELS[report.type]}
             </span>
             <span
@@ -84,31 +84,31 @@ function ReportCard({ report }: { report: Report }) {
               {status.label}
             </span>
           </div>
-          <p className="text-[14px] font-semibold text-gray-800 mt-1">{report.reason}</p>
-          <p className="text-[11.5px] text-gray-400 mt-0.5">{relDate(report.createdAt)}</p>
+          <p className="text-[14px] font-semibold text-white mt-1">{report.reason}</p>
+          <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] mt-0.5">{relDate(report.createdAt)}</p>
         </div>
       </div>
 
       {/* Preview */}
       {report.targetPreview && (
-        <div className="bg-gray-50 rounded-xl px-3 py-2.5 mb-3">
-          <p className="text-[13px] text-gray-600 line-clamp-2 leading-relaxed">{report.targetPreview}</p>
+        <div className="bg-[#111] rounded-xl px-3 py-2.5 mb-3">
+          <p className="text-[13px] text-[#BDBDBD] line-clamp-2 leading-relaxed">{report.targetPreview}</p>
         </div>
       )}
 
       {/* User notes */}
       {report.details && (
         <div className="border-t border-gray-50 pt-2.5">
-          <p className="text-[11.5px] text-gray-400 font-semibold mb-0.5">Your note</p>
-          <p className="text-[13px] text-gray-600 leading-relaxed">{report.details}</p>
+          <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] font-semibold mb-0.5">Your note</p>
+          <p className="text-[13px] text-[#BDBDBD] leading-relaxed">{report.details}</p>
         </div>
       )}
 
       {/* Moderator note if resolved */}
       {report.moderatorNote && (
         <div className="mt-2.5 border-t border-gray-50 pt-2.5">
-          <p className="text-[11.5px] text-gray-400 font-semibold mb-0.5">Moderator response</p>
-          <p className="text-[13px] text-gray-600 leading-relaxed">{report.moderatorNote}</p>
+          <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] font-semibold mb-0.5">Moderator response</p>
+          <p className="text-[13px] text-[#BDBDBD] leading-relaxed">{report.moderatorNote}</p>
         </div>
       )}
     </motion.div>
@@ -149,17 +149,17 @@ export default function MyReports() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] pb-32">
+    <div className="min-h-screen bg-black pb-32">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#FDF9F6]/95 backdrop-blur-sm px-4 pt-6 pb-3 flex items-center gap-3">
+      <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-sm px-4 pt-6 pb-3 flex items-center gap-3">
         <Link href="/safety">
-          <button className="w-9 h-9 rounded-full bg-white shadow-sm border border-black/[0.06] flex items-center justify-center">
-            <ChevronLeft size={18} className="text-gray-600" />
+          <button className="w-9 h-9 rounded-full bg-[#111] shadow-sm border border-[#1a1a1a] flex items-center justify-center">
+            <ChevronLeft size={18} className="text-[#BDBDBD]" />
           </button>
         </Link>
         <div>
-          <h1 className="text-[22px] font-black text-gray-900 leading-tight">My Reports</h1>
-          <p className="text-[12px] text-gray-400">Reports you've submitted</p>
+          <h1 className="text-[22px] font-black text-white leading-tight">My Reports</h1>
+          <p className="text-[12px] text-[rgba(255,255,255,0.45)]">Reports you've submitted</p>
         </div>
       </div>
 
@@ -174,9 +174,9 @@ export default function MyReports() {
                 'flex-shrink-0 px-4 py-2 rounded-full text-[13px] font-bold transition-all',
                 activeFilter === f.value
                   ? 'text-white shadow-sm'
-                  : 'bg-white text-gray-500 border border-gray-100'
+                  : 'bg-[#111] text-[#BDBDBD] border border-[#222]'
               )}
-              style={activeFilter === f.value ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+              style={activeFilter === f.value ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
             >
               {f.label}
             </button>
@@ -187,17 +187,17 @@ export default function MyReports() {
       <div className="px-4 space-y-3">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-[22px] h-28 animate-pulse" />
+            <div key={i} className="bg-[#111] rounded-[22px] h-28 animate-pulse" />
           ))
         ) : indexBuilding ? (
-          <div className="bg-white rounded-[24px] border border-amber-100 shadow-sm p-6 text-center">
+          <div className="bg-[#111] rounded-[24px] border border-amber-100 shadow-sm p-6 text-center">
             <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
               <Clock size={26} className="text-amber-400" />
             </div>
-            <p className="text-[16px] font-black text-gray-900 mb-2">
+            <p className="text-[16px] font-black text-white mb-2">
               Database indexes are building
             </p>
-            <p className="text-[13px] text-gray-500 leading-relaxed mb-4">
+            <p className="text-[13px] text-[#BDBDBD] leading-relaxed mb-4">
               Firestore is building the indexes needed to query your reports.
               This is a one-time process that takes 1–5 minutes after first deployment.
             </p>
@@ -209,18 +209,18 @@ export default function MyReports() {
             <button
               onClick={() => window.location.reload()}
               className="px-6 py-2.5 rounded-full font-bold text-[13.5px] text-white"
-              style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+              style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
             >
               Retry
             </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Flag size={28} className="text-gray-300" />
+            <div className="w-16 h-16 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-4">
+              <Flag size={28} className="text-[rgba(255,255,255,0.35)]" />
             </div>
-            <p className="text-[17px] font-black text-gray-900 mb-2">No reports yet</p>
-            <p className="text-[13.5px] text-gray-400 max-w-[220px] leading-relaxed">
+            <p className="text-[17px] font-black text-white mb-2">No reports yet</p>
+            <p className="text-[13.5px] text-[rgba(255,255,255,0.45)] max-w-[220px] leading-relaxed">
               {activeFilter === 'all'
                 ? 'Reports you submit from posts, profiles, or messages will appear here.'
                 : `No ${activeFilter} reports.`}
@@ -232,7 +232,7 @@ export default function MyReports() {
       </div>
 
       <div className="px-6 pt-6 text-center">
-        <p className="text-[11.5px] text-gray-400 leading-relaxed">
+        <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] leading-relaxed">
           Reports are reviewed within 24 hours. All reports are anonymous.
         </p>
       </div>

@@ -100,18 +100,18 @@ export function ReportSheet({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-[75] bg-white rounded-t-[28px] shadow-2xl max-h-[90vh] flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-[75] bg-[#111] rounded-t-[28px] shadow-2xl max-h-[90vh] flex flex-col"
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+          <div className="w-10 h-1 rounded-full bg-[#222]" />
         </div>
 
         {/* Header */}
         <div className="flex items-center px-5 pt-1 pb-3 flex-shrink-0">
           {step === 'details' && (
-            <button onClick={() => setStep('reason')} className="mr-3 p-1.5 rounded-full hover:bg-gray-100 transition-colors">
-              <ArrowLeft size={18} className="text-gray-600" />
+            <button onClick={() => setStep('reason')} className="mr-3 p-1.5 rounded-full hover:bg-[#1a1a1a] transition-colors">
+              <ArrowLeft size={18} className="text-[#BDBDBD]" />
             </button>
           )}
           <div className="flex-1 min-w-0">
@@ -125,18 +125,18 @@ export function ReportSheet({
               >
                 {step === 'reason' && (
                   <>
-                    <p className="text-[17px] font-black text-gray-900">Report {TYPE_LABELS[targetType]}</p>
-                    <p className="text-[12.5px] text-gray-400">Why are you reporting this?</p>
+                    <p className="text-[17px] font-black text-white">Report {TYPE_LABELS[targetType]}</p>
+                    <p className="text-[12.5px] text-[rgba(255,255,255,0.45)]">Why are you reporting this?</p>
                   </>
                 )}
                 {step === 'details' && (
                   <>
-                    <p className="text-[17px] font-black text-gray-900">{reason}</p>
-                    <p className="text-[12.5px] text-gray-400">Add more context (optional)</p>
+                    <p className="text-[17px] font-black text-white">{reason}</p>
+                    <p className="text-[12.5px] text-[rgba(255,255,255,0.45)]">Add more context (optional)</p>
                   </>
                 )}
                 {(step === 'submitting' || step === 'success') && (
-                  <p className="text-[17px] font-black text-gray-900">
+                  <p className="text-[17px] font-black text-white">
                     {step === 'submitting' ? 'Submitting…' : 'Report submitted'}
                   </p>
                 )}
@@ -144,8 +144,8 @@ export function ReportSheet({
             </AnimatePresence>
           </div>
           {step !== 'submitting' && step !== 'success' && (
-            <button onClick={handleClose} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-              <X size={18} className="text-gray-500" />
+            <button onClick={handleClose} className="p-2 rounded-full hover:bg-[#1a1a1a] transition-colors">
+              <X size={18} className="text-[#BDBDBD]" />
             </button>
           )}
         </div>
@@ -166,7 +166,7 @@ export function ReportSheet({
                     key={opt.reason}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => pickReason(opt)}
-                    className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-gray-50 active:bg-gray-100 text-left transition-colors"
+                    className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-[#111] active:bg-[#1a1a1a] text-left transition-colors"
                   >
                     <div
                       className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
@@ -175,10 +175,10 @@ export function ReportSheet({
                       <opt.icon size={16} style={{ color: opt.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-semibold text-gray-800">{opt.reason}</p>
-                      <p className="text-[11.5px] text-gray-400 mt-0.5 leading-snug">{opt.desc}</p>
+                      <p className="text-[14px] font-semibold text-white">{opt.reason}</p>
+                      <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] mt-0.5 leading-snug">{opt.desc}</p>
                     </div>
-                    <ChevronRight size={15} className="text-gray-300 flex-shrink-0" />
+                    <ChevronRight size={15} className="text-[rgba(255,255,255,0.35)] flex-shrink-0" />
                   </motion.button>
                 ))}
               </motion.div>
@@ -194,9 +194,9 @@ export function ReportSheet({
                 className="px-5 pb-6"
               >
                 {targetPreview && (
-                  <div className="mb-4 p-3.5 bg-gray-50 rounded-2xl">
-                    <p className="text-[12px] font-semibold text-gray-400 mb-1 uppercase tracking-wide">Reporting</p>
-                    <p className="text-[13.5px] text-gray-700 line-clamp-2">{targetPreview}</p>
+                  <div className="mb-4 p-3.5 bg-[#111] rounded-2xl">
+                    <p className="text-[12px] font-semibold text-[rgba(255,255,255,0.45)] mb-1 uppercase tracking-wide">Reporting</p>
+                    <p className="text-[13.5px] text-[#BDBDBD] line-clamp-2">{targetPreview}</p>
                   </div>
                 )}
                 <textarea
@@ -205,9 +205,9 @@ export function ReportSheet({
                   placeholder="Describe what you saw (optional)…"
                   rows={5}
                   maxLength={500}
-                  className="w-full px-4 py-3.5 bg-gray-50 rounded-2xl text-[14px] text-gray-800 placeholder-gray-400 resize-none border-0 outline-none focus:ring-2 focus:ring-purple-200 transition-all"
+                  className="w-full px-4 py-3.5 bg-[#111] rounded-2xl text-[14px] text-white placeholder-gray-400 resize-none border-0 outline-none focus:ring-2 focus:ring-purple-200 transition-all"
                 />
-                <p className="text-[11px] text-gray-300 text-right mt-1 mb-5">{details.length}/500</p>
+                <p className="text-[11px] text-[rgba(255,255,255,0.35)] text-right mt-1 mb-5">{details.length}/500</p>
 
                 <button
                   onClick={handleSubmit}
@@ -216,7 +216,7 @@ export function ReportSheet({
                 >
                   Submit Report
                 </button>
-                <p className="text-center text-[11.5px] text-gray-400 mt-3 leading-relaxed px-4">
+                <p className="text-center text-[11.5px] text-[rgba(255,255,255,0.45)] mt-3 leading-relaxed px-4">
                   Your report is completely anonymous. We review all reports within 24 hours.
                 </p>
               </motion.div>
@@ -232,7 +232,7 @@ export function ReportSheet({
                 className="flex flex-col items-center justify-center py-16 px-8 text-center"
               >
                 {step === 'submitting' ? (
-                  <Loader2 size={48} className="text-purple-400 animate-spin mb-4" />
+                  <Loader2 size={48} className="text-[#F5C542] animate-spin mb-4" />
                 ) : (
                   <motion.div
                     initial={{ scale: 0 }}
@@ -243,11 +243,11 @@ export function ReportSheet({
                     <CheckCircle size={36} className="text-green-500" />
                   </motion.div>
                 )}
-                <p className="text-[18px] font-black text-gray-900 mb-2">
+                <p className="text-[18px] font-black text-white mb-2">
                   {step === 'submitting' ? 'Submitting your report…' : 'Thank you for letting us know!'}
                 </p>
                 {step === 'success' && (
-                  <p className="text-[13.5px] text-gray-400 max-w-[240px] leading-relaxed">
+                  <p className="text-[13.5px] text-[rgba(255,255,255,0.45)] max-w-[240px] leading-relaxed">
                     Our team will review this and take action if it violates our guidelines.
                   </p>
                 )}

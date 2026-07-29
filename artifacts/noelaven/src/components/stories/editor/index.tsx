@@ -391,7 +391,7 @@ export function StoryEditor({
           {error && <p className="text-xs text-red-400 text-center px-2">{error}</p>}
           <button onClick={handlePublish} disabled={uploading}
                   className="flex-[2] py-3 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
-                  style={{ background: 'linear-gradient(135deg, #FF6B9D, #C44FDB, #6B73FF)' }}>
+                  style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
             {uploading
               ? <><Loader2 size={16} className="animate-spin" /> Publishing…</>
               : isLast ? 'Share Story ✨' : <>Next <ChevronRight size={16} /></>}
@@ -458,7 +458,7 @@ export function StoryEditor({
           <button
             onClick={() => setPreviewing(true)}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-white text-xs font-bold backdrop-blur-sm active:scale-95 transition-transform"
-            style={{ background: 'linear-gradient(135deg, #FF6B9D80, #6B73FF80)' }}
+            style={{ background: 'linear-gradient(135deg, rgba(236,72,153,0.5), rgba(37,99,235,0.5))' }}
           >
             <Eye size={13} /> {isLast ? 'Preview' : 'Next'}
           </button>

@@ -154,7 +154,7 @@ function StoryReactionTray({ myReaction, onPick, onClose }: ReactionTrayProps) {
               onPointerDown={e => { e.stopPropagation(); onPick(r.emoji); }}
               className={[
                 'flex flex-col items-center gap-0.5 py-2 rounded-2xl transition-all active:scale-90',
-                myReaction === r.emoji ? 'bg-white/20 ring-1 ring-white/30' : 'hover:bg-white/10',
+                myReaction === r.emoji ? 'bg-[#111]/20 ring-1 ring-white/30' : 'hover:bg-[#111]/10',
               ].join(' ')}
             >
               <span className="text-2xl leading-none">{r.emoji}</span>
@@ -170,7 +170,7 @@ function StoryReactionTray({ myReaction, onPick, onClose }: ReactionTrayProps) {
               onPointerDown={e => { e.stopPropagation(); onPick(r.emoji); }}
               className={[
                 'flex flex-col items-center gap-0.5 py-2 rounded-2xl transition-all active:scale-90',
-                myReaction === r.emoji ? 'bg-white/20 ring-1 ring-white/30' : 'hover:bg-white/10',
+                myReaction === r.emoji ? 'bg-[#111]/20 ring-1 ring-white/30' : 'hover:bg-[#111]/10',
               ].join(' ')}
             >
               <span className="text-2xl leading-none">{r.emoji}</span>
@@ -257,7 +257,7 @@ function ActivityPanel({ reactions, comments, viewerCount, onClose, onGoProfile 
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
+          <div className="w-10 h-1 rounded-full bg-[#111]/20" />
         </div>
 
         {/* Header */}
@@ -266,7 +266,7 @@ function ActivityPanel({ reactions, comments, viewerCount, onClose, onGoProfile 
             <Eye size={16} className="text-white/50" />
             <span className="text-white font-semibold text-[15px]">{viewerCount} viewer{viewerCount !== 1 ? 's' : ''}</span>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-[#111]/10 transition-colors">
             <X size={16} className="text-white/50" />
           </button>
         </div>
@@ -691,13 +691,13 @@ export function StoryViewer({
         {/* Progress bars */}
         <div className="flex gap-[3px] mb-3">
           {group.stories.map((_, i) => (
-            <div key={i} className="flex-1 h-[3px] rounded-full overflow-hidden bg-white/30">
+            <div key={i} className="flex-1 h-[3px] rounded-full overflow-hidden bg-[#111]/30">
               {i < storyIdx ? (
-                <div className="h-full w-full bg-white" />
+                <div className="h-full w-full bg-[#111]" />
               ) : i === storyIdx ? (
                 <div
                   key={`${groupIdx}-${storyIdx}-${segDurMs}`}
-                  className="h-full bg-white rounded-full"
+                  className="h-full bg-[#111] rounded-full"
                   style={{
                     animation: paused ? 'none' : `story-fill ${segDurMs}ms linear forwards`,
                     width: paused ? undefined : '0%',
@@ -790,7 +790,7 @@ export function StoryViewer({
         {/* My latest comment preview (non-owner, shown above the input) */}
         {myLastComment && (
           <div className="px-4 mb-1.5">
-            <div className="bg-white/10 rounded-2xl px-3.5 py-2">
+            <div className="bg-[#111]/10 rounded-2xl px-3.5 py-2">
               <p className="text-white/90 text-[12.5px] leading-relaxed line-clamp-2">
                 "{myLastComment.text}"
               </p>
@@ -809,7 +809,7 @@ export function StoryViewer({
             className={[
               'flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all',
               myReaction
-                ? 'bg-white/25 ring-1 ring-white/30'
+                ? 'bg-[#111]/25 ring-1 ring-white/30'
                 : 'bg-black/40 hover:bg-black/60',
             ].join(' ')}
             aria-label="React to story"
@@ -867,7 +867,7 @@ export function StoryViewer({
               <button
                 onClick={handleSendComment}
                 disabled={!commentText.trim() || sendingComment}
-                className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 active:scale-90 disabled:opacity-40 transition-all flex-shrink-0"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-[#111]/20 hover:bg-[#111]/30 active:scale-90 disabled:opacity-40 transition-all flex-shrink-0"
                 aria-label="Send reply"
               >
                 <Send size={15} className="text-white" />
@@ -922,12 +922,12 @@ export function StoryViewer({
               className="absolute bottom-0 left-0 right-0 z-40 bg-[#1C1C1E] rounded-t-3xl overflow-hidden"
               style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 20px)' }}
             >
-              <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mt-3 mb-4" />
+              <div className="w-10 h-1 rounded-full bg-[#111]/20 mx-auto mt-3 mb-4" />
 
               {/* Delete Story */}
               <button
                 onClick={() => { setMenuOpen(false); setConfirmDel(true); }}
-                className="w-full flex items-center gap-3 px-6 py-4 active:bg-white/5 transition-colors"
+                className="w-full flex items-center gap-3 px-6 py-4 active:bg-[#111]/5 transition-colors"
               >
                 <div className="w-9 h-9 rounded-full bg-red-500/20 flex items-center justify-center">
                   <Trash2 size={18} className="text-red-400" />
@@ -938,9 +938,9 @@ export function StoryViewer({
               {/* Save to Device */}
               <button
                 onClick={() => { setMenuOpen(false); saveMediaToDevice(story); }}
-                className="w-full flex items-center gap-3 px-6 py-4 active:bg-white/5 transition-colors"
+                className="w-full flex items-center gap-3 px-6 py-4 active:bg-[#111]/5 transition-colors"
               >
-                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-[#111]/10 flex items-center justify-center">
                   <Download size={18} className="text-white/80" />
                 </div>
                 <span className="text-white font-semibold text-[15px]">Save to Device</span>
@@ -949,9 +949,9 @@ export function StoryViewer({
               {/* View Activity (owner) */}
               <button
                 onClick={() => { setMenuOpen(false); setShowActivity(true); }}
-                className="w-full flex items-center gap-3 px-6 py-4 active:bg-white/5 transition-colors"
+                className="w-full flex items-center gap-3 px-6 py-4 active:bg-[#111]/5 transition-colors"
               >
-                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-[#111]/10 flex items-center justify-center">
                   <Eye size={18} className="text-white/80" />
                 </div>
                 <span className="text-white font-semibold text-[15px]">View Activity</span>
@@ -960,7 +960,7 @@ export function StoryViewer({
               {/* Cancel */}
               <button
                 onClick={() => setMenuOpen(false)}
-                className="w-full flex items-center justify-center px-6 py-4 mt-1 border-t border-white/8 active:bg-white/5"
+                className="w-full flex items-center justify-center px-6 py-4 mt-1 border-t border-white/8 active:bg-[#111]/5"
               >
                 <span className="text-white/60 font-medium text-[15px]">Cancel</span>
               </button>
@@ -1005,7 +1005,7 @@ export function StoryViewer({
                 <button
                   onClick={() => setConfirmDel(false)}
                   disabled={deleting}
-                  className="flex-1 py-3 rounded-xl bg-white/10 text-white font-semibold text-[15px] active:bg-white/20 disabled:opacity-40"
+                  className="flex-1 py-3 rounded-xl bg-[#111]/10 text-white font-semibold text-[15px] active:bg-[#111]/20 disabled:opacity-40"
                 >
                   Cancel
                 </button>

@@ -60,7 +60,7 @@ interface StoryCreatorProps {
 let _seq = 0;
 const nextId = () => `sc-${++_seq}`;
 
-const GRAD = 'linear-gradient(135deg, #FF6B9D, #C44FDB, #6B73FF)';
+const GRAD = 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' // rainbow ring accent;
 const ACCEPT = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
   'video/mp4', 'video/quicktime', 'video/webm',
@@ -169,7 +169,7 @@ function AddMoreTile({ onTap }: { onTap: () => void }) {
       }}>
         <Plus size={14} color="white" />
       </div>
-      <span style={{ fontSize: 10, fontWeight: 700, color: '#6B73FF', lineHeight: 1.2, textAlign: 'center' }}>
+      <span style={{ fontSize: 10, fontWeight: 700, color: '#F5C542', lineHeight: 1.2, textAlign: 'center' }}>
         Add{'\n'}more
       </span>
     </button>

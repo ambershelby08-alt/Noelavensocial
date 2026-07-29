@@ -53,17 +53,17 @@ function TypeIcon({ type, emoji }: { type: NotificationType; emoji?: string }) {
     case 'like_comment':
       return <span className="text-[12px] leading-none">🌊</span>;
     case 'comment': case 'story_reply':
-      return <MessageCircle size={12} className="text-purple-500 fill-purple-100" />;
+      return <MessageCircle size={12} className="text-[#F5C542] fill-[rgba(245,197,66,0.2)]" />;
     case 'reply':
-      return <Reply size={12} className="text-purple-400" />;
+      return <Reply size={12} className="text-[#F5C542]" />;
     case 'follow':
-      return <UserPlus size={12} className="text-blue-500" />;
+      return <UserPlus size={12} className="text-[#F5C542]" />;
     case 'community_invite':
-      return <Users size={12} className="text-indigo-500" />;
+      return <Users size={12} className="text-[#F5C542]" />;
     case 'daily_spark':
       return <Sparkles size={12} className="text-yellow-500 fill-yellow-400" />;
     case 'message':
-      return <MessageSquare size={12} className="text-pink-500" />;
+      return <MessageSquare size={12} className="text-[#F5C542]" />;
     case 'mention':
       return <AtSign size={12} className="text-orange-500" />;
     case 'moderation_warning':
@@ -87,7 +87,7 @@ function AvatarStack({ notif }: { notif: GroupedNotification }) {
           fallbackSrc={actor.avatarUrl || undefined}
           size={50}
         />
-        <div className="absolute -bottom-0.5 -right-0.5 w-[22px] h-[22px] bg-white rounded-full flex items-center justify-center border border-black/[0.06] shadow-sm">
+        <div className="absolute -bottom-0.5 -right-0.5 w-[22px] h-[22px] bg-[#111] rounded-full flex items-center justify-center border border-[#222] shadow-sm">
           <TypeIcon type={notif.type} emoji={notif.emoji} />
         </div>
       </div>
@@ -121,14 +121,14 @@ function AvatarStack({ notif }: { notif: GroupedNotification }) {
       {/* Overflow count bubble */}
       {groupCount > 2 && (
         <div
-          className="absolute right-0 bottom-0 min-w-[20px] h-5 rounded-full bg-purple-500 ring-2 ring-white flex items-center justify-center text-[9px] font-black text-white px-1"
+          className="absolute right-0 bottom-0 min-w-[20px] h-5 rounded-full bg-[#F5C542] ring-2 ring-white flex items-center justify-center text-[9px] font-black text-white px-1"
           style={{ transform: 'translate(4px, 4px)' }}
         >
           +{Math.min(groupCount - 2, 99)}
         </div>
       )}
       {/* Type badge */}
-      <div className="absolute left-7 bottom-0 w-[20px] h-[20px] bg-white rounded-full flex items-center justify-center border border-black/[0.06] shadow-sm">
+      <div className="absolute left-7 bottom-0 w-[20px] h-[20px] bg-[#111] rounded-full flex items-center justify-center border border-[#222] shadow-sm">
         <TypeIcon type={notif.type} emoji={notif.emoji} />
       </div>
     </div>
@@ -153,13 +153,13 @@ function NotifItem({
       transition={{ duration: 0.2 }}
       onClick={onTap}
       className={cn(
-        'flex items-start gap-3.5 px-4 py-3.5 cursor-pointer active:bg-gray-100 transition-colors rounded-2xl relative group',
-        !notif.read ? 'bg-purple-50/60' : 'hover:bg-gray-50/70'
+        'flex items-start gap-3.5 px-4 py-3.5 cursor-pointer active:bg-[#1a1a1a] transition-colors rounded-2xl relative group',
+        !notif.read ? 'bg-[rgba(245,197,66,0.08)]/60' : 'hover:bg-[#111]/70'
       )}
     >
       {/* Unread dot */}
       {!notif.read && (
-        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-purple-500" />
+        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#F5C542]" />
       )}
 
       {/* Tapping the avatar always navigates to the actor's profile,
@@ -176,16 +176,16 @@ function NotifItem({
       <div className="flex-1 min-w-0 pt-0.5">
         <p className={cn(
           'text-[13.5px] leading-snug pr-7',
-          !notif.read ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'
+          !notif.read ? 'font-semibold text-white' : 'font-medium text-[#BDBDBD]'
         )}>
           {notif.message}
         </p>
         {notif.targetPreview && (
-          <p className="text-[12px] text-gray-400 mt-0.5 line-clamp-1 pr-7">
+          <p className="text-[12px] text-[rgba(255,255,255,0.45)] mt-0.5 line-clamp-1 pr-7">
             "{notif.targetPreview}"
           </p>
         )}
-        <span className="text-[11.5px] text-gray-400 mt-1 block">
+        <span className="text-[11.5px] text-[rgba(255,255,255,0.45)] mt-1 block">
           {formatDistanceToNow(notif.createdAt, { addSuffix: true })}
         </span>
       </div>
@@ -195,7 +195,7 @@ function NotifItem({
         <motion.span
           whileTap={{ scale: 0.92 }}
           className="flex-shrink-0 self-center inline-flex items-center gap-1 px-3 py-1.5 text-white rounded-full text-[11.5px] font-black shadow-md"
-          style={{ background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' }}
+          style={{ background: 'linear-gradient(135deg, #C9982A, #F5C542)' }}
         >
           <Sparkles size={11} />
           Respond
@@ -205,9 +205,9 @@ function NotifItem({
       {/* Delete */}
       <button
         onClick={e => { e.stopPropagation(); onDelete(); }}
-        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-gray-200 active:bg-gray-300"
+        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-[#222] active:bg-gray-300"
       >
-        <Trash2 size={13} className="text-gray-400" />
+        <Trash2 size={13} className="text-[rgba(255,255,255,0.45)]" />
       </button>
     </motion.div>
   );
@@ -220,10 +220,10 @@ function Skeleton() {
     <div className="space-y-0.5 px-2">
       {[...Array(6)].map((_, i) => (
         <div key={i} className="flex items-center gap-3.5 px-4 py-3.5 animate-pulse">
-          <div className="w-[50px] h-[50px] rounded-full bg-gray-100 flex-shrink-0" />
+          <div className="w-[50px] h-[50px] rounded-full bg-[#1a1a1a] flex-shrink-0" />
           <div className="flex-1 space-y-2">
-            <div className="h-3.5 bg-gray-100 rounded-full" style={{ width: `${55 + (i % 3) * 15}%` }} />
-            <div className="h-3 bg-gray-100 rounded-full w-1/4" />
+            <div className="h-3.5 bg-[#1a1a1a] rounded-full" style={{ width: `${55 + (i % 3) * 15}%` }} />
+            <div className="h-3 bg-[#1a1a1a] rounded-full w-1/4" />
           </div>
         </div>
       ))}
@@ -249,11 +249,11 @@ function Empty({ filter }: { filter: Filter }) {
         className="w-20 h-20 rounded-full flex items-center justify-center"
         style={{ background: 'linear-gradient(135deg, #EDE9FE, #FCE7F3)' }}
       >
-        <Bell size={32} className="text-purple-300" />
+        <Bell size={32} className="text-[#F5C542]" />
       </div>
       <div className="text-center">
-        <p className="font-bold text-[17px] text-gray-900 mb-1">{title}</p>
-        <p className="text-[13.5px] text-gray-400 leading-relaxed">{desc}</p>
+        <p className="font-bold text-[17px] text-white mb-1">{title}</p>
+        <p className="text-[13.5px] text-[rgba(255,255,255,0.45)] leading-relaxed">{desc}</p>
       </div>
     </div>
   );
@@ -284,9 +284,9 @@ export default function Notifications() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4 px-4">
         <div>
-          <h1 className="text-[26px] font-black text-gray-900 tracking-tight">Notifications</h1>
+          <h1 className="text-[26px] font-black text-white tracking-tight">Notifications</h1>
           {filteredUnread > 0 && (
-            <p className="text-[13px] text-purple-500 font-semibold mt-0.5">
+            <p className="text-[13px] text-[#F5C542] font-semibold mt-0.5">
               {filteredUnread} new
             </p>
           )}
@@ -295,7 +295,7 @@ export default function Notifications() {
           <motion.button
             whileTap={{ scale: 0.94 }}
             onClick={markAllRead}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[12.5px] font-bold text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors border border-purple-100"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[12.5px] font-bold text-[#F5C542] bg-[rgba(245,197,66,0.08)] hover:bg-[rgba(245,197,66,0.15)] transition-colors border border-[rgba(245,197,66,0.2)]"
           >
             <CheckCheck size={14} />
             Mark all read
@@ -313,9 +313,9 @@ export default function Notifications() {
               'flex-shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all',
               filter === f
                 ? 'text-white shadow-sm'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                : 'bg-[#1a1a1a] text-[#BDBDBD] hover:bg-[#222]'
             )}
-            style={filter === f ? { background: 'linear-gradient(135deg, #6B73FF, #FF6B9D)' } : {}}
+            style={filter === f ? { background: 'linear-gradient(135deg, #C9982A, #F5C542)' } : {}}
           >
             {f}
           </button>
@@ -347,7 +347,7 @@ export default function Notifications() {
             <motion.button
               whileTap={{ scale: 0.96 }}
               onClick={loadMore}
-              className="px-6 py-2.5 rounded-2xl bg-gray-100 text-gray-600 font-semibold text-[13.5px] hover:bg-gray-200 transition-colors"
+              className="px-6 py-2.5 rounded-2xl bg-[#1a1a1a] text-[#BDBDBD] font-semibold text-[13.5px] hover:bg-[#222] transition-colors"
             >
               Show older notifications
             </motion.button>

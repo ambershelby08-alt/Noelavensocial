@@ -51,16 +51,16 @@ function AudienceSelect({
     <div className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-3.5 px-4 py-4 active:bg-gray-50 border-t border-gray-50 first:border-t-0"
+        className="w-full flex items-center gap-3.5 px-4 py-4 active:bg-[#111] border-t border-gray-50 first:border-t-0"
       >
-        <div className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
-          <Icon size={17} className="text-purple-500" />
+        <div className="w-9 h-9 rounded-full bg-[rgba(245,197,66,0.08)] flex items-center justify-center flex-shrink-0">
+          <Icon size={17} className="text-[#F5C542]" />
         </div>
         <div className="flex-1 text-left">
-          <p className="text-[14.5px] font-semibold text-gray-800">{label}</p>
-          <p className="text-[12px] text-purple-600 font-semibold mt-0.5">{current.label}</p>
+          <p className="text-[14.5px] font-semibold text-white">{label}</p>
+          <p className="text-[12px] text-[#F5C542] font-semibold mt-0.5">{current.label}</p>
         </div>
-        <ChevronRight size={16} className={cn('text-gray-300 transition-transform', open && 'rotate-90')} />
+        <ChevronRight size={16} className={cn('text-[rgba(255,255,255,0.35)] transition-transform', open && 'rotate-90')} />
       </button>
 
       <AnimatePresence>
@@ -79,11 +79,11 @@ function AudienceSelect({
                   onClick={() => { onChange(opt.value); setOpen(false); }}
                   className={cn(
                     'w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-colors',
-                    value === opt.value ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50 text-gray-600'
+                    value === opt.value ? 'bg-[rgba(245,197,66,0.08)] text-purple-700' : 'hover:bg-[#111] text-[#BDBDBD]'
                   )}
                 >
                   <span className="text-[13.5px] font-semibold flex-1">{opt.label}</span>
-                  {value === opt.value && <Check size={14} className="text-purple-500" />}
+                  {value === opt.value && <Check size={14} className="text-[#F5C542]" />}
                 </button>
               ))}
             </div>
@@ -100,10 +100,10 @@ function SectionCard({ title, icon: Icon, children, className }: {
   title: string; icon: React.ElementType; children: React.ReactNode; className?: string;
 }) {
   return (
-    <div className={cn('bg-white rounded-[24px] border border-black/[0.04] shadow-sm overflow-hidden', className)}>
+    <div className={cn('bg-[#111] rounded-[24px] border border-[#1a1a1a] shadow-sm overflow-hidden', className)}>
       <div className="px-5 pt-4 pb-2 flex items-center gap-2">
-        <Icon size={16} className="text-purple-500" />
-        <h2 className="text-[13px] font-black text-gray-500 uppercase tracking-widest">{title}</h2>
+        <Icon size={16} className="text-[#F5C542]" />
+        <h2 className="text-[13px] font-black text-[#BDBDBD] uppercase tracking-widest">{title}</h2>
       </div>
       {children}
     </div>
@@ -130,8 +130,8 @@ function UserPill({
     >
       <UserAvatar userId={userId} fallbackName={name} size={38} className="flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-semibold text-gray-900 truncate">{name}</p>
-        <p className="text-[12px] text-gray-400">@{handle}</p>
+        <p className="text-[14px] font-semibold text-white truncate">{name}</p>
+        <p className="text-[12px] text-[rgba(255,255,255,0.45)]">@{handle}</p>
       </div>
       <button
         onClick={handleAction}
@@ -192,17 +192,17 @@ export default function SafetySettings() {
   const restrictedUserIds = [...restrictedIds];
 
   return (
-    <div className="min-h-screen bg-[#FDF9F6] pb-32">
+    <div className="min-h-screen bg-black pb-32">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#FDF9F6]/95 backdrop-blur-sm px-4 pt-6 pb-3 flex items-center gap-3">
+      <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-sm px-4 pt-6 pb-3 flex items-center gap-3">
         <Link href="/settings">
-          <button className="w-9 h-9 rounded-full bg-white shadow-sm border border-black/[0.06] flex items-center justify-center">
-            <ChevronLeft size={18} className="text-gray-600" />
+          <button className="w-9 h-9 rounded-full bg-[#111] shadow-sm border border-[#1a1a1a] flex items-center justify-center">
+            <ChevronLeft size={18} className="text-[#BDBDBD]" />
           </button>
         </Link>
         <div>
-          <h1 className="text-[22px] font-black text-gray-900 leading-tight">Safety & Privacy</h1>
-          <p className="text-[12px] text-gray-400">Control who can interact with you</p>
+          <h1 className="text-[22px] font-black text-white leading-tight">Safety & Privacy</h1>
+          <p className="text-[12px] text-[rgba(255,255,255,0.45)]">Control who can interact with you</p>
         </div>
       </div>
 
@@ -232,25 +232,25 @@ export default function SafetySettings() {
           {/* Allow follows toggle */}
           <button
             onClick={() => change('allowFollows', !settings.allowFollows)}
-            className="w-full flex items-center gap-3.5 px-4 py-4 border-t border-gray-50 active:bg-gray-50"
+            className="w-full flex items-center gap-3.5 px-4 py-4 border-t border-gray-50 active:bg-[#111]"
           >
-            <div className="w-9 h-9 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
-              <Users2 size={17} className="text-purple-500" />
+            <div className="w-9 h-9 rounded-full bg-[rgba(245,197,66,0.08)] flex items-center justify-center flex-shrink-0">
+              <Users2 size={17} className="text-[#F5C542]" />
             </div>
             <div className="flex-1 text-left">
-              <p className="text-[14.5px] font-semibold text-gray-800">Allow new followers</p>
-              <p className="text-[12px] text-gray-400 mt-0.5">Anyone can follow your profile</p>
+              <p className="text-[14.5px] font-semibold text-white">Allow new followers</p>
+              <p className="text-[12px] text-[rgba(255,255,255,0.45)] mt-0.5">Anyone can follow your profile</p>
             </div>
             <div
               className={cn(
                 'w-11 h-6 rounded-full relative transition-colors duration-200 flex-shrink-0',
-                settings.allowFollows ? 'bg-purple-500' : 'bg-gray-200'
+                settings.allowFollows ? 'bg-[#F5C542]' : 'bg-[#222]'
               )}
             >
               <motion.div
                 animate={{ x: settings.allowFollows ? 20 : 2 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className="absolute top-[2px] w-5 h-5 rounded-full bg-white shadow-sm"
+                className="absolute top-[2px] w-5 h-5 rounded-full bg-[#111] shadow-sm"
               />
             </div>
           </button>
@@ -259,7 +259,7 @@ export default function SafetySettings() {
         {/* ── Content Filter ─────────────────────────────────────────────── */}
         <SectionCard title="Content Filter" icon={SlidersHorizontal}>
           <div className="px-5 pb-4 pt-2">
-            <p className="text-[12.5px] text-gray-400 mb-3 leading-relaxed">
+            <p className="text-[12.5px] text-[rgba(255,255,255,0.45)] mb-3 leading-relaxed">
               Filter potentially offensive language from posts and comments you see.
             </p>
             <div className="grid grid-cols-2 gap-2">
@@ -270,22 +270,22 @@ export default function SafetySettings() {
                   className={cn(
                     'flex flex-col items-start gap-1 px-4 py-3 rounded-2xl border text-left transition-all',
                     settings.contentFilterSensitivity === opt.value
-                      ? 'border-purple-300 bg-purple-50'
-                      : 'border-gray-100 bg-gray-50 hover:bg-gray-100'
+                      ? 'border-[#F5C542] bg-[rgba(245,197,66,0.08)]'
+                      : 'border-[#222] bg-[#111] hover:bg-[#1a1a1a]'
                   )}
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className={cn(
                       'text-[13px] font-bold',
-                      settings.contentFilterSensitivity === opt.value ? 'text-purple-700' : 'text-gray-700'
+                      settings.contentFilterSensitivity === opt.value ? 'text-purple-700' : 'text-[#BDBDBD]'
                     )}>
                       {opt.label}
                     </span>
                     {settings.contentFilterSensitivity === opt.value && (
-                      <Check size={13} className="text-purple-500" />
+                      <Check size={13} className="text-[#F5C542]" />
                     )}
                   </div>
-                  <span className="text-[11px] text-gray-400 leading-snug">{opt.desc}</span>
+                  <span className="text-[11px] text-[rgba(255,255,255,0.45)] leading-snug">{opt.desc}</span>
                 </button>
               ))}
             </div>
@@ -296,7 +296,7 @@ export default function SafetySettings() {
         <SectionCard title={`Blocked (${blockedUserIds.length})`} icon={UserX}>
           {blockedUserIds.length === 0 ? (
             <div className="px-5 py-6 text-center">
-              <p className="text-[13px] text-gray-400">You haven't blocked anyone.</p>
+              <p className="text-[13px] text-[rgba(255,255,255,0.45)]">You haven't blocked anyone.</p>
             </div>
           ) : (
             <AnimatePresence>
@@ -314,7 +314,7 @@ export default function SafetySettings() {
         <SectionCard title={`Muted (${mutedUserIds.length})`} icon={VolumeX}>
           {mutedUserIds.length === 0 ? (
             <div className="px-5 py-6 text-center">
-              <p className="text-[13px] text-gray-400">You haven't muted anyone.</p>
+              <p className="text-[13px] text-[rgba(255,255,255,0.45)]">You haven't muted anyone.</p>
             </div>
           ) : (
             <AnimatePresence>
@@ -331,13 +331,13 @@ export default function SafetySettings() {
         {/* ── Restricted Users ──────────────────────────────────────────── */}
         <SectionCard title={`Restricted (${restrictedUserIds.length})`} icon={EyeOff}>
           <div className="px-5 pt-2 pb-1">
-            <p className="text-[12px] text-gray-400 leading-relaxed">
+            <p className="text-[12px] text-[rgba(255,255,255,0.45)] leading-relaxed">
               Restricted users can see your public posts but their comments require your approval before others see them.
             </p>
           </div>
           {restrictedUserIds.length === 0 ? (
             <div className="px-5 py-4 text-center">
-              <p className="text-[13px] text-gray-400">No restricted users.</p>
+              <p className="text-[13px] text-[rgba(255,255,255,0.45)]">No restricted users.</p>
             </div>
           ) : (
             <AnimatePresence>
@@ -352,34 +352,34 @@ export default function SafetySettings() {
         </SectionCard>
 
         {/* ── Quick links ───────────────────────────────────────────────── */}
-        <div className="bg-white rounded-[24px] border border-black/[0.04] shadow-sm overflow-hidden">
+        <div className="bg-[#111] rounded-[24px] border border-[#1a1a1a] shadow-sm overflow-hidden">
           <Link href="/my-reports">
-            <button className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-gray-50">
+            <button className="w-full flex items-center gap-3.5 px-5 py-4 active:bg-[#111]">
               <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
                 <Flag size={17} className="text-red-500" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-[14.5px] font-semibold text-gray-800">My Reports</p>
-                <p className="text-[12px] text-gray-400">Track reports you've submitted</p>
+                <p className="text-[14.5px] font-semibold text-white">My Reports</p>
+                <p className="text-[12px] text-[rgba(255,255,255,0.45)]">Track reports you've submitted</p>
               </div>
-              <ChevronRight size={16} className="text-gray-300" />
+              <ChevronRight size={16} className="text-[rgba(255,255,255,0.35)]" />
             </button>
           </Link>
           <Link href="/settings">
-            <button className="w-full flex items-center gap-3.5 px-5 py-4 border-t border-gray-50 active:bg-gray-50">
-              <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
-                <FileText size={17} className="text-gray-500" />
+            <button className="w-full flex items-center gap-3.5 px-5 py-4 border-t border-gray-50 active:bg-[#111]">
+              <div className="w-9 h-9 rounded-full bg-[#1a1a1a] flex items-center justify-center">
+                <FileText size={17} className="text-[#BDBDBD]" />
               </div>
               <div className="flex-1 text-left">
-                <p className="text-[14.5px] font-semibold text-gray-800">Community Guidelines</p>
-                <p className="text-[12px] text-gray-400">Rules and policies for Noelaven</p>
+                <p className="text-[14.5px] font-semibold text-white">Community Guidelines</p>
+                <p className="text-[12px] text-[rgba(255,255,255,0.45)]">Rules and policies for Noelaven</p>
               </div>
-              <ChevronRight size={16} className="text-gray-300" />
+              <ChevronRight size={16} className="text-[rgba(255,255,255,0.35)]" />
             </button>
           </Link>
         </div>
 
-        <p className="text-center text-[11.5px] text-gray-400 pb-2 px-4 leading-relaxed">
+        <p className="text-center text-[11.5px] text-[rgba(255,255,255,0.45)] pb-2 px-4 leading-relaxed">
           All actions are private. Blocked and muted users are never notified.
         </p>
       </div>
