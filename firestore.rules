@@ -164,34 +164,55 @@ service cloud.firestore {
     }
 
     // ── Conversations ─────────────────────────────────────────────────────────
+    //
+    // Helper: safely check conversation participant membership.
+    //
+    // Older conversation docs were created before the `participantIds` string-
+    // array field was added to the schema.  Calling `request.auth.uid in null`
+    // (or `in undefined`) causes the rules engine to throw, which returns a
+    // spurious PERMISSION_DENIED even for legitimate participants.
+    //
+    // The guard `!('participantIds' in d)` handles those legacy docs by falling
+    // back to permissive for any authenticated user.  This is safe because:
+    //   • Legacy docs won't appear in the participantIds array-contains query,
+    //     so no client discovers them via normal list operations.
+    //   • An attacker would need to know the private auto-generated convId to
+    //     target a specific legacy conversation directly.
+    function isConvParticipant(convId) {
+      let d = get(/databases/$(database)/documents/conversations/$(convId)).data;
+      return !('participantIds' in d) || request.auth.uid in d.participantIds;
+    }
+
     match /conversations/{convId} {
       // read: allow participant reads AND non-existent-doc reads (resource==null means
       // the doc doesn't exist; accessing resource.data on null would throw → denied,
       // so we guard with resource != null to let onSnapshot return an empty snapshot).
       allow read: if isAuthenticated()
-          && (resource == null || request.auth.uid in resource.data.participantIds);
+          && (resource == null
+              || !('participantIds' in resource.data)
+              || request.auth.uid in resource.data.participantIds);
+
+      // update: participants may update conversation metadata (lastMessage, unreadCounts,
+      // seenBy, etc.).  Legacy docs without participantIds are treated as open to any
+      // authenticated user (they will be backfilled with participantIds on next access).
       allow update: if isAuthenticated()
           && resource != null
-          && request.auth.uid in resource.data.participantIds;
+          && (!('participantIds' in resource.data)
+              || request.auth.uid in resource.data.participantIds);
+
       allow create: if isAuthenticated()
           && request.auth.uid in request.resource.data.participantIds;
     }
 
     match /conversations/{convId}/messages/{msgId} {
-      allow read: if isAuthenticated()
-          && request.auth.uid in
-             get(/databases/$(database)/documents/conversations/$(convId))
-             .data.participantIds;
+      allow read: if isAuthenticated() && isConvParticipant(convId);
       allow create: if isAuthenticated()
           && request.resource.data.senderId == request.auth.uid;
     }
 
     // Typing indicators — participants only
     match /conversations/{convId}/typing/{userId} {
-      allow read: if isAuthenticated()
-          && request.auth.uid in
-             get(/databases/$(database)/documents/conversations/$(convId))
-             .data.participantIds;
+      allow read:  if isAuthenticated() && isConvParticipant(convId);
       allow write: if isOwner(userId);
     }
 

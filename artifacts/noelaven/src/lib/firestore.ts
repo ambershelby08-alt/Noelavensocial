@@ -1113,11 +1113,14 @@ export async function sendMessage(
 
 export async function markConversationRead(convId: string, userId: string): Promise<void> {
   if (!db) return;
+  // .catch: a permissions error here (e.g. legacy doc lacking participantIds) must
+  // never surface as an unhandled rejection — it would pop Vite's runtime overlay
+  // and is non-critical (unread badge may briefly stay visible, nothing worse).
   await updateDoc(doc(db, 'conversations', convId), {
     [`unreadCounts.${userId}`]: 0,
     // Write seen-receipt so the sender knows we've opened the conversation.
     [`seenBy.${userId}`]: serverTimestamp(),
-  });
+  }).catch(err => console.warn('[markConversationRead] skipped:', err.code));
 }
 
 
