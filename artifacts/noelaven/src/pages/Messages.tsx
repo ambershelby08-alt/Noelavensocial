@@ -91,14 +91,17 @@ function ActiveUsersRow({ users, currentUser: me }: { users: OnlineUser[]; curre
 
 // ─── Group avatar ─────────────────────────────────────────────────────────────
 
-function GroupAvatar({ participants }: { participants: User[] }) {
-  const others = participants.filter(p => p.id !== 'demo-user').slice(0, 2);
+function GroupAvatar({ participants, currentUserId }: { participants: User[]; currentUserId?: string }) {
+  // Exclude the viewer and show up to 2 other members
+  const others = participants
+    .filter(p => p.id !== currentUserId && p.id !== '')
+    .slice(0, 2);
   return (
     <div className="relative w-[52px] h-[52px] flex-shrink-0">
       {others.map((u, i) => (
         <div
           key={u.id}
-          className="absolute border-[2.5px] border-white rounded-full"
+          className="absolute border-[2.5px] border-black rounded-full"
           style={i === 0 ? { bottom: 0, left: 0 } : { top: 0, right: 0 }}
         >
           <UserAvatar userId={u.id} fallbackName={u.displayName} fallbackSrc={u.avatarUrl || undefined} size={34} />
@@ -194,12 +197,25 @@ function ConvItem({
   onlineIds:  Set<string>;
 }) {
   const { currentUser } = useAuth();
-  const other    = conv.participants.find(p => p.id !== currentUser?.id) ?? conv.participants[0];
-  const name     = conv.type === 'group' ? (conv.name ?? 'Group') : other.displayName;
+  const uid = currentUser?.id ?? '';
+
+  /**
+   * Derive the "other" participant safely:
+   * - Only run the lookup once `uid` is known (auth resolved).
+   * - Prefer the participant whose ID differs from the viewer.
+   * - Fallback order: participants[1] → participants[0], never guessing
+   *   before auth resolves (avoids every row resolving to the same person).
+   */
+  const other = uid
+    ? conv.participants.find(p => p.id !== uid)
+      ?? conv.participants[1]
+      ?? conv.participants[0]
+    : undefined;
+
+  const name     = conv.type === 'group' ? (conv.name ?? 'Group') : (other?.displayName ?? '');
   // Real presence: only green when this participant is actually online in Firestore.
-  const isOnline = conv.type === 'direct' && onlineIds.has(other.id);
+  const isOnline = conv.type === 'direct' && !!other && onlineIds.has(other.id);
   const unread   = conv.unreadCount > 0;
-  const uid      = currentUser?.id ?? '';
   const isPinned = conv.pinnedBy?.includes(uid);
   const isMuted  = conv.mutedBy?.includes(uid);
 
@@ -210,6 +226,20 @@ function ConvItem({
   }
   function endPress() {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }
+
+  // Don't render until we know who the viewer is — prevents every row briefly
+  // showing the same avatar (the fallback participants[0]) before auth resolves.
+  if (!uid) {
+    return (
+      <div className="flex items-center gap-3.5 px-4 py-3 border-b border-[#111]">
+        <div className="w-[58px] h-[58px] rounded-full bg-[#1a1a1a] animate-pulse flex-shrink-0" />
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="h-3.5 bg-[#1a1a1a] rounded-full w-2/3 animate-pulse" />
+          <div className="h-3 bg-[#1a1a1a] rounded-full w-1/2 animate-pulse" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -226,8 +256,8 @@ function ConvItem({
         {/* Avatar with rainbow ring */}
         <div className="relative flex-shrink-0">
           {conv.type === 'group' ? (
-            <GroupAvatar participants={conv.participants} />
-          ) : (
+            <GroupAvatar participants={conv.participants} currentUserId={uid} />
+          ) : other ? (
             <>
               <Link
                 href={`/profile/${other.id}`}
@@ -237,7 +267,13 @@ function ConvItem({
               >
                 <div className="p-[2.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
                   <div className="p-[2px] rounded-full bg-black">
-                    <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={other.avatarUrl || undefined} size={50} />
+                    {/* userId keyed to the specific other user — never the viewer */}
+                    <UserAvatar
+                      userId={other.id}
+                      fallbackName={other.displayName}
+                      fallbackSrc={other.avatarUrl || undefined}
+                      size={50}
+                    />
                   </div>
                 </div>
               </Link>
@@ -245,6 +281,9 @@ function ConvItem({
                 <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-black" />
               )}
             </>
+          ) : (
+            /* other still resolving — show ghost ring */
+            <div className="w-[58px] h-[58px] rounded-full bg-[#1a1a1a] animate-pulse" />
           )}
           {unread && (
             <div

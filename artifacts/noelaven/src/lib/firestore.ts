@@ -1153,8 +1153,8 @@ export async function getOrCreateDirectConversation(
     type: 'direct',
     participantIds: [userId, otherUserId],
     participants: [
-      { id: currentUser.id, displayName: currentUser.displayName, handle: currentUser.handle },
-      { id: otherUser.id, displayName: otherUser.displayName, handle: otherUser.handle },
+      { id: currentUser.id, displayName: currentUser.displayName, handle: currentUser.handle, avatarUrl: currentUser.avatarUrl ?? '' },
+      { id: otherUser.id, displayName: otherUser.displayName, handle: otherUser.handle, avatarUrl: otherUser.avatarUrl ?? '' },
     ],
     lastMessage: '',
     lastMessageAt: serverTimestamp(),
