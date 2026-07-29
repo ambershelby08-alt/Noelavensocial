@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, PenSquare, X, MessageCircle,
   Pin, Archive, BellOff, Bell, Trash2, ChevronDown, ChevronUp,
+  Filter, Phone, SlidersHorizontal,
 } from 'lucide-react';
 import type { Conversation, User } from '@/lib/mockData';
 import { useConversations } from '@/hooks/useConversations';
@@ -52,50 +53,55 @@ function Backdrop({ onClose }: { onClose: () => void }) {
 // ─── Active Now row — real Firestore presence data ────────────────────────────
 //
 // IMPORTANT: this component never receives mock or demo users.
-// In demo mode (no Firebase), useActiveNow returns [] and the empty state is shown.
-// In production, only accounts with isOnline=true in their user doc appear here.
-
-function ActiveUsersRow({ users }: { users: OnlineUser[] }) {
-  if (users.length === 0) {
-    return (
-      <div className="mb-5 px-4">
-        <div className="flex items-center gap-1.5 mb-2">
-          <div className="w-2 h-2 rounded-full bg-gray-300" />
-          <span className="text-[12.5px] font-bold text-[rgba(255,255,255,0.45)] uppercase tracking-wider">
-            Active Now
-          </span>
-        </div>
-        <p className="text-[13px] text-[rgba(255,255,255,0.45)]">No one is active right now.</p>
-      </div>
-    );
-  }
+// Story-style contact row: "My Note" first, then active contacts with rainbow rings.
+function ActiveUsersRow({ users, currentUser: me }: { users: OnlineUser[]; currentUser: import('@/lib/mockData').User | null }) {
+  const { currentUser } = useAuth();
 
   return (
-    <div className="mb-5">
-      <div className="flex items-center gap-1.5 mb-3 px-4">
-        <div className="w-2 h-2 rounded-full bg-green-400" />
-        <span className="text-[12.5px] font-bold text-[#BDBDBD] uppercase tracking-wider">
-          Active Now
-        </span>
-      </div>
-      <div className="flex gap-4 overflow-x-auto px-4 pb-1 scrollbar-none">
-        {users.map((user) => (
-          <Link key={user.id} href={`/profile/${user.id}`}>
-            <motion.div
-              whileTap={{ scale: 0.93 }}
-              className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0"
-            >
-              <div className="relative">
-                <UserAvatar
-                  userId={user.id}
-                  fallbackName={user.displayName}
-                  fallbackSrc={user.avatarUrl || undefined}
-                  size={52}
-                />
-                {/* Green dot — only shown when user is actually online */}
-                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
+    <div className="mb-4">
+      <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-none">
+        {/* My Note / own avatar */}
+        <Link href="/profile">
+          <motion.div whileTap={{ scale: 0.93 }} className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0">
+            <div className="relative">
+              {/* Rainbow ring */}
+              <div className="p-[2.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
+                <div className="p-[2px] rounded-full bg-black">
+                  <UserAvatar
+                    userId={currentUser?.id ?? ''}
+                    fallbackName={currentUser?.displayName ?? 'Me'}
+                    fallbackSrc={currentUser?.avatarUrl || undefined}
+                    size={52}
+                  />
+                </div>
               </div>
-              <span className="text-[11.5px] text-[#BDBDBD] font-medium truncate max-w-[52px] text-center">
+              {/* + badge */}
+              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-black text-white text-[11px] font-black"
+                style={{ background: '#EC4899' }}>+</div>
+            </div>
+            <span className="text-[11px] text-[#BDBDBD] font-medium truncate max-w-[56px] text-center">My Note</span>
+          </motion.div>
+        </Link>
+
+        {/* Active contacts */}
+        {users.map(user => (
+          <Link key={user.id} href={`/profile/${user.id}`}>
+            <motion.div whileTap={{ scale: 0.93 }} className="flex flex-col items-center gap-1.5 cursor-pointer flex-shrink-0">
+              <div className="relative">
+                <div className="p-[2.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
+                  <div className="p-[2px] rounded-full bg-black">
+                    <UserAvatar
+                      userId={user.id}
+                      fallbackName={user.displayName}
+                      fallbackSrc={user.avatarUrl || undefined}
+                      size={52}
+                    />
+                  </div>
+                </div>
+                {/* Green online dot */}
+                <div className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-green-400 border-2 border-black" />
+              </div>
+              <span className="text-[11px] text-[#BDBDBD] font-medium truncate max-w-[56px] text-center">
                 {user.displayName.split(' ')[0]}
               </span>
             </motion.div>
@@ -238,32 +244,34 @@ function ConvItem({
         onMouseDown={startPress}
         onMouseUp={endPress}
         onMouseLeave={endPress}
-        className="flex items-center gap-3.5 px-4 py-3.5 bg-[#111] rounded-[22px] border border-[#1a1a1a] shadow-sm hover:shadow-md transition-all cursor-pointer"
+        className="flex items-center gap-3.5 px-4 py-3 border-b border-[#111] transition-all cursor-pointer"
       >
-        {/* Avatar */}
+        {/* Avatar with rainbow ring */}
         <div className="relative flex-shrink-0">
           {conv.type === 'group' ? (
             <GroupAvatar participants={conv.participants} />
           ) : (
             <>
-              {/* DM avatar — tapping opens the participant's profile without
-                  navigating to the chat (Link wrapper stops the parent Link) */}
               <Link
                 href={`/profile/${other.id}`}
                 onClick={e => e.stopPropagation()}
-                className="block rounded-full"
+                className="block"
                 aria-label={`View ${other.displayName}'s profile`}
               >
-                <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={other.avatarUrl || undefined} size={52} />
+                <div className="p-[2.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
+                  <div className="p-[2px] rounded-full bg-black">
+                    <UserAvatar userId={other.id} fallbackName={other.displayName} fallbackSrc={other.avatarUrl || undefined} size={50} />
+                  </div>
+                </div>
               </Link>
               {isOnline && (
-                <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-white" />
+                <div className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-400 border-2 border-black" />
               )}
             </>
           )}
           {unread && (
             <div
-              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center text-[9px] font-black text-white px-1"
+              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-black text-white px-1"
               style={{ background: '#EC4899' }}
             >
               {conv.unreadCount}
@@ -405,6 +413,7 @@ export default function Messages() {
   const [composeOpen, setCompose]   = useState(false);
   const [actionConv, setActionConv] = useState<Conversation | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [msgTab, setMsgTab]         = useState<'primary' | 'requests' | 'groups' | 'calls'>('primary');
 
   const {
     conversations, openDirectConversation, getComposeUsers,
@@ -432,8 +441,14 @@ export default function Messages() {
 
   const archived  = allFiltered.filter(c => c.archivedBy?.includes(uid));
   const active    = allFiltered.filter(c => !c.archivedBy?.includes(uid));
-  const pinned    = active.filter(c => c.pinnedBy?.includes(uid));
-  const unpinned  = active.filter(c => !c.pinnedBy?.includes(uid));
+  // Tab-filtered active list
+  const tabFiltered = active.filter(c =>
+    msgTab === 'groups' ? c.type === 'group' :
+    msgTab === 'requests' ? false :           // future: message requests
+    c.type !== 'group'                         // primary: DMs only
+  );
+  const pinned    = tabFiltered.filter(c => c.pinnedBy?.includes(uid));
+  const unpinned  = tabFiltered.filter(c => !c.pinnedBy?.includes(uid));
   const sorted    = [...pinned, ...unpinned];
 
   const totalUnread = conversations
@@ -444,52 +459,103 @@ export default function Messages() {
     <div className="min-h-screen bg-black pb-36">
 
       {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-black/95 backdrop-blur-md border-b border-[#1a1a1a] px-4 pt-5 pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-[26px] font-black text-white tracking-tight flex items-center gap-2">
-              Chats
-              {totalUnread > 0 && (
-                <span
-                  className="text-[11px] font-black text-white px-2 py-0.5 rounded-full"
-                  style={{ background: '#EC4899' }}
-                >
-                  {totalUnread}
-                </span>
-              )}
-            </h1>
-            <p className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Your conversations</p>
-          </div>
+      <div className="sticky top-0 z-30 bg-black border-b border-[#1a1a1a] px-4 pt-4 pb-3">
+        {/* Top row: compose | logo+name | filter+... */}
+        <div className="flex items-center justify-between mb-3">
           <motion.button
-            whileTap={{ scale: 0.92 }}
+            whileTap={{ scale: 0.9 }}
             onClick={() => setCompose(true)}
-            className="w-11 h-11 rounded-full flex items-center justify-center shadow-md text-white"
-            style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 12px rgba(124,58,237,0.4)' }}
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{ background: '#111', border: '1px solid #2a2a2a' }}
           >
-            <PenSquare size={18} />
+            <PenSquare size={16} className="text-white" />
           </motion.button>
+
+          {/* Center: logo + wordmark */}
+          <div className="flex items-center gap-2">
+            <img src="/noelaven-logo.png" alt="Noelaven" className="w-7 h-7 object-contain" />
+            <span className="text-[17px] font-black text-white tracking-tight">Messages</span>
+            {totalUnread > 0 && (
+              <span className="text-[10px] font-black text-white px-1.5 py-0.5 rounded-full leading-none"
+                style={{ background: '#EC4899' }}>
+                {totalUnread}
+              </span>
+            )}
+          </div>
+
+          {/* Right: filter + more */}
+          <div className="flex items-center gap-1.5">
+            <motion.button whileTap={{ scale: 0.9 }}
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+              <SlidersHorizontal size={15} className="text-white" />
+            </motion.button>
+          </div>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.45)]" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search conversations…"
-            className="w-full bg-[#111] border border-[#1a1a1a] rounded-2xl pl-10 pr-10 py-3 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all shadow-sm"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-              <X size={15} className="text-[rgba(255,255,255,0.45)]" />
-            </button>
-          )}
+        {/* Search bar */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[rgba(255,255,255,0.4)]" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="w-full bg-[#111] border border-[#1a1a1a] rounded-full pl-9 pr-4 py-2.5 text-[14px] text-white placeholder:text-[#555] outline-none focus:border-[#EC4899]/50 transition-all"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                <X size={13} className="text-[rgba(255,255,255,0.45)]" />
+              </button>
+            )}
+          </div>
+          {/* Pink + compose button */}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setCompose(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white font-black text-[18px]"
+            style={{ background: '#EC4899' }}
+          >
+            +
+          </motion.button>
         </div>
       </div>
 
-      <div className="pt-5">
-        {/* Active Now — powered by real Firestore presence */}
-        {!search && <ActiveUsersRow users={activeNow} />}
+      {/* ── Tabs ─────────────────────────────────────────────────── */}
+      {!search && (
+        <div className="flex overflow-x-auto scrollbar-none border-b border-[#1a1a1a]">
+          {([
+            { key: 'primary', label: 'Primary' },
+            { key: 'requests', label: 'Requests' },
+            { key: 'groups', label: 'Groups' },
+            { key: 'calls', label: 'Calls' },
+          ] as const).map(({ key, label }) => {
+            const active = msgTab === key;
+            const badge = key === 'primary' && totalUnread > 0 ? totalUnread : 0;
+            return (
+              <button
+                key={key}
+                onClick={() => setMsgTab(key)}
+                className="relative flex items-center gap-1.5 px-5 py-3 text-[14px] font-semibold whitespace-nowrap flex-shrink-0 transition-colors"
+                style={{ color: active ? '#EC4899' : 'rgba(255,255,255,0.45)' }}
+              >
+                {label}
+                {badge > 0 && (
+                  <span className="text-[10px] font-black text-white px-1.5 py-0.5 rounded-full leading-none"
+                    style={{ background: '#EC4899' }}>{badge}</span>
+                )}
+                {active && (
+                  <div className="absolute bottom-0 left-3 right-3 h-[2.5px] rounded-full" style={{ background: '#EC4899' }} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="pt-4">
+        {/* Story-style contact row */}
+        {!search && msgTab === 'primary' && <ActiveUsersRow users={activeNow} currentUser={currentUser} />}
 
         {/* Conversations */}
         <div className="px-4 space-y-2">

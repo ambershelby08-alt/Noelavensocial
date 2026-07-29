@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Edit3, Camera, X, Check, Sparkles, Users, MessageCircle,
   Grid3X3, Heart, Bookmark, Calendar, Share2, UserPlus,
-  UserCheck, ChevronRight, AtSign, FileText, Star, Plus,
+  UserCheck, ChevronRight, ChevronDown, AtSign, FileText, Star, Plus,
   ArrowLeft, Globe, Lock, UserCircle, Flame, MoreHorizontal,
-  VolumeX, UserX, Shield, EyeOff, Settings2,
+  VolumeX, UserX, Shield, EyeOff, Settings2, CheckCircle2,
 } from 'lucide-react';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
 import { CoverPhotoEditor, type CoverSavePayload } from '@/components/profile/CoverPhotoEditor';
@@ -804,8 +804,8 @@ function EmptyState({ emoji, title, subtitle }: { emoji: string; title: string; 
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
 
-const TABS_OWN    = ['Posts', 'Circles', 'Sparks', 'Liked', 'Saved'] as const;
-const TABS_OTHER  = ['Posts', 'Circles', 'Sparks'] as const;
+const TABS_OWN    = ['Posts', 'About', 'Sparks', 'Stories', 'Friends', 'Groups'] as const;
+const TABS_OTHER  = ['Posts', 'About', 'Sparks', 'Stories', 'Friends', 'Groups'] as const;
 type TabLabel = typeof TABS_OWN[number];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -866,10 +866,11 @@ export default function Profile() {
   const tabs = (isOwnProfile ? TABS_OWN : TABS_OTHER) as readonly TabLabel[];
   const tabIcons: Record<TabLabel, React.ReactNode> = {
     Posts:   <Grid3X3 size={15} />,
-    Circles: <Users size={15} />,
+    About:   <FileText size={15} />,
     Sparks:  <Sparkles size={15} />,
-    Liked:   <Heart size={15} />,
-    Saved:   <Bookmark size={15} />,
+    Stories: <Star size={15} />,
+    Friends: <Users size={15} />,
+    Groups:  <Users size={15} />,
   };
 
   // Data for each tab
@@ -1050,52 +1051,105 @@ export default function Profile() {
         )}
       </div>
 
-      {/* ── Avatar row ──────────────────────────────────────────────────── */}
-      <div className="px-4 -mt-12 flex items-end justify-between">
-        {/* Avatar */}
-        <div className="relative">
-          <div className="ring-4 ring-[#111] rounded-full shadow-xl">
-            <GradientAvatar name={user.displayName} src={user.avatarUrl || undefined} size={88} />
+      {/* ── Profile header ──────────────────────────────────────────────── */}
+      <div className="px-4 -mt-10">
+        {/* Two-column: avatar LEFT + name/handle/bio RIGHT */}
+        <div className="flex items-start gap-4 mb-5">
+          {/* Avatar with rainbow ring */}
+          <div className="relative flex-shrink-0">
+            <div className="p-[3px] rounded-full"
+              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
+              <div className="p-[2px] rounded-full bg-black">
+                <GradientAvatar name={user.displayName} src={user.avatarUrl || undefined} size={88} />
+              </div>
+            </div>
+            {/* Online dot */}
+            <div className="absolute bottom-2 right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-black" />
+            {/* Crown badge */}
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full flex items-center justify-center"
+              style={{ background: '#F5C542', border: '2.5px solid #000' }}>
+              <span className="text-[12px]">👑</span>
+            </div>
+            {/* Edit avatar — own profile */}
+            {isOwnProfile && (
+              <button onClick={() => setEditOpen(true)}
+                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center border-2 border-black shadow-md z-10"
+                style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}>
+                <Camera size={12} className="text-white" />
+              </button>
+            )}
           </div>
-          {isOwnProfile && (
-            <button
-              onClick={() => setEditOpen(true)}
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center border-2 border-black shadow-md"
-              style={{ background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)' }}
-            >
-              <Camera size={12} className="text-white" />
-            </button>
-          )}
+
+          {/* Name / handle / FOUNDER / bio */}
+          <div className="flex-1 min-w-0 pt-2">
+            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+              <h1 className="text-[19px] font-black text-white tracking-tight leading-tight">{user.displayName}</h1>
+              <CheckCircle2 size={17} style={{ color: '#3B82F6' }} />
+            </div>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="text-[13px] text-[rgba(255,255,255,0.45)]">@{user.handle}</span>
+              <FounderBadge userId={user.id} size="sm" showLabel />
+            </div>
+            {user.bio ? (
+              <p className="text-[13px] text-[#BDBDBD] leading-relaxed line-clamp-3 mb-2">{user.bio}</p>
+            ) : isOwnProfile ? (
+              <button onClick={() => setEditOpen(true)}
+                className="flex items-center gap-1 text-[13px] text-[#EC4899] font-semibold mb-2">
+                <Plus size={13} /> Add a bio
+              </button>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+              <span className="text-[12px] text-[rgba(255,255,255,0.4)]">📍 Atlanta, GA</span>
+              <div className="flex items-center gap-1 text-[12px] text-[rgba(255,255,255,0.4)]">
+                <Calendar size={11} />
+                <span>Joined {format(user.joinedAt, 'MMM yyyy')}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* CTA buttons */}
-        <div className="flex items-center gap-2 mb-1">
+        {/* Stats row */}
+        <div className="flex items-center justify-between mb-4 py-1 border-y border-[#1a1a1a]">
+          <div className="flex flex-col items-center flex-1">
+            <span className="text-[18px] font-black text-white">{fmtNum(user.postCount || userPosts.length)}</span>
+            <span className="text-[11px] text-[rgba(255,255,255,0.45)] font-medium">Posts</span>
+          </div>
+          <div className="w-px h-8 bg-[#1e1e1e]" />
+          <button onClick={() => { setFollowersOpen(true); loadFollowLists(); }}
+            className="flex flex-col items-center flex-1 hover:opacity-75 transition-opacity">
+            <span className="text-[18px] font-black text-white">{fmtNum(followerCount)}</span>
+            <span className="text-[11px] text-[rgba(255,255,255,0.45)] font-medium">Followers</span>
+          </button>
+          <div className="w-px h-8 bg-[#1e1e1e]" />
+          <button onClick={() => { setFollowingOpen(true); loadFollowLists(); }}
+            className="flex flex-col items-center flex-1 hover:opacity-75 transition-opacity">
+            <span className="text-[18px] font-black text-white">{fmtNum(user.following)}</span>
+            <span className="text-[11px] text-[rgba(255,255,255,0.45)] font-medium">Following</span>
+          </button>
+          <div className="w-px h-8 bg-[#1e1e1e]" />
+          <div className="flex flex-col items-center flex-1">
+            <span className="text-[18px] font-black text-white">{fmtNum((user as any).likes ?? 0)}</span>
+            <span className="text-[11px] text-[rgba(255,255,255,0.45)] font-medium">Likes</span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 mb-4">
           {isOwnProfile ? (
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setEditOpen(true)}
-              className="px-5 py-2.5 rounded-full bg-[#111] border border-[#2a2a2a] text-[#BDBDBD] font-bold text-[13.5px] shadow-sm hover:shadow-md transition-all flex items-center gap-1.5"
+              className="flex-1 py-2.5 rounded-full font-bold text-[14px] flex items-center justify-center gap-2 transition-all"
+              style={{ border: '1.5px solid #EC4899', background: 'transparent' }}
             >
-              <Edit3 size={14} /> Edit Profile
+              <Edit3 size={15} style={{ color: '#EC4899' }} />
+              <span style={{ color: '#EC4899' }}>Edit Profile</span>
             </motion.button>
           ) : (
             <>
+              {/* Message */}
               <motion.button
-                whileTap={{ scale: 0.93 }}
-                onClick={handleFollow}
-                disabled={followLoading}
-                className={cn(
-                  'px-5 py-2.5 rounded-full font-bold text-[13.5px] transition-all flex items-center gap-1.5 disabled:opacity-70',
-                  isFollowing ? 'bg-[#111] border border-[#2a2a2a] text-[#BDBDBD] shadow-sm' : 'text-white shadow-md'
-                )}
-                style={!isFollowing ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', boxShadow: '0 3px 14px rgba(124,58,237,0.4)' } : {}}
-              >
-                {followLoading
-                  ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  : isFollowing ? <><UserCheck size={14} /> Following</> : <><UserPlus size={14} /> Follow</>}
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.92 }}
+                whileTap={{ scale: 0.95 }}
                 disabled={msgLoading}
                 onClick={async () => {
                   if (!currentUser || msgLoading) return;
@@ -1112,91 +1166,41 @@ export default function Profile() {
                     }
                   } catch { setLocation('/messages'); } finally { setMsgLoading(false); }
                 }}
-                className="w-10 h-10 rounded-full bg-[#111] border border-[#EC4899]/40 flex items-center justify-center shadow-sm hover:shadow-md transition-all disabled:opacity-60"
+                className="flex-1 py-2.5 rounded-full font-bold text-[14px] flex items-center justify-center gap-2 disabled:opacity-60"
+                style={{ border: '1.5px solid #EC4899', background: 'transparent' }}
               >
                 {msgLoading
                   ? <span className="w-4 h-4 border-2 border-[#EC4899] border-t-transparent rounded-full animate-spin" />
-                  : <MessageCircle size={17} className="text-[#EC4899]" />}
+                  : <><MessageCircle size={15} style={{ color: '#EC4899' }} /><span style={{ color: '#EC4899' }}>Message</span></>
+                }
+              </motion.button>
+              {/* Add Friend / Following */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleFollow}
+                disabled={followLoading}
+                className="flex-1 py-2.5 rounded-full font-bold text-[14px] flex items-center justify-center gap-2 disabled:opacity-60"
+                style={{ border: '1.5px solid #EC4899', background: 'transparent' }}
+              >
+                {followLoading
+                  ? <span className="w-4 h-4 border-2 border-[#EC4899] border-t-transparent rounded-full animate-spin" />
+                  : isFollowing
+                  ? <><UserCheck size={15} style={{ color: '#EC4899' }} /><span style={{ color: '#EC4899' }}>Following</span></>
+                  : <><UserPlus size={15} style={{ color: '#EC4899' }} /><span style={{ color: '#EC4899' }}>Add Friend</span></>
+                }
+              </motion.button>
+              {/* More options */}
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setSafetySheetOpen(true)}
+                className="w-[44px] py-2.5 rounded-full flex items-center justify-center"
+                style={{ border: '1.5px solid #333', background: 'transparent' }}
+              >
+                <ChevronDown size={16} className="text-white" />
               </motion.button>
             </>
           )}
         </div>
-      </div>
-
-      {/* ── Profile info ─────────────────────────────────────────────────── */}
-      <div className="px-4 mt-4">
-        {/* Name + badges */}
-        <div className="flex items-start gap-2 flex-wrap mb-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-[22px] font-black text-white tracking-tight leading-tight">{user.displayName}</h1>
-            <FounderBadge userId={user.id} size="md" showLabel />
-          </div>
-        </div>
-        <p className="text-[14px] text-[rgba(255,255,255,0.45)] font-medium mb-1">@{user.handle}</p>
-
-        {/* Badges */}
-        {user.badges.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {user.badges.map(b => <BadgeChip key={b} label={b} />)}
-          </div>
-        )}
-
-        {/* Bio */}
-        {user.bio ? (
-          <p className="text-[14.5px] text-[#BDBDBD] leading-relaxed mb-3 max-w-sm">{user.bio}</p>
-        ) : isOwnProfile ? (
-          <button
-            onClick={() => setEditOpen(true)}
-            className="flex items-center gap-1.5 text-[13.5px] text-[#EC4899] font-semibold mb-3 hover:text-[#EC4899] transition-colors"
-          >
-            <Plus size={14} /> Add a bio
-          </button>
-        ) : null}
-
-        {/* Joined date */}
-        <div className="flex items-center gap-1.5 text-[12.5px] text-[rgba(255,255,255,0.45)] mb-4">
-          <Calendar size={13} />
-          <span>Joined {format(user.joinedAt, 'MMMM yyyy')}</span>
-        </div>
-
-        {/* Stats row */}
-        <div className="flex items-center gap-5 mb-4">
-          <div className="flex items-baseline gap-1">
-            <span className="text-[18px] font-black text-white">{fmtNum(user.postCount || userPosts.length)}</span>
-            <span className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Posts</span>
-          </div>
-          <div className="w-px h-5 bg-[#222]" />
-          <button
-            onClick={() => { setFollowersOpen(true); loadFollowLists(); }}
-            className="flex items-baseline gap-1 hover:opacity-75 transition-opacity"
-          >
-            <span className="text-[18px] font-black text-white">{fmtNum(followerCount)}</span>
-            <span className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Followers</span>
-          </button>
-          <div className="w-px h-5 bg-[#222]" />
-          <button
-            onClick={() => { setFollowingOpen(true); loadFollowLists(); }}
-            className="flex items-baseline gap-1 hover:opacity-75 transition-opacity"
-          >
-            <span className="text-[18px] font-black text-white">{fmtNum(user.following)}</span>
-            <span className="text-[13px] text-[rgba(255,255,255,0.45)] font-medium">Following</span>
-          </button>
-        </div>
-
-        {/* Interests */}
-        {user.interests.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {user.interests.map(i => <InterestChip key={i} label={i} />)}
-            {isOwnProfile && (
-              <button
-                onClick={() => setEditOpen(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-[#F5C542] border border-[rgba(245,197,66,0.25)] bg-[#111] hover:bg-[rgba(245,197,66,0.08)] transition-colors"
-              >
-                <Plus size={11} /> Edit
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Sticky tab bar ───────────────────────────────────────────────── */}
@@ -1246,15 +1250,40 @@ export default function Profile() {
               : <EmptyState emoji="📝" title="No posts yet" subtitle={isOwnProfile ? "Share your first thought with the world!" : "This user hasn't posted yet."} />
           )}
 
-          {/* Circles */}
-          {activeTab === 'Circles' && (
-            userCircles.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 px-4">
-                {userCircles.map(c => <CircleCard key={c.id} community={c} />)}
+          {/* About */}
+          {activeTab === 'About' && (
+            <div className="px-4 space-y-3 mt-2 pb-6">
+              {user.bio && (
+                <div className="bg-[#111] rounded-[18px] p-4 border border-[#1a1a1a]">
+                  <h3 className="font-black text-white text-[13px] mb-2 uppercase tracking-wide opacity-60">About</h3>
+                  <p className="text-[14px] text-[#BDBDBD] leading-relaxed">{user.bio}</p>
+                </div>
+              )}
+              {user.interests.length > 0 && (
+                <div className="bg-[#111] rounded-[18px] p-4 border border-[#1a1a1a]">
+                  <h3 className="font-black text-white text-[13px] mb-3 uppercase tracking-wide opacity-60">Interests</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {user.interests.map(i => <InterestChip key={i} label={i} />)}
+                    {isOwnProfile && (
+                      <button onClick={() => setEditOpen(true)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold text-[#F5C542] border border-[rgba(245,197,66,0.25)] bg-[#111]">
+                        <Plus size={11} /> Edit
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {user.badges.length > 0 && (
+                <div className="bg-[#111] rounded-[18px] p-4 border border-[#1a1a1a]">
+                  <h3 className="font-black text-white text-[13px] mb-3 uppercase tracking-wide opacity-60">Badges</h3>
+                  <div className="flex flex-wrap gap-2">{user.badges.map(b => <BadgeChip key={b} label={b} />)}</div>
+                </div>
+              )}
+              <div className="bg-[#111] rounded-[18px] p-4 border border-[#1a1a1a] flex items-center gap-2 text-[13px] text-[rgba(255,255,255,0.45)]">
+                <Calendar size={14} />
+                <span>Joined {format(user.joinedAt, 'MMMM yyyy')}</span>
               </div>
-            ) : (
-              <EmptyState emoji="🌐" title="No circles yet" subtitle={isOwnProfile ? "Join a Circle to connect with people who share your interests!" : "This user hasn't joined any Circles yet."} />
-            )
+            </div>
           )}
 
           {/* Sparks */}
@@ -1267,18 +1296,40 @@ export default function Profile() {
             />
           )}
 
-          {/* Liked (own only) */}
-          {activeTab === 'Liked' && (
-            likedPosts.length > 0
-              ? likedPosts.map((p, i) => <PostCard key={p.id} post={p} index={i} />)
-              : <EmptyState emoji="❤️" title="No liked posts" subtitle="Posts you like will appear here." />
+          {/* Stories */}
+          {activeTab === 'Stories' && (
+            <EmptyState emoji="📸" title="Stories" subtitle="Stories posted by this user will appear here." />
           )}
 
-          {/* Saved (own only) */}
-          {activeTab === 'Saved' && (
-            savedPosts.length > 0
-              ? savedPosts.map((p, i) => <PostCard key={p.id} post={p} index={i} />)
-              : <EmptyState emoji="🔖" title="No saved posts" subtitle="Tap the bookmark on any post to save it here." />
+          {/* Friends */}
+          {activeTab === 'Friends' && (
+            <div className="px-4 mt-2 space-y-2 pb-6">
+              <button
+                onClick={() => { setFollowersOpen(true); loadFollowLists(); }}
+                className="w-full flex items-center justify-between bg-[#111] rounded-[18px] p-4 border border-[#1a1a1a]"
+              >
+                <span className="font-black text-white text-[15px]">Followers <span className="text-[#EC4899]">{fmtNum(followerCount)}</span></span>
+                <ChevronRight size={16} className="text-[rgba(255,255,255,0.45)]" />
+              </button>
+              <button
+                onClick={() => { setFollowingOpen(true); loadFollowLists(); }}
+                className="w-full flex items-center justify-between bg-[#111] rounded-[18px] p-4 border border-[#1a1a1a]"
+              >
+                <span className="font-black text-white text-[15px]">Following <span className="text-[#EC4899]">{fmtNum(user.following)}</span></span>
+                <ChevronRight size={16} className="text-[rgba(255,255,255,0.45)]" />
+              </button>
+            </div>
+          )}
+
+          {/* Groups */}
+          {activeTab === 'Groups' && (
+            userCircles.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 px-4">
+                {userCircles.map(c => <CircleCard key={c.id} community={c} />)}
+              </div>
+            ) : (
+              <EmptyState emoji="🌐" title="No groups yet" subtitle={isOwnProfile ? "Join a Group to connect with people who share your interests!" : "This user hasn't joined any groups yet."} />
+            )
           )}
         </motion.div>
       </AnimatePresence>
