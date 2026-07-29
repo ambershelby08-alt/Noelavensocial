@@ -27,6 +27,7 @@
 - [Noelaven Liked & Saved Posts](noelaven-liked-saved-posts.md) — separate Firestore subscriptions, NOT feed filtering; liked_posts written by togglePostReaction inside the transaction.
 - [Noelaven Audience System](noelaven-audience.md) — canonical values: public/mutuals/private/onlyMe; normalizeAudience() maps legacy friends/only_me/everyone at read time.
 - [Noelaven Spark community query](spark-query-architecture.md) — query by sparkDateKey (single where, no composite index needed); never use sparkPrompt+orderBy (composite index never deployed → empty feed).
+- [Noelaven Firestore composite indexes](noelaven-firestore-indexes.md) — service account lacks datastore.indexes.create; all composite-index queries must drop orderBy and sort client-side instead.
 - [Noelaven DM conversation IDs](noelaven-dm-ids.md) — DM convIds are deterministic: dm_{minUid}_{maxUid}; use setDoc+merge to avoid race conditions; no composite index (type filter client-side).
 - [Noelaven Daily Spark status architecture](spark-status-architecture.md) — use `useDailySparkStatus()` from DailySparkContext everywhere; gate composer open on `statusConfirmed`; `recordSparkAnswer` is the backend gate.
 - [Noelaven beta stabilization](noelaven-beta-stab.md) — root causes + fixes for reactions override, presence wiring, messaging privacy, notif avatar taps, warning notifications, push deep links, spark expiry guard, STUN dedup.

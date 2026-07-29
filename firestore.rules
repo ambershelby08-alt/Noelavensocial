@@ -434,8 +434,12 @@ service cloud.firestore {
     // protection (shared context + Firestore transaction) also prevents
     // duplicates, but these rules are the authoritative backend enforcement.
     match /dailySparkResponses/{responseId} {
+      // resource == null when the document doesn't exist yet (new user checking
+      // before their first answer). Accessing resource.data on null throws a
+      // rules evaluation error → PERMISSION_DENIED. Allow the read so getDoc()
+      // returns an empty snapshot (no data exposed), then verify uid when doc exists.
       allow read: if isAuthenticated()
-          && resource.data.uid == request.auth.uid;
+          && (resource == null || resource.data.uid == request.auth.uid);
       allow create: if isAuthenticated()
           && request.resource.data.uid == request.auth.uid
           && responseId == request.auth.uid + '_' + request.resource.data.sparkDateKey;

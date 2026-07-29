@@ -403,17 +403,26 @@ export async function checkTodaySparkAnswer(userId: string): Promise<string | nu
 
     // Slow path: query posts collection (handles answers that pre-date the
     // dailySparkResponses collection — preserves backward compatibility).
+    // NOTE: orderBy('createdAt', 'desc') omitted — combining equality on authorId
+    // with orderBy on createdAt requires a composite index we can't deploy via
+    // the service account. Fetch all posts by this user and sort client-side.
+    // This path is only hit on legacy accounts; new accounts use the fast path above.
     const q = query(
       collection(db, 'posts'),
-      where('authorId', '==', userId),
-      orderBy('createdAt', 'desc'),
-      limit(10)
+      where('authorId', '==', userId)
     );
     const snap = await getDocs(q);
     if (snap.empty) return null;
     const dayStart = getETDayStart();
-    // Client-side: find first post that is a spark post from today (ET).
-    const sparkDoc = snap.docs.find(d => {
+    // Client-side: find the most recent spark post from today (ET).
+    const sparkDoc = snap.docs
+      .slice()
+      .sort((a, b) => {
+        const ta = a.data().createdAt?.toDate?.()?.getTime?.() ?? 0;
+        const tb = b.data().createdAt?.toDate?.()?.getTime?.() ?? 0;
+        return tb - ta;
+      })
+      .find(d => {
       const data = d.data();
       if (!data.sparkPrompt) return false;
       // Duck-type the Firestore Timestamp (toDate()) vs plain Date/number.
@@ -970,13 +979,23 @@ export function logFsError(
 
 export function subscribeConversations(userId: string, onData: (convs: Conversation[]) => void): Unsubscribe {
   if (!db) return () => {};
+  // NOTE: orderBy('lastMessageAt', 'desc') is intentionally omitted here.
+  // Combining array-contains + orderBy on a different field requires a composite
+  // index that requires Cloud Datastore Index Admin IAM permissions to deploy.
+  // Instead we sort client-side — same result, no composite index needed.
   const q = query(
     collection(db, 'conversations'),
-    where('participantIds', 'array-contains', userId),
-    orderBy('lastMessageAt', 'desc')
+    where('participantIds', 'array-contains', userId)
   );
   return onSnapshot(q, snap => {
-    onData(snap.docs.map(d => docToConversation(d.id, d.data(), userId)));
+    const convs = snap.docs
+      .map(d => docToConversation(d.id, d.data(), userId))
+      .sort((a, b) => {
+        const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+        const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+        return tb - ta; // newest first
+      });
+    onData(convs);
   }, err => logFsError('subscribeConversations', err, { userId }));
 }
 
@@ -1180,23 +1199,31 @@ export async function getOrCreateDirectConversation(
   // ── Step 1: Look for any existing direct conversation between these two users ──
   // This prevents creating a second duplicate conversation when one already exists
   // with an older auto-generated Firestore ID or from a previous session.
+  // NOTE: orderBy omitted — array-contains + orderBy on a different field requires
+  // a composite index we can't deploy. Sort client-side instead.
   const existingQuery = query(
     collection(db, 'conversations'),
     where('participantIds', 'array-contains', userId),
-    orderBy('lastMessageAt', 'desc'),
   );
   const existingSnap = await getDocs(existingQuery);
 
   // Find conversations that include both users as direct messages
-  const matches = existingSnap.docs.filter(d => {
-    const data = d.data();
-    if (data.type !== 'direct') return false;
-    const pids: string[] = data.participantIds ?? [];
-    return pids.includes(userId) && pids.includes(otherUserId);
-  });
+  const matches = existingSnap.docs
+    .filter(d => {
+      const data = d.data();
+      if (data.type !== 'direct') return false;
+      const pids: string[] = data.participantIds ?? [];
+      return pids.includes(userId) && pids.includes(otherUserId);
+    })
+    .sort((a, b) => {
+      // Replicate the orderBy('lastMessageAt', 'desc') that was removed above
+      const ta = a.data().lastMessageAt?.toDate?.()?.getTime?.() ?? 0;
+      const tb = b.data().lastMessageAt?.toDate?.()?.getTime?.() ?? 0;
+      return tb - ta;
+    });
 
   if (matches.length > 0) {
-    // Use the most recent conversation (docs already ordered desc by lastMessageAt).
+    // Use the most recent conversation (sorted desc by lastMessageAt above).
     // Prefer an existing canonical dm_ ID if present; otherwise use the most recent.
     const canonical = matches.find(d => d.id.startsWith('dm_'));
     const best = canonical ?? matches[0];
