@@ -247,13 +247,33 @@ service cloud.firestore {
             request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly(['reactions'])
 
-            // Delivery receipts written automatically by recipient clients
-            || request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['deliveredTo'])
-            || request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['readBy'])
-            || request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['deliveredTo', 'readBy'])
+            // Delivery receipt — only the RECIPIENT may mark a message delivered.
+            // Guards:
+            //  1. Sender cannot write their own delivery receipt (resource.data.senderId != auth.uid)
+            //  2. Append-only: new array must include all previous UIDs (no removals)
+            //  3. The writing user's own UID must be in the updated array
+            || (request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['deliveredTo'])
+                && resource.data.senderId != request.auth.uid
+                && request.resource.data.deliveredTo.hasAll(resource.data.deliveredTo)
+                && request.auth.uid in request.resource.data.deliveredTo)
+
+            // Read receipt — only the RECIPIENT may mark a message read.
+            // Same guards as deliveredTo, applied to readBy.
+            || (request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['readBy'])
+                && resource.data.senderId != request.auth.uid
+                && request.resource.data.readBy.hasAll(resource.data.readBy)
+                && request.auth.uid in request.resource.data.readBy)
+
+            // Combined delivery + read — recipient marks both fields in one write.
+            || (request.resource.data.diff(resource.data).affectedKeys()
+                    .hasOnly(['deliveredTo', 'readBy'])
+                && resource.data.senderId != request.auth.uid
+                && request.resource.data.deliveredTo.hasAll(resource.data.deliveredTo)
+                && request.auth.uid in request.resource.data.deliveredTo
+                && request.resource.data.readBy.hasAll(resource.data.readBy)
+                && request.auth.uid in request.resource.data.readBy)
 
             // "Delete for me" — appends own UID to deletedFor; does not affect others
             || request.resource.data.diff(resource.data).affectedKeys()

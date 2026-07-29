@@ -1083,7 +1083,7 @@ export async function sendMessage(
     content,
     type,
     reactions: {},
-    readBy: [senderId],
+    readBy: [],       // sender is NOT pre-populated; only recipients write to readBy
     deliveredTo: [],
     deletedFor: [],
     deletedForEveryone: false,

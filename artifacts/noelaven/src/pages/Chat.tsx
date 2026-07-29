@@ -1649,8 +1649,29 @@ export default function Chat() {
     (acc, slot, i) => (slot.type === 'group' && slot.group.senderId === cu?.id ? i : acc),
     -1,
   );
-  // Show "Seen" if any other participant has opened the conversation.
-  const seenByOthers = Object.keys(conversation?.seenBy ?? {}).some(uid => uid !== cu?.id);
+
+  // Timestamp of the most recently sent (non-pending) message from the current user.
+  // Used as a threshold: a recipient's seenBy entry only counts if it is AFTER this
+  // timestamp — preventing stale seenBy values (from a previous session before this
+  // message was sent) from triggering a false "Seen" on newly sent messages.
+  const lastMyMsgAt: number = (() => {
+    const myMsgs = visibleMessages.filter(m => m.senderId === cu?.id && !m.pending);
+    if (!myMsgs.length) return 0;
+    return safeGetTime(myMsgs[myMsgs.length - 1].createdAt);
+  })();
+
+  // Show "Seen" only if a recipient's seenBy timestamp is strictly AFTER the current
+  // user's last sent message. This prevents the two failure modes:
+  //   1. Stale seenBy from a previous conversation visit showing "Seen" on new messages.
+  //   2. The sender's own seenBy entry (written when they opened the chat) triggering
+  //      "Seen" on their own messages (their uid is excluded, but belt-and-suspenders).
+  const seenByOthers = lastMyMsgAt > 0 && Object.entries(conversation?.seenBy ?? {}).some(
+    ([uid, seenDate]) => {
+      if (uid === cu?.id) return false;                                      // never count own entry
+      const seenAt = seenDate instanceof Date ? seenDate.getTime() : 0;
+      return seenAt > lastMyMsgAt;                                           // must be AFTER our message
+    }
+  );
 
   const inputVal = editingMsg ? editText : inputText;
   const hasText  = inputVal.trim().length > 0;
