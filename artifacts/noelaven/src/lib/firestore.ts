@@ -1140,28 +1140,76 @@ export async function getOrCreateDirectConversation(
   otherUser: User
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
-  // Use a deterministic document ID (sorted UIDs) to eliminate the read-then-write
-  // race condition that could create duplicate DM threads between the same two users.
+
+  const participantData = [
+    { id: currentUser.id, displayName: currentUser.displayName, handle: currentUser.handle, avatarUrl: currentUser.avatarUrl ?? '' },
+    { id: otherUser.id, displayName: otherUser.displayName, handle: otherUser.handle, avatarUrl: otherUser.avatarUrl ?? '' },
+  ];
+
+  // ── Step 1: Look for any existing direct conversation between these two users ──
+  // This prevents creating a second duplicate conversation when one already exists
+  // with an older auto-generated Firestore ID or from a previous session.
+  const existingQuery = query(
+    collection(db, 'conversations'),
+    where('participantIds', 'array-contains', userId),
+    orderBy('lastMessageAt', 'desc'),
+  );
+  const existingSnap = await getDocs(existingQuery);
+
+  // Find conversations that include both users as direct messages
+  const matches = existingSnap.docs.filter(d => {
+    const data = d.data();
+    if (data.type !== 'direct') return false;
+    const pids: string[] = data.participantIds ?? [];
+    return pids.includes(userId) && pids.includes(otherUserId);
+  });
+
+  if (matches.length > 0) {
+    // Use the most recent conversation (docs already ordered desc by lastMessageAt).
+    // Prefer an existing canonical dm_ ID if present; otherwise use the most recent.
+    const canonical = matches.find(d => d.id.startsWith('dm_'));
+    const best = canonical ?? matches[0];
+
+    // Enrich participant data (avatarUrls, handles) in the winning conversation,
+    // and ensure participantIds is populated (older docs may lack it).
+    await setDoc(best.ref, {
+      participantIds: [userId, otherUserId],
+      participants: participantData,
+    }, { merge: true });
+
+    // Background: soft-delete any other duplicate conversations so they no longer
+    // appear in the subscribeConversations query for either participant.
+    const duplicates = matches.filter(d => d.id !== best.id);
+    if (duplicates.length > 0) {
+      Promise.all(
+        duplicates.map(d =>
+          updateDoc(d.ref, {
+            participantIds: arrayRemove(userId, otherUserId),
+            supersededBy: best.id,
+          }).catch(() => {/* ignore — non-critical cleanup */})
+        )
+      ).catch(() => {});
+    }
+
+    return best.id;
+  }
+
+  // ── Step 2: No existing conversation — create a canonical dm_{a}_{b} doc ──────
+  // Sort UIDs so the same document ID is produced regardless of who initiates.
   const [a, b] = [userId, otherUserId].sort();
   const convId = `dm_${a}_${b}`;
   const convRef = doc(db, 'conversations', convId);
-  // Do NOT pre-read with getDoc: the Firestore read rule evaluates
-  // resource.data.participantIds, which throws when the doc doesn't yet exist
-  // (resource is null) → permission-denied → setDoc never runs.
-  // setDoc with merge is idempotent: safe to call even if the doc already exists;
-  // existing fields not present in the write are preserved.
+  // setDoc with merge: safe to call even if doc already exists; existing fields
+  // (e.g. messages, lastMessage) are preserved.
   await setDoc(convRef, {
     type: 'direct',
     participantIds: [userId, otherUserId],
-    participants: [
-      { id: currentUser.id, displayName: currentUser.displayName, handle: currentUser.handle, avatarUrl: currentUser.avatarUrl ?? '' },
-      { id: otherUser.id, displayName: otherUser.displayName, handle: otherUser.handle, avatarUrl: otherUser.avatarUrl ?? '' },
-    ],
+    participants: participantData,
     lastMessage: '',
     lastMessageAt: serverTimestamp(),
     unreadCounts: { [userId]: 0, [otherUserId]: 0 },
     createdAt: serverTimestamp(),
-  }, { merge: true }); // merge: existing data is preserved if the doc already exists
+  }, { merge: true });
   return convId;
 }
 

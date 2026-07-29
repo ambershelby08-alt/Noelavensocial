@@ -14,6 +14,63 @@ import { mockConversations, mockUsers } from '@/lib/mockData';
 import type { Conversation, User } from '@/lib/mockData';
 import { cacheConversations, readCachedConversations } from '@/lib/msgCache';
 
+/**
+ * Deduplicate direct conversations by participant pair.
+ *
+ * When multiple conversation documents exist between the same two users
+ * (e.g. an old auto-ID doc and a new canonical dm_ doc), this keeps only
+ * the best representative per pair — preferring the one with real message
+ * history (non-empty lastMessage), then the canonical dm_ ID, then newest
+ * lastMessageAt.  Group conversations are never deduplicated.
+ */
+function deduplicateConversations(convs: Conversation[]): Conversation[] {
+  const directsByKey = new Map<string, Conversation>();
+
+  for (const conv of convs) {
+    if (conv.type !== 'direct') continue;
+
+    // Canonical key: sorted participant IDs joined — same key for both orderings
+    const pids = (
+      conv.participantIds?.length
+        ? conv.participantIds
+        : conv.participants.map(p => p.id)
+    ).slice().sort();
+    const key = pids.join(':');
+
+    const prev = directsByKey.get(key);
+    if (!prev) {
+      directsByKey.set(key, conv);
+      continue;
+    }
+
+    // Pick the better conversation:
+    // 1. Prefer whichever has a non-empty lastMessage (has real history)
+    // 2. Then prefer the canonical dm_ ID
+    // 3. Then prefer the more recently active one
+    const thisHasHistory = conv.lastMessage !== '';
+    const prevHasHistory = prev.lastMessage !== '';
+    const thisCanonical = conv.id.startsWith('dm_');
+    const prevCanonical = prev.id.startsWith('dm_');
+
+    if (thisHasHistory && !prevHasHistory) {
+      directsByKey.set(key, conv);
+    } else if (!thisHasHistory && prevHasHistory) {
+      // keep prev
+    } else if (thisCanonical && !prevCanonical) {
+      directsByKey.set(key, conv);
+    } else if (!thisCanonical && prevCanonical) {
+      // keep prev
+    } else if (conv.lastMessageAt > prev.lastMessageAt) {
+      directsByKey.set(key, conv);
+    }
+  }
+
+  return [
+    ...convs.filter(c => c.type === 'group'),
+    ...directsByKey.values(),
+  ].sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+}
+
 export function useConversations() {
   const { currentUser } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>(
@@ -65,7 +122,7 @@ export function useConversations() {
     // ── Cache seed: render conversations immediately, hide spinner if we have them ──
     const cached = readCachedConversations(currentUser.id);
     if (cached && cached.length > 0) {
-      setConversations(cached);
+      setConversations(deduplicateConversations(cached));
       setIsLoading(false);
     } else {
       setIsLoading(true);
@@ -73,9 +130,10 @@ export function useConversations() {
 
     // ── Live subscription: patches in fresh data and refreshes the cache ──
     const unsub = subscribeConversations(currentUser.id, convs => {
-      setConversations(convs);
+      const deduped = deduplicateConversations(convs);
+      setConversations(deduped);
       setIsLoading(false);
-      cacheConversations(currentUser.id, convs);
+      cacheConversations(currentUser.id, deduped);
     });
     return unsub;
   }, [currentUser?.id]);
