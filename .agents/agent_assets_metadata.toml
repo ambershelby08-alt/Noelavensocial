@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "FTU05ihu0lsbgjJK3GWE3"
+uri = "file://noelaven-release.aab"
+type = "unspecified"
+title = "noelaven-release.aab"
