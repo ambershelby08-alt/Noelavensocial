@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageCircle, Share2, Bookmark, Heart,
-  Image as ImageIcon, Smile, MapPin, Send,
+  Image as ImageIcon, MapPin, Send,
   MoreHorizontal, Sparkles, X,
   Link as LinkIcon, Users, MessageSquare, Check,
   ChevronDown, Trash2, Flag, EyeOff, UserMinus,
@@ -38,6 +38,8 @@ import {
   sendMessage as fsSendMessage,
   recordSparkAnswer,
 } from '@/lib/firestore';
+import { PostComposer } from '@/components/ui/PostComposer';
+import type { PostLocation } from '@/components/ui/PostComposer';
 import type { ReplyData } from '@/lib/firestore';
 import { useConversations } from '@/hooks/useConversations';
 import { isFirebaseConfigured } from '@/lib/firebase';
@@ -1225,207 +1227,7 @@ function CommunityReveal({
   );
 }
 
-// ─── Post Composer ────────────────────────────────────────────────────────────
-
-interface PostComposerProps {
-  onPost: (content: string, imageUrl?: string, audience?: SparkAudience) => void;
-}
-
-export function PostComposer({ onPost }: PostComposerProps) {
-  const { currentUser } = useAuth();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [content, setContent] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [imageUploading, setImageUploading] = useState(false);
-  const [postAudience, setPostAudience] = useState<SparkAudience>('public');
-  const [showAudiencePicker, setShowAudiencePicker] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-
-  const canPost = content.trim().length > 0 || imageUrl.length > 0;
-
-  function handlePost() {
-    if (!canPost) return;
-    onPost(content.trim(), imageUrl || undefined, postAudience);
-    setContent('');
-    setImageUrl('');
-    setPostAudience('public');
-    setShowAudiencePicker(false);
-    setIsExpanded(false);
-  }
-
-  async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageUploading(true);
-    try {
-      const url = await uploadImage(file, 'posts');
-      setImageUrl(url);
-    } catch (err) {
-      console.error('Image upload failed:', err);
-    } finally {
-      setImageUploading(false);
-      if (imageInputRef.current) imageInputRef.current.value = '';
-    }
-  }
-
-  return (
-    <motion.div
-      className="mx-4 mb-5 p-4 rounded-[24px] bg-[#111] border border-[#1a1a1a] transition-all duration-300"
-      animate={{
-        boxShadow: isExpanded
-          ? '0 8px 32px rgba(107,115,255,0.10), 0 2px 8px rgba(0,0,0,0.04)'
-          : '0 2px 8px rgba(0,0,0,0.04)',
-      }}
-    >
-      {/* Hidden image file input */}
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        className="hidden"
-        onChange={handleImageFile}
-      />
-
-      <div className="flex gap-3">
-        {currentUser && (
-          <GradientAvatar
-            name={currentUser.displayName}
-            src={currentUser.avatarUrl || undefined}
-            size={44}
-            className="mt-0.5 flex-shrink-0"
-          />
-        )}
-        <div className="flex-1 min-w-0">
-          <textarea
-            placeholder="Share something kind… 💛"
-            value={content}
-            onChange={e => setContent(e.target.value.slice(0, 500))}
-            onFocus={() => setIsExpanded(true)}
-            className="w-full bg-transparent resize-none outline-none text-white text-[15px] placeholder:text-[#555] min-h-[44px] pt-2.5 leading-relaxed"
-            rows={isExpanded ? 3 : 1}
-            maxLength={500}
-          />
-          {content.length > 400 && (
-            <p className={`text-right text-[11px] font-medium mt-0.5 ${content.length >= 500 ? 'text-red-500' : 'text-amber-500'}`}>
-              {500 - content.length} left
-            </p>
-          )}
-
-          {/* Image preview */}
-          {imageUrl && (
-            <div className="relative mt-2 rounded-2xl overflow-hidden">
-              <img src={imageUrl} alt="Post image" className="w-full max-h-64 object-cover rounded-2xl" />
-              <button
-                onClick={() => setImageUrl('')}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
-              >
-                <X size={13} className="text-white" />
-              </button>
-            </div>
-          )}
-
-          {/* Uploading indicator */}
-          {imageUploading && (
-            <div className="mt-2 flex items-center gap-2 text-[13px] text-[rgba(255,255,255,0.45)]">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
-              Uploading image…
-            </div>
-          )}
-
-          {isExpanded && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="flex items-center justify-between mt-3 pt-3 border-t border-[#222]"
-            >
-              <div className="flex items-center gap-0.5">
-                <button
-                  onClick={() => isCloudinaryConfigured && imageInputRef.current?.click()}
-                  disabled={imageUploading || !isCloudinaryConfigured}
-                  className={cn(
-                    'p-2 rounded-full transition-colors',
-                    isCloudinaryConfigured ? 'hover:bg-[#111] cursor-pointer' : 'opacity-40 cursor-not-allowed'
-                  )}
-                  title={isCloudinaryConfigured ? 'Add image' : 'Image upload not configured'}
-                >
-                  <ImageIcon size={18} className={imageUrl ? 'text-[#F5C542]' : 'text-[#F5C542]'} />
-                </button>
-                <button className="p-2 hover:bg-[#111] rounded-full transition-colors" title="Add emoji">
-                  <Smile size={18} className="text-yellow-400" />
-                </button>
-                <button className="p-2 hover:bg-[#111] rounded-full transition-colors" title="Add location">
-                  <MapPin size={18} className="text-pink-400" />
-                </button>
-                {/* Audience picker */}
-                <div className="relative ml-1.5">
-                  <button
-                    onClick={() => setShowAudiencePicker(v => !v)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold border border-[rgba(245,197,66,0.25)] text-[#F5C542] bg-[rgba(245,197,66,0.08)]/60 hover:bg-[rgba(245,197,66,0.15)] transition-colors"
-                  >
-                    {AUDIENCE_OPTIONS.find(o => o.value === postAudience)?.icon}
-                    <span className="ml-0.5">{AUDIENCE_OPTIONS.find(o => o.value === postAudience)?.label}</span>
-                    <ChevronDown size={10} className={cn('ml-0.5 transition-transform duration-150', showAudiencePicker && 'rotate-180')} />
-                  </button>
-                  <AnimatePresence>
-                    {showAudiencePicker && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 4 }}
-                        transition={{ duration: 0.12 }}
-                        className="absolute bottom-full left-0 mb-1.5 bg-[#111] rounded-2xl shadow-xl border border-[#222] p-1.5 z-50 min-w-[130px]"
-                      >
-                        {AUDIENCE_OPTIONS.map(opt => (
-                          <button
-                            key={opt.value}
-                            onClick={() => { setPostAudience(opt.value); setShowAudiencePicker(false); }}
-                            className={cn(
-                              'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-semibold transition-colors',
-                              postAudience === opt.value ? 'bg-[rgba(245,197,66,0.08)] text-[#F5C542]' : 'text-[#BDBDBD] hover:bg-[#111]'
-                            )}
-                          >
-                            {opt.icon}
-                            <span>{opt.label}</span>
-                            {postAudience === opt.value && <Check size={12} className="ml-auto text-[#F5C542]" />}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setContent(''); setImageUrl(''); setIsExpanded(false); }}
-                  className="px-3 py-1.5 rounded-full text-[13px] font-semibold text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] transition-colors"
-                >
-                  Cancel
-                </button>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handlePost}
-                  disabled={!canPost || imageUploading}
-                  className={cn(
-                    'px-5 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-1.5',
-                    (!canPost || imageUploading) && 'bg-[#1a1a1a] text-[rgba(255,255,255,0.45)]'
-                  )}
-                  style={
-                    canPost && !imageUploading
-                      ? { background: 'linear-gradient(135deg, #EC4899, #7C3AED, #2563EB)', color: '#fff', boxShadow: '0 4px 14px rgba(245,197,66,0.35)' }
-                      : {}
-                  }
-                >
-                  <Send size={14} />
-                  Post
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
+// PostComposer lives in @/components/ui/PostComposer — imported at top of file.
 
 // ─── Post Menu ────────────────────────────────────────────────────────────────
 
@@ -1879,9 +1681,19 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
                 </span>
               )}
             </div>
-            <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] font-medium mt-0.5">
-              {formatRelativeTime(post.createdAt)}{post.mood && ` · Feeling ${post.mood}`}
-            </p>
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <span className="text-[11.5px] text-[rgba(255,255,255,0.45)] font-medium">
+                {formatRelativeTime(post.createdAt)}{post.mood && ` · Feeling ${post.mood}`}
+              </span>
+              {post.postAudience && post.postAudience !== 'public' && (
+                <span className="flex items-center gap-0.5 text-[10.5px] font-semibold text-[rgba(255,255,255,0.35)]">
+                  ·
+                  {post.postAudience === 'mutuals'  && <><Users      size={9}  className="ml-0.5" /> Mutuals</>}
+                  {post.postAudience === 'private'  && <><Lock       size={9}  className="ml-0.5" /> Followers</>}
+                  {post.postAudience === 'onlyMe'   && <><UserCircle size={9}  className="ml-0.5" /> Only Me</>}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <button
@@ -1909,6 +1721,14 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
           onClick={() => onOpenPhoto?.(post.imageUrl!)}
         >
           <img src={post.imageUrl} alt="Post" className="w-full h-auto object-cover max-h-80" />
+        </div>
+      )}
+
+      {/* Location badge */}
+      {post.location?.name && (
+        <div className="mb-3 flex items-center gap-1.5">
+          <MapPin size={12} className="text-pink-400 flex-shrink-0" />
+          <span className="text-[12px] font-medium text-[rgba(255,255,255,0.45)]">{post.location.name}</span>
         </div>
       )}
 
@@ -2120,10 +1940,31 @@ export default function Home() {
     showToast('Post updated! ✨');
   }
 
-  function handleNewPost(content: string, imageUrl?: string, audience?: SparkAudience) {
+  async function handleNewPost(
+    content: string,
+    imageUrl?: string,
+    audience?: SparkAudience,
+    mentionedUserIds?: string[],
+    location?: PostLocation,
+  ) {
     if (!currentUser) return;
-    addPost(content, { ...(imageUrl ? { imageUrl } : {}), postAudience: audience ?? 'public' }).catch(console.error);
+    const postId = await addPost(content, {
+      ...(imageUrl ? { imageUrl } : {}),
+      postAudience: audience ?? 'public',
+      mentions:     mentionedUserIds,
+      location:     location ?? undefined,
+    }).catch(console.error);
     showToast('Post shared! ✨');
+    // Dispatch mention notifications (fire-and-forget, non-blocking)
+    if (postId && mentionedUserIds?.length) {
+      for (const uid of mentionedUserIds) {
+        fsWriteNotification(uid, 'mention', currentUser, {
+          postId,
+          message:       `${currentUser.displayName} mentioned you in a post`,
+          targetPreview: content.slice(0, 120),
+        }).catch(console.error);
+      }
+    }
   }
 
   async function handleSparkPost(content: string, imageUrl?: string, audience?: SparkAudience) {

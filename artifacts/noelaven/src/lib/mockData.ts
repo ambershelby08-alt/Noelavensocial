@@ -51,6 +51,10 @@ export interface Post {
   mood?: string;
   commentsDisabled?: boolean;
   createdAt: Date;
+  /** UIDs of users mentioned via @handle autocomplete */
+  mentions?: string[];
+  /** Attached location (name + optional coordinates) */
+  location?: { name: string; lat?: number; lng?: number } | null;
 }
 
 export interface Community {

@@ -221,6 +221,8 @@ function docToPost(id: string, d: DocumentData): Post {
     mood: d.mood ?? undefined,
     commentsDisabled: d.commentsDisabled ?? false,
     createdAt: ts(d.createdAt),
+    mentions: Array.isArray(d.mentions) ? (d.mentions as string[]) : undefined,
+    location: d.location ?? null,
   };
 }
 
@@ -231,6 +233,8 @@ export async function createPost(
     imageUrl?: string; imagePublicId?: string; communityId?: string;
     mood?: string; sparkPrompt?: string; sparkAudience?: string;
     postAudience?: string;
+    mentions?: string[];
+    location?: { name: string; lat?: number; lng?: number };
   } = {}
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
@@ -253,6 +257,8 @@ export async function createPost(
     sparkAudience: opts.sparkAudience ?? null,
     postAudience: opts.postAudience ?? 'public',
     sparkDateKey,
+    mentions: opts.mentions ?? [],
+    location: opts.location ?? null,
     commentsDisabled: false,
     likes: 0,
     comments: 0,

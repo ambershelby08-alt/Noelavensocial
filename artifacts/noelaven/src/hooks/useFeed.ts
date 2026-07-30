@@ -49,6 +49,8 @@ export function useFeed() {
     opts?: {
       imageUrl?: string; mood?: string; communityId?: string;
       sparkPrompt?: string; sparkAudience?: string; postAudience?: string;
+      mentions?: string[];
+      location?: { name: string; lat?: number; lng?: number };
     }
   ): Promise<string | undefined> => {
     if (!currentUser) return undefined;
@@ -68,6 +70,8 @@ export function useFeed() {
         sparkPrompt: opts?.sparkPrompt,
         sparkAudience: opts?.sparkAudience as Post['sparkAudience'],
         postAudience: (opts?.postAudience ?? 'public') as Post['postAudience'],
+        mentions: opts?.mentions,
+        location: opts?.location ?? null,
         createdAt: new Date(),
       };
       setPosts(prev => [newPost, ...prev]);
