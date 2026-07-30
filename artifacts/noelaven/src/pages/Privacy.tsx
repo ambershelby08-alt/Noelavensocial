@@ -140,6 +140,19 @@ export default function Privacy() {
           </p>
         </section>
 
+        <section>
+          <h2 className="text-[17px] font-bold text-white mb-3">10. Child Safety</h2>
+          <p>
+            Noelaven maintains a zero-tolerance policy for child sexual abuse material (CSAM) and any
+            content that exploits or endangers minors. For full details on our protections, reporting
+            tools, and law enforcement cooperation, see our{' '}
+            <Link href="/child-safety">
+              <span className="text-[#7B5CFA] hover:underline cursor-pointer">Child Safety Standards</span>
+            </Link>
+            {' '}page.
+          </p>
+        </section>
+
         <div className="pt-4 border-t border-[#1a1a1a]">
           <p className="text-[13px] text-[rgba(255,255,255,0.45)]">
             © {new Date().getFullYear()} Noelaven. All rights reserved.

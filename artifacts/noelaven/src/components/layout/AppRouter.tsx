@@ -20,6 +20,7 @@ import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import DataSafety from '@/pages/DataSafety';
 import DeleteAccount from '@/pages/DeleteAccount';
+import ChildSafety from '@/pages/ChildSafety';
 
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -51,6 +52,7 @@ function AuthenticatedApp() {
         <Route path="/terms"             component={Terms} />
         <Route path="/data-safety"       component={DataSafety} />
         <Route path="/delete-account"    component={DeleteAccount} />
+        <Route path="/child-safety"      component={ChildSafety} />
         <Route>
           <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6">
             <p className="text-6xl mb-5">🌿</p>
@@ -100,6 +102,7 @@ export default function AppRouter() {
   if (location === '/terms'          || location.startsWith('/terms/'))          return <Terms />;
   if (location === '/data-safety'    || location.startsWith('/data-safety/'))    return <DataSafety />;
   if (location === '/delete-account' || location.startsWith('/delete-account/')) return <DeleteAccount />;
+  if (location === '/child-safety'   || location.startsWith('/child-safety/'))   return <ChildSafety />;
 
   // After sign-up, before profile is complete
   if (isNewUser && !currentUser) return <CreateProfile />;

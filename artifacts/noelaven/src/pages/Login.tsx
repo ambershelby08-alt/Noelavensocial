@@ -165,6 +165,7 @@ export default function Login() {
             { label: 'Privacy Policy', href: '/privacy' },
             { label: 'Terms of Service', href: '/terms' },
             { label: 'Data Safety', href: '/data-safety' },
+            { label: 'Child Safety', href: '/child-safety' },
           ].map((link, i, arr) => (
             <React.Fragment key={link.href}>
               <Link href={link.href}
