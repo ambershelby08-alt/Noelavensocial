@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useRoute, Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -834,11 +835,13 @@ function SafetyMenuSheet({ isGroup, isDirect, onMute, onBlock, onReport, onLeave
   ].filter(a => a.show);
 
   function handle(id: string) {
-    if (id === 'mute')   onMute();
-    if (id === 'block')  onBlock();
-    if (id === 'report') onReport();
-    if (id === 'leave')  onLeave();
-    onClose();
+    if (id === 'mute')   { onMute();   onClose(); }
+    if (id === 'block')  { onBlock();  onClose(); }
+    if (id === 'leave')  { onLeave();  onClose(); }
+    // 'report' intentionally does NOT call onClose() here.
+    // The confirmation dialog opens on top of the sheet, and the sheet
+    // closes only after the report is confirmed (or cancelled).
+    if (id === 'report') { onReport(); }
   }
 
   return (
@@ -1095,6 +1098,8 @@ export default function Chat() {
   const [editingMsg, setEditingMsg]       = useState<LocalMsg | null>(null);
   // call overlay is managed globally by CallContext / AppShell
   const [safetySheet, setSafetySheet]     = useState(false);
+  const [showReportConfirm, setShowReportConfirm] = useState(false);
+  const [isReporting, setIsReporting]     = useState(false);
   const [forwardMsg, setForwardMsg]       = useState<LocalMsg | null>(null);
   const [forwardDone, setForwardDone]     = useState(0); // # convs forwarded to; >0 shows toast
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
@@ -1513,12 +1518,42 @@ export default function Chat() {
     }
   }
 
-  async function handleReport() {
+  function handleReport() {
+    // Don't perform the report yet — just open the confirmation dialog.
+    // The safety sheet stays open so the backdrop doesn't flicker away.
+    setShowReportConfirm(true);
+  }
+
+  async function confirmReport() {
+    if (isReporting) return;
+    setIsReporting(true);
     try {
-      if (isFirebaseConfigured) await fsReport(convId, cu.id, 'Reported by user');
+      if (isFirebaseConfigured) {
+        const reportedUserId = conversation?.participants.find(p => p.id !== cu.id)?.id ?? null;
+        const lastMsgs = messages.slice(-20).map(m => ({
+          senderId: m.senderId,
+          content:  m.content ?? '',
+          type:     m.type    ?? 'text',
+          createdAt: m.createdAt instanceof Date ? m.createdAt : null,
+        }));
+        await fsReport(convId, cu.id, 'Reported by user', {
+          reportedUserId,
+          lastMessages: lastMsgs,
+        });
+      }
+      setShowReportConfirm(false);
+      setSafetySheet(false);
+      toast.success('Conversation reported.', {
+        description: 'Thank you. Our moderation team will review this report.',
+      });
     } catch (err) {
       const e = err as { code?: string; message?: string };
-      console.error('[Chat:handleReport]', { code: e?.code, message: e?.message });
+      console.error('[Chat:confirmReport]', { code: e?.code, message: e?.message });
+      toast.error("We couldn't submit your report.", {
+        description: 'Please try again.',
+      });
+    } finally {
+      setIsReporting(false);
     }
   }
 
@@ -2053,6 +2088,63 @@ export default function Chat() {
             onClose={() => setSafetySheet(false)}
           />
         )}
+        {/* ── Report confirmation dialog ──────────────────────────────────── */}
+        {showReportConfirm && (
+          <>
+            {/* Backdrop — sits above safety sheet */}
+            <motion.div
+              key="report-bg"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70]"
+              onClick={() => !isReporting && setShowReportConfirm(false)}
+            />
+            {/* Dialog */}
+            <motion.div
+              key="report-dialog"
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 320 }}
+              className="fixed inset-x-6 top-1/2 -translate-y-1/2 z-[71] rounded-[22px] overflow-hidden px-6 py-7"
+              style={{
+                background: 'rgba(14,10,26,0.98)',
+                border: '1.5px solid rgba(236,72,153,0.25)',
+                backdropFilter: 'blur(20px)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
+              }}
+            >
+              <div className="flex items-center justify-center w-12 h-12 rounded-full mb-4 mx-auto"
+                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                <Flag size={20} className="text-red-400" />
+              </div>
+              <h2 className="text-white text-[17px] font-black text-center mb-2">Report Conversation?</h2>
+              <p className="text-white/55 text-[13.5px] text-center leading-relaxed mb-6">
+                Are you sure you want to report this conversation? Our moderation team will review it.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowReportConfirm(false)}
+                  disabled={isReporting}
+                  className="flex-1 py-3 rounded-[14px] text-[14px] font-bold text-white/70 transition-colors active:bg-white/10 disabled:opacity-50"
+                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmReport}
+                  disabled={isReporting}
+                  className="flex-1 py-3 rounded-[14px] text-[14px] font-bold text-white transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)' }}
+                >
+                  {isReporting ? (
+                    <><Loader2 size={14} className="animate-spin" /> Reporting…</>
+                  ) : 'Report'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+
         {forwardMsg && (
           <ForwardPickerSheet
             key="forward"

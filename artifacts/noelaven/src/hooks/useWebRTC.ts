@@ -59,6 +59,8 @@ export interface CallState {
   mediaPermissionDenied: boolean;
   /** Non-null while a camera-switch error message should be displayed (auto-clears). */
   switchCameraError: string | null;
+  /** True while the call is on hold (outgoing audio/video paused). */
+  isOnHold: boolean;
 }
 
 /** Format seconds as M:SS */
@@ -76,6 +78,7 @@ const INITIAL: CallState = {
   localStream: null, remoteStream: null,
   mediaPermissionDenied: false,
   switchCameraError: null,
+  isOnHold: false,
 };
 
 // ─── Timeouts ─────────────────────────────────────────────────────────────────
@@ -772,6 +775,35 @@ export function useWebRTC() {
     setCall(s => ({ ...s, swapped: !s.swapped }));
   }, []);
 
+  // ── Hold ──────────────────────────────────────────────────────────────────
+  // Hold pauses outgoing audio (and video for video calls) while keeping the
+  // peer connection alive. We simply disable every local track — the remote
+  // side will see silence / a frozen frame but the ICE connection stays up.
+
+  const toggleHold = useCallback(() => {
+    const onHold = !call.isOnHold;
+    localRef.current?.getTracks().forEach(t => { t.enabled = !onHold; });
+    setCall(s => ({ ...s, isOnHold: onHold }));
+  }, [call.isOnHold]);
+
+  // ── DTMF ─────────────────────────────────────────────────────────────────
+  // Returns true if the tone was queued successfully, false if the
+  // RTCDTMFSender is unavailable (some mobile browsers / callee side).
+
+  const sendDtmf = useCallback((tones: string): boolean => {
+    const pc = pcRef.current;
+    if (!pc) return false;
+    const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
+    if (!sender?.dtmf) return false;
+    try {
+      sender.dtmf.insertDTMF(tones, 100, 70);
+      return true;
+    } catch (err) {
+      console.warn('[WebRTC] sendDtmf failed:', err);
+      return false;
+    }
+  }, []);
+
   /**
    * Switch between front and rear cameras during an active video call.
    *
@@ -971,5 +1003,7 @@ export function useWebRTC() {
     toggleMinimize,
     toggleSwapped,
     switchCamera,
+    toggleHold,
+    sendDtmf,
   };
 }

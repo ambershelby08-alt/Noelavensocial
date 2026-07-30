@@ -1394,14 +1394,28 @@ export async function blockUser(
 }
 
 export async function reportConversation(
-  convId: string, reporterId: string, reason: string
+  convId: string,
+  reporterId: string,
+  reason: string,
+  opts?: {
+    reportedUserId?: string | null;
+    lastMessages?: Array<{ senderId: string; content: string; type: string; createdAt: Date | null }>;
+  }
 ): Promise<void> {
   if (!db) return;
   await addDoc(collection(db, 'reports'), {
     type: 'conversation',
     convId,
     reporterId,
+    reportedUserId: opts?.reportedUserId ?? null,
     reason,
+    lastMessages: (opts?.lastMessages ?? []).map(m => ({
+      senderId: m.senderId,
+      content: m.content,
+      type: m.type,
+      createdAt: m.createdAt ?? null,
+    })),
+    status: 'pending',
     createdAt: serverTimestamp(),
   });
 }
