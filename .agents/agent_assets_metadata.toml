@@ -6,3 +6,9 @@ id = "FTU05ihu0lsbgjJK3GWE3"
 uri = "file://noelaven-release.aab"
 type = "unspecified"
 title = "noelaven-release.aab"
+
+[[outputs]]
+id = "v3QBcGgcAL2UnyqctDxqB"
+uri = "file://noelaven-1.0.0.aab"
+type = "unspecified"
+title = "noelaven-1.0.0.aab — Google Play Bundle"
