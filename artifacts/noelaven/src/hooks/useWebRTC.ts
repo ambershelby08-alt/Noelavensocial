@@ -351,7 +351,11 @@ export function useWebRTC() {
   async function getMedia(type: CallType): Promise<MediaStream> {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
         video: type === 'video',
       });
       localRef.current = stream;

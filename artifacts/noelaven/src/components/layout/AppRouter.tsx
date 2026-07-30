@@ -17,6 +17,7 @@ import SafetySettings from '@/pages/SafetySettings';
 import MyReports from '@/pages/MyReports';
 import ModerationDashboard from '@/pages/ModerationDashboard';
 import Privacy from '@/pages/Privacy';
+import Terms from '@/pages/Terms';
 
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -45,6 +46,7 @@ function AuthenticatedApp() {
         <Route path="/my-reports"         component={MyReports} />
         <Route path="/moderation"         component={ModerationDashboard} />
         <Route path="/privacy"            component={Privacy} />
+        <Route path="/terms"             component={Terms} />
         <Route>
           <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6">
             <p className="text-6xl mb-5">🌿</p>
