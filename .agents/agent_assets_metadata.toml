@@ -12,3 +12,9 @@ id = "v3QBcGgcAL2UnyqctDxqB"
 uri = "file://noelaven-1.0.0.aab"
 type = "unspecified"
 title = "noelaven-1.0.0.aab — Google Play Bundle"
+
+[[outputs]]
+id = "2hhQrXeaGmvY4AqNaB6cY"
+uri = "file://noelaven-1.0.1.aab"
+type = "unspecified"
+title = "noelaven-1.0.1 (versionCode 2) — Google Play Bundle"
