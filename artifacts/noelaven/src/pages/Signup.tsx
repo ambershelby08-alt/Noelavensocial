@@ -137,7 +137,7 @@ export default function Signup() {
               I agree to Noelaven's{' '}
               <Link href="/privacy" className="font-semibold gradient-text">Privacy Policy</Link>
               {' '}and{' '}
-              <a href="#" className="font-semibold gradient-text">Terms of Service</a>
+              <Link href="/terms" className="font-semibold gradient-text">Terms of Service</Link>
             </p>
           </div>
           {errors.terms && <p className="text-[12px] font-medium" style={{ color: '#ef4444' }}>{errors.terms}</p>}

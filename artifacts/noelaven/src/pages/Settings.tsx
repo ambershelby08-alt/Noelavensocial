@@ -460,9 +460,11 @@ export default function Settings() {
     {
       title: 'Support',
       items: [
-        { icon: AlertTriangle, label: 'Report a Problem',      desc: 'Help us fix issues',      key: 'report'     },
-        { icon: FileText,      label: 'Community Guidelines',  desc: 'Rules and policies',      key: 'guidelines' },
-        { icon: HelpCircle,    label: 'Help Center',           desc: 'FAQs and support',        key: 'help'       },
+        { icon: AlertTriangle, label: 'Report a Problem',      desc: 'Help us fix issues',                key: 'report'     },
+        { icon: FileText,      label: 'Community Guidelines',  desc: 'Rules and policies',                key: 'guidelines' },
+        { icon: HelpCircle,    label: 'Help Center',           desc: 'FAQs and support',                  key: 'help'       },
+        { icon: FileText,      label: 'Privacy Policy',        desc: 'How we handle your data',           key: 'privacy'    },
+        { icon: FileText,      label: 'Terms of Service',      desc: 'Rules for using Noelaven',          key: 'terms'      },
       ],
     },
   ];
@@ -587,7 +589,9 @@ export default function Settings() {
                     whileTap={{ scale: 0.99 }}
                     onClick={() => {
                       if (item.onPress) { item.onPress(); return; }
-                      if (item.key === 'safety') { setLocation('/safety'); return; }
+                      if (item.key === 'safety')   { setLocation('/safety');  return; }
+                      if (item.key === 'privacy')  { setLocation('/privacy'); return; }
+                      if (item.key === 'terms')    { setLocation('/terms');   return; }
                       togglePanel(item.key);
                     }}
                     className="w-full flex items-center gap-3.5 px-4 py-4 text-left hover:bg-[#111] transition-colors border-b border-[#1a1a1a] last:border-0 group"
