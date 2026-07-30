@@ -150,34 +150,42 @@ export function useSparkCommunity(prompt: string, enabled: boolean) {
     const t0 = performance.now();
 
     const unsub = subscribeCommunitySparkPosts(
-      (incoming) => {
+      (incoming, fromCache) => {
         // Firestore has already filtered to posts created on or after today's
-        // ET midnight. Client-side: keep only public Daily Spark responses.
+        // ET midnight. Client-side: keep only Daily Spark responses that are
+        // visible to the community (public, mutuals, or followers-only).
         //
         // NOTE: we intentionally do NOT filter by p.sparkPrompt === prompt.
-        // The API server generated different prompt strings across server restarts
-        // on the same day (confirmed via Admin SDK on 2026-07-25: 3 different
-        // prompts). Exact-match filtering would drop valid responses from other
-        // accounts who answered a slightly different prompt text.
-        // Include public, mutuals, AND private (followers-only) spark posts.
-        // The "Everyone" tab in Home.tsx narrows the result to public-only
-        // after the fact. The "Mutuals" and "Following" tabs then apply an
-        // author-relationship filter on top via isVisible(), so restricted posts
-        // are only ever shown to users who genuinely have that relationship.
+        // The API server can generate slightly different prompt strings across
+        // restarts on the same day — exact-match filtering would drop valid
+        // responses from other accounts who answered a slightly different prompt.
+        //
+        // Audience fallback: older posts may have sparkAudience === undefined
+        // (the field didn't exist yet). docToPost now defaults those to 'public'
+        // when sparkPrompt is set, but we defensively include null/undefined here
+        // too so belt-and-suspenders prevents silent drops.
+        //
         // 'onlyMe' posts are intentionally excluded — authors see those via
         // their own post in the CommunityReveal header, not the community list.
         const sparkPosts = incoming
           .filter(p => !!p.sparkPrompt)
-          .filter(p =>
-            p.sparkAudience === 'public' ||
-            p.sparkAudience === 'mutuals' ||
-            p.sparkAudience === 'private'
-          );
+          .filter(p => p.sparkAudience !== 'onlyMe'); // null/undefined → treated as public
 
         console.info(
           `[useSparkCommunity] ✓ snapshot in ${(performance.now() - t0).toFixed(0)} ms — ` +
-          `${incoming.length} raw today, ${sparkPosts.length} spark posts (public+mutuals+private)`
+          `${incoming.length} raw today, ${sparkPosts.length} spark posts — fromCache=${fromCache}`
         );
+
+        // Do NOT declare "empty" on a stale-cache snapshot that returned 0 results.
+        // The network snapshot follows immediately; waiting avoids a flash of the
+        // empty-state then posts appearing a moment later.
+        if (fromCache && sparkPosts.length === 0 && !initialRef.current?.length) {
+          if (import.meta.env.DEV) {
+            console.info('[useSparkCommunity] empty cache hit — holding loading state for network snapshot');
+          }
+          return; // keep loading=true; network snapshot is imminent
+        }
+
         setPosts(sparkPosts);
         setLoading(false);
         setTimedOut(false);

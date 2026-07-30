@@ -208,7 +208,12 @@ function docToPost(id: string, d: DocumentData): Post {
     imagePublicId: d.imagePublicId ?? undefined,
     communityId: d.communityId ?? undefined,
     sparkPrompt: d.sparkPrompt ?? undefined,
-    sparkAudience: d.sparkAudience != null ? normalizeAudience(d.sparkAudience) : undefined,
+    // If a spark post has no explicit sparkAudience (null/undefined — happens on older
+    // posts and posts written before the field existed), default to 'public' so they
+    // are never silently dropped from the community feed.
+    sparkAudience: d.sparkPrompt != null
+      ? normalizeAudience(d.sparkAudience ?? 'public')
+      : (d.sparkAudience != null ? normalizeAudience(d.sparkAudience) : undefined),
     sparkDateKey: d.sparkDateKey ?? undefined,
     postAudience: normalizeAudience(d.postAudience ?? 'public'),
     likes: d.likes ?? 0,
@@ -301,7 +306,9 @@ export async function createPost(
  * collection-wide range scan, not an equality+orderBy on different fields.
  */
 export function subscribeCommunitySparkPosts(
-  onData: (posts: Post[]) => void,
+  /** Called on every snapshot. `fromCache=true` means the data came from Firestore's
+   *  local persistence layer and may be stale/empty — the network snapshot follows. */
+  onData: (posts: Post[], fromCache: boolean) => void,
   pageSize = 50,
   onError?: (err: Error) => void
 ): Unsubscribe {
@@ -327,7 +334,7 @@ export function subscribeCommunitySparkPosts(
       console.info(
         `[Firestore] subscribeCommunitySparkPosts ✓ — ${all.length} posts today from Firestore, fromCache=${snap.metadata.fromCache}`
       );
-      onData(all);
+      onData(all, snap.metadata.fromCache);
     },
     (err) => {
       console.error(

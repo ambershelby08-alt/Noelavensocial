@@ -1048,11 +1048,25 @@ function CommunityReveal({
 
   const featured = community.slice(0, 2);
   const rest     = community.slice(2);
-  // Headline count: posts the current viewer can actually see (public posts
-  // plus mutuals posts where the viewer has the mutual relationship),
-  // plus the viewer's own post if they have answered today.
-  const visibleOthers = allOthers.filter(p => isVisible(p));
-  const total = visibleOthers.length + (hasAnsweredToday ? 1 : 0);
+
+  // ── Single source of truth for counts ────────────────────────────────────
+  // `community` = what's actually shown in the current tab (tab-filtered + audience-gated).
+  // `total`     = community count + 1 if the current user answered today.
+  //               This is the count used for the banner AND the empty-state gate.
+  //
+  // All three (empty-state, counter, list) derive from the same `posts` array
+  // (no separate query), so they can never diverge.
+  const total = community.length + (hasAnsweredToday ? 1 : 0);
+
+  // ── Mutually exclusive render states ─────────────────────────────────────
+  //   loading   → show skeleton / error (only when we have zero data to show)
+  //   empty     → total is 0 after load completes
+  //   waiting   → current user answered but no one else is visible in this tab yet
+  //   populated → community has posts to display
+  const isLoadingState = loading && total === 0;
+  const isEmptyState   = !isLoadingState && total === 0;
+  const isWaitingState = !isLoadingState && !isEmptyState && community.length === 0;
+  // hasPosts  = !isLoadingState && !isEmptyState && !isWaitingState → else branch below
 
   const badges = streakBadges(streak);
 
@@ -1076,7 +1090,13 @@ function CommunityReveal({
         <div className="flex-1 min-w-0">
           <p className="font-black text-white text-[14px]">✨ Community responses unlocked!</p>
           <p className="text-[12px] text-[#BDBDBD] mt-0.5">
-            {total > 1 ? `${total} people answered today's spark` : 'Be the first to inspire others!'}
+            {total === 0
+              ? 'Be the first to inspire others!'
+              : total === 1 && hasAnsweredToday
+              ? 'Only you so far — share to invite friends!'
+              : total === 1
+              ? '1 person answered today\'s spark'
+              : `${total} people answered today's spark`}
           </p>
         </div>
         {streak > 1 && (
@@ -1140,8 +1160,10 @@ function CommunityReveal({
         </div>
       </div>
 
-      {/* ── Responses ───────────────────────────────────────────────────────── */}
-      {loading && community.length === 0 ? (
+      {/* ── Responses — four mutually exclusive states ──────────────────────── */}
+
+      {/* ① Loading */}
+      {isLoadingState && (
         (timedOut || error) ? (
           <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-3 text-center">
             <span className="text-3xl">⏳</span>
@@ -1165,25 +1187,36 @@ function CommunityReveal({
             <SparkSkeletonCard index={1} />
           </>
         )
-      ) : community.length === 0 ? (
+      )}
+
+      {/* ② Empty — total is exactly 0 (no one has answered, including the viewer) */}
+      {isEmptyState && (
         <div className="mx-4 mb-4 py-14 flex flex-col items-center gap-2 text-center">
           <span className="text-5xl mb-2">✨</span>
-          <p className="font-bold text-[#BDBDBD] text-[15px]">
-            {sort === 'everyone'
-              ? 'No other responses yet'
-              : sort === 'following'
-              ? 'No responses from people you follow'
-              : 'No responses from your mutuals yet'}
-          </p>
+          <p className="font-bold text-[#BDBDBD] text-[15px]">No responses yet</p>
           <p className="text-[13px] text-[rgba(255,255,255,0.45)] max-w-[220px] leading-relaxed mt-1">
-            {sort === 'everyone'
-              ? "Share today's spark — invite your community!"
-              : sort === 'following'
-              ? 'Follow more people to see their sparks here.'
-              : 'Mutuals are people you follow who also follow you back.'}
+            Be the first to share today's spark with the community!
           </p>
         </div>
-      ) : (
+      )}
+
+      {/* ③ Waiting — current user answered but no one else is visible in this tab */}
+      {isWaitingState && (
+        <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-2 text-center">
+          <span className="text-4xl mb-1">🌟</span>
+          <p className="font-bold text-white text-[15px]">Your spark is out there!</p>
+          <p className="text-[13px] text-[rgba(255,255,255,0.45)] max-w-[240px] leading-relaxed mt-1">
+            {sort === 'following'
+              ? 'No responses from people you follow yet. Check back soon!'
+              : sort === 'mutuals'
+              ? 'None of your mutuals have responded yet. Check back soon!'
+              : 'Waiting for others to respond. Share the prompt to invite friends!'}
+          </p>
+        </div>
+      )}
+
+      {/* ④ Populated — community has posts to show */}
+      {!isLoadingState && !isEmptyState && !isWaitingState && (
         <>
           {featured.map((post, idx) => (
             <PostCard

@@ -1,35 +1,44 @@
 ---
-name: Noelaven Spark community query architecture
-description: Why sparkDateKey is used instead of sparkPrompt+orderBy for community queries, and why composite indexes were the root cause of the empty feed bug.
+name: Noelaven Spark community query
+description: How the community spark feed is queried, filtered, and displayed; common pitfalls.
 ---
 
-# Spark Community Query Architecture
+## Query strategy
+`subscribeCommunitySparkPosts` uses `where('createdAt', '>=', etDayStart) + orderBy('createdAt', 'desc') + limit(n)`.
+This uses the auto-created single-field index on `createdAt` — no composite index needed.
+Do NOT filter by `sparkPrompt` text or `sparkDateKey` in the Firestore query itself:
+- prompt-equality needs a composite index that may not be deployed
+- `sparkDateKey` wasn't written to older posts
 
-## The rule
-Always query the community feed by `sparkDateKey` (single equality `where` clause), never by `sparkPrompt + orderBy('createdAt')`.
+## sparkAudience null-drop bug (fixed)
+Old posts and posts where `sparkAudience` wasn't written have `sparkAudience: null` in Firestore.
+`docToPost` previously mapped null → `undefined`, then the hook filter excluded `undefined`.
+**Fix**: `docToPost` now defaults spark posts (`sparkPrompt != null`) with null audience to `'public'`.
+The hook filter was also changed to exclude only `'onlyMe'` (i.e. null/undefined are treated as public).
 
-**Why:** `where('sparkPrompt', '==', prompt) + orderBy('createdAt', 'desc')` is a compound query requiring a composite index on `(sparkPrompt ASC, createdAt DESC)`. Composite indexes must be deployed via Firebase CLI — they are NOT created automatically. Without the deployed index, Firestore throws `failed-precondition` and returns zero documents, making the community feed appear empty for all users.
+## fromCache empty-state flash (fixed)
+Firestore's persistent cache fires a snapshot with 0 results before the network snapshot.
+Previously the hook called `setLoading(false)` on the empty cache hit → empty state flashed in.
+**Fix**: `subscribeCommunitySparkPosts` now passes `fromCache` to its callback.
+The hook skips `setLoading(false)` when `fromCache=true && sparkPosts.length === 0`.
 
-**How to apply:** `subscribeCommunitySparkPosts` takes `sparkDateKey: string` (the ET date key `YYYY-MM-DD`). It queries `where('sparkDateKey', '==', sparkDateKey)` with no `orderBy`. Results are sorted client-side by `createdAt` descending in `useSparkCommunity`.
+## State machine in CommunityReveal (Home.tsx)
+Four mutually exclusive render states derived from one data source (`posts` from `useSparkCommunity`):
+- `isLoadingState` = loading && total === 0
+- `isEmptyState`   = !isLoadingState && total === 0
+- `isWaitingState` = !isLoadingState && !isEmptyState && community.length === 0
+  (user answered but no one else visible in current tab)
+- populated = else branch
 
-## Fields written on spark posts (createPost)
-- `sparkPrompt` — the prompt text (for display and backward compat)
-- `sparkAudience` — `'public' | 'friends' | 'only_me' | 'private'`
-- `sparkDateKey` — `YYYY-MM-DD` in America/New_York (used for querying)
+`total = community.length + (hasAnsweredToday ? 1 : 0)`
+All three (empty-state gate, counter, list) derive from the same `posts` array — no separate queries.
 
-## checkTodaySparkAnswer
-Uses `where('authorId', '==', userId)` + `where('sparkDateKey', '==', today)`. Two equality filters — Firestore can handle with auto-created single-field indexes (no composite needed). Old version used `createdAt >= dayStart` which required a 3-field composite index that was never deployed.
+## Tab filtering
+- `everyone` → public only
+- `following` → posts from followed authors that isVisible() allows
+- `mutuals` → posts from mutual-follow authors that isVisible() allows
+`isVisible()` applies audience gates on top of tab relationship checks.
 
-## Client-side filters in useSparkCommunity (applied in order)
-1. `isFromTodayET(p.createdAt)` — safety net for clock drift
-2. `p.sparkPrompt === prompt` — ensures only the active Daily Spark question shows
-3. `p.sparkAudience === 'public'` — visibility gate
-4. Sort by `createdAt` descending
-
-## Cache
-- Module-level `memCache: Map<prompt, Post[]>` — survives remounts
-- `localStorage` keyed by `noelaven_community_{etDate}_{prompt}` — survives refreshes, evicted at midnight ET
-
-## What NOT to do
-- Do not add `orderBy('createdAt')` to the Firestore query without first deploying the composite index via Firebase CLI
-- Do not query by `sparkPrompt` for community feeds — index not deployed
+## 'onlyMe' posts
+Excluded from the community feed. Authors see their own response via the CommunityReveal banner
+(`hasAnsweredToday` flag), not as a post card.
