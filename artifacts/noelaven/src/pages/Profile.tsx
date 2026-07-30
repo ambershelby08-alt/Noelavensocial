@@ -26,6 +26,9 @@ import { updatePostSparkAudience, followUser as fsFollow, unfollowUser as fsUnfo
 import { notifyFollow } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { FounderBadge } from '@/components/ui/FounderBadge';
+import { isFounderUid } from '@/lib/founder';
+import { subscribeUserStories } from '@/lib/stories';
+import type { Story } from '@/lib/stories';
 import { format } from 'date-fns';
 import { normalizeDate, safeGetTime } from '@/lib/timestamp';
 import { useSafety } from '@/contexts/SafetyContext';
@@ -180,7 +183,8 @@ function UserListSheet({ title, users, currentUserId, onClose }: UserListSheetPr
       <motion.div
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-[28px] shadow-2xl max-h-[75vh] flex flex-col"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-[#111] rounded-t-[28px] shadow-2xl flex flex-col"
+        style={{ height: '88vh', paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}
       >
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 rounded-full bg-[#222]" />
@@ -893,6 +897,16 @@ export default function Profile() {
       isOwn:    isOwnProfile,
     }));
 
+  // ── Profile stories subscription ─────────────────────────────────────────
+  // Subscribe to this user's active (non-expired) stories so the Stories tab
+  // shows real content and stays in sync with Home's story ring.
+  const [profileStories, setProfileStories] = useState<Story[]>([]);
+  useEffect(() => {
+    if (!userId || !isFirebaseConfigured) return;
+    const unsub = subscribeUserStories(userId, setProfileStories);
+    return unsub;
+  }, [userId]);
+
   // Real followers/following lists loaded from Firestore on demand
   const [followersList, setFollowersList] = useState<User[]>([]);
   const [followingList, setFollowingList] = useState<User[]>([]);
@@ -1064,11 +1078,13 @@ export default function Profile() {
             </div>
             {/* Online dot */}
             <div className="absolute bottom-2 right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-black" />
-            {/* Crown badge */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: '#F5C542', border: '2.5px solid #000' }}>
-              <span className="text-[12px]">👑</span>
-            </div>
+            {/* Crown badge — Founder only */}
+            {isFounderUid(user.id) && (
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: '#F5C542', border: '2.5px solid #000' }}>
+                <span className="text-[12px]">👑</span>
+              </div>
+            )}
             {/* Edit avatar — own profile */}
             {isOwnProfile && (
               <button onClick={() => setEditOpen(true)}
@@ -1297,7 +1313,70 @@ export default function Profile() {
 
           {/* Stories */}
           {activeTab === 'Stories' && (
-            <EmptyState emoji="📸" title="Stories" subtitle="Stories posted by this user will appear here." />
+            profileStories.length === 0 ? (
+              <EmptyState
+                emoji="📸"
+                title="No active stories"
+                subtitle={isOwnProfile
+                  ? 'Your stories will appear here. They disappear after 24 hours.'
+                  : 'This user has no active stories right now.'}
+              />
+            ) : (
+              <div className="px-4 pt-2 pb-6">
+                <p className="text-[11px] font-bold text-white/40 uppercase tracking-wider mb-3">
+                  {profileStories.length} active {profileStories.length === 1 ? 'story' : 'stories'}
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {profileStories.map(story => {
+                    const msLeft = story.expiresAt.getTime() - Date.now();
+                    const hLeft  = Math.max(0, Math.floor(msLeft / 3_600_000));
+                    const mLeft  = Math.max(0, Math.floor((msLeft % 3_600_000) / 60_000));
+                    const timeLabel = hLeft > 0 ? `${hLeft}h left` : `${mLeft}m left`;
+                    return (
+                      <motion.div
+                        key={story.id}
+                        initial={{ opacity: 0, scale: 0.94 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative aspect-[9/16] rounded-[12px] overflow-hidden cursor-pointer"
+                        style={{
+                          background: story.mediaUrl
+                            ? undefined
+                            : 'linear-gradient(135deg, #1a0a2e, #2d1b69)',
+                        }}
+                        onClick={() => story.mediaUrl && setPhotoViewer({ src: story.mediaUrl })}
+                      >
+                        {story.mediaUrl && (
+                          <img
+                            src={story.mediaUrl}
+                            alt="Story"
+                            className="w-full h-full object-cover"
+                            style={{ filter: story.filterName !== 'normal' ? story.filterName : undefined }}
+                          />
+                        )}
+                        {/* Caption overlay */}
+                        {story.caption && (
+                          <div className="absolute inset-0 flex items-center justify-center p-2">
+                            <p className="text-white text-[10px] font-semibold text-center leading-tight line-clamp-4"
+                              style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+                              {story.caption}
+                            </p>
+                          </div>
+                        )}
+                        {/* Expiry badge */}
+                        <div className="absolute bottom-1.5 left-0 right-0 flex justify-center">
+                          <span className="text-[9px] font-bold text-white/80 bg-black/50 rounded-full px-1.5 py-0.5 backdrop-blur-sm">
+                            {timeLabel}
+                          </span>
+                        </div>
+                        {/* Story ring border */}
+                        <div className="absolute inset-0 rounded-[12px]"
+                          style={{ boxShadow: 'inset 0 0 0 2px rgba(236,72,153,0.6)' }} />
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )
           )}
 
           {/* Friends */}

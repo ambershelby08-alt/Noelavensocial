@@ -134,6 +134,35 @@ export async function createStory(
   return ref.id;
 }
 
+/**
+ * Real-time subscription to active stories for a single author.
+ * Filters by authorId (equality) and removes expired stories client-side
+ * to avoid requiring a composite index (authorId + expiresAt).
+ * Results are sorted newest-first.
+ */
+export function subscribeUserStories(
+  authorId: string,
+  onData: (stories: Story[]) => void,
+): Unsubscribe {
+  if (!db) return () => {};
+  const q = query(
+    collection(db, 'stories'),
+    where('authorId', '==', authorId),
+  );
+  return onSnapshot(
+    q,
+    snap => {
+      const now = new Date();
+      const active = snap.docs
+        .map(d => docToStory(d.id, d.data()))
+        .filter(s => s.expiresAt > now)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      onData(active);
+    },
+    err => console.error('[subscribeUserStories]', err.code, err.message),
+  );
+}
+
 export function subscribeStories(onData: (stories: Story[]) => void): Unsubscribe {
   if (!db) return () => {};
   const now = Timestamp.now();
