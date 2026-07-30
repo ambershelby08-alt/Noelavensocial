@@ -36,3 +36,4 @@
 - [Noelaven Firestore rules deployment](noelaven-firestore-deploy.md) — no .firebaserc; deploy via Firebase Rules REST API using FIREBASE_SERVICE_ACCOUNT_JSON; project ID: noelaven-511ad.
 - [Noelaven story reactions and comments](noelaven-story-reactions-comments.md) — subcollections reactions/{userId} + comments/{commentId}; StoryViewer v2 with reaction tray, comment input, ActivityPanel; Firestore rules added.
 - [Noelaven voice call audio](noelaven-voice-call-audio.md) — voice calls need hidden `<audio autoPlay>` for remoteStream; setSinkId must target audio element too; DTMF via sender.dtmf; Hold disables tracks.
+- [Noelaven offline handling](noelaven-offline-handling.md) — NetworkContext (Capacitor Network + web fallback); OfflineScreen z-500; NetworkBanner z-490; NetworkProvider must be outermost in App.tsx.

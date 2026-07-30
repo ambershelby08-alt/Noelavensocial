@@ -10,8 +10,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import {
   subscribeComments, addComment, toggleCommentReaction,
+  writeNotification,
   type RawComment,
 } from '@/lib/firestore';
+import type { User } from '@/lib/mockData';
 import { myReactionEmoji } from '@/lib/reactions';
 import { mockPosts } from '@/lib/mockData';
 import type { Post } from '@/lib/mockData';
@@ -25,15 +27,17 @@ function CommentRow({
   comment,
   postId,
   currentUserId,
+  currentUser,
 }: {
   comment: RawComment;
   postId: string;
   currentUserId?: string;
+  currentUser?: User;
 }) {
   const [reactions, setReactions] = useState<Record<string, string[]>>(comment.reactions ?? {});
 
   async function handleReact(emoji: string) {
-    if (!currentUserId) return;
+    if (!currentUserId || !currentUser) return;
     // Optimistic update
     const current = reactions;
     const updated: Record<string, string[]> = {};
@@ -49,6 +53,14 @@ function CommentRow({
         console.error(err);
         setReactions(current); // revert on error
       });
+      // Notify the comment author when this is a new reaction (not a removal)
+      if (!hadThis && comment.authorId && comment.authorId !== currentUserId) {
+        writeNotification(comment.authorId, 'like_comment', currentUser as unknown as User, {
+          postId,
+          commentId: comment.id,
+          message: `${currentUser.displayName} reacted ${emoji} to your comment`,
+        }).catch(console.error);
+      }
     }
   }
 
@@ -285,6 +297,7 @@ export default function PostDetail() {
                 comment={c}
                 postId={postId}
                 currentUserId={currentUser?.id}
+                currentUser={currentUser ?? undefined}
               />
             ))}
           </AnimatePresence>
