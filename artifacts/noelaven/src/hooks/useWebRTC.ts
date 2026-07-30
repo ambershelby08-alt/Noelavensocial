@@ -790,23 +790,6 @@ export function useWebRTC() {
     setCall(s => ({ ...s, isOnHold: onHold }));
   }, [call.isOnHold]);
 
-  // ── DTMF ─────────────────────────────────────────────────────────────────
-  // Returns true if the tone was queued successfully, false if the
-  // RTCDTMFSender is unavailable (some mobile browsers / callee side).
-
-  const sendDtmf = useCallback((tones: string): boolean => {
-    const pc = pcRef.current;
-    if (!pc) return false;
-    const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
-    if (!sender?.dtmf) return false;
-    try {
-      sender.dtmf.insertDTMF(tones, 100, 70);
-      return true;
-    } catch (err) {
-      console.warn('[WebRTC] sendDtmf failed:', err);
-      return false;
-    }
-  }, []);
 
   /**
    * Switch between front and rear cameras during an active video call.
@@ -1008,6 +991,5 @@ export function useWebRTC() {
     toggleSwapped,
     switchCamera,
     toggleHold,
-    sendDtmf,
   };
 }

@@ -12,8 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   PhoneOff, Mic, MicOff, Volume2, VolumeX, Phone,
   Video, VideoOff, MessageSquare, RotateCcw, MoreHorizontal,
-  Shield, Grid3X3, UserPlus, CheckCircle2, Minimize2,
-  AlertCircle, PauseCircle, PlayCircle, X, Delete,
+  Shield, CheckCircle2, Minimize2,
+  AlertCircle, PauseCircle, PlayCircle,
 } from 'lucide-react';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
@@ -124,15 +124,13 @@ interface Props {
   onToggleSwap: () => void;
   /** Pause outgoing audio/video (hold) without ending the call. */
   onToggleHold: () => void;
-  /** Send DTMF tone; returns false if RTCDTMFSender unavailable. */
-  onSendDtmf: (tones: string) => boolean;
   /** Navigate to the conversation thread without ending the call. */
   onOpenChat?: () => void;
 }
 
 export function CallScreen({
   call, onEnd, onToggleMute, onToggleCamera, onToggleSpeaker,
-  onMinimize, onSwitchCamera, onToggleSwap, onToggleHold, onSendDtmf, onOpenChat,
+  onMinimize, onSwitchCamera, onToggleSwap, onToggleHold, onOpenChat,
 }: Props) {
   const screenRef     = useRef<HTMLDivElement>(null);
   const hideTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -186,10 +184,6 @@ export function CallScreen({
     const t = setTimeout(() => setInCallMsg(null), 3500);
     return () => clearTimeout(t);
   }, [inCallMsg]);
-
-  // ── Keypad state ──────────────────────────────────────────────────────────
-  const [showKeypad, setShowKeypad]   = useState(false);
-  const [dtmfDisplay, setDtmfDisplay] = useState('');
 
   // ── Speaker routing via setSinkId (best-effort — silently degrades) ─────────
   // Apply to BOTH the video element (video calls) and the audio element (voice
@@ -359,47 +353,35 @@ export function CallScreen({
               ) : null}
             </div>
 
-            {/* Controls: 2 + End + 2 */}
-            <div className="flex items-end justify-between px-4">
-              {/* Left: Mute / Speaker */}
-              <div className="flex flex-col gap-4">
-                <CtrlBtn
-                  icon={call.isMuted ? MicOff : Mic}
-                  label={call.isMuted ? 'Unmute' : 'Mute'}
-                  active={call.isMuted}
-                  onPress={onToggleMute}
-                />
-                <CtrlBtn
-                  icon={call.isSpeakerOn ? Volume2 : VolumeX}
-                  label="Speaker"
-                  active={call.isSpeakerOn}
-                  onPress={() => {
-                    if (!speakerSupported) {
-                      setInCallMsg("Speaker switching isn't supported on this device.");
-                      return;
-                    }
-                    onToggleSpeaker();
-                  }}
-                />
-              </div>
-
-              {/* Center: End Call */}
+            {/* Controls: evenly spaced — Mute · Speaker · End Call · Open Chat */}
+            <div className="flex items-end justify-around px-4">
+              <CtrlBtn
+                icon={call.isMuted ? MicOff : Mic}
+                label={call.isMuted ? 'Unmute' : 'Mute'}
+                active={call.isMuted}
+                onPress={onToggleMute}
+              />
+              <CtrlBtn
+                icon={call.isSpeakerOn ? Volume2 : VolumeX}
+                label="Speaker"
+                active={call.isSpeakerOn}
+                onPress={() => {
+                  if (!speakerSupported) {
+                    setInCallMsg("Speaker switching isn't supported on this device.");
+                    return;
+                  }
+                  onToggleSpeaker();
+                }}
+              />
               <CtrlBtn icon={PhoneOff} label="End Call" danger large onPress={onEnd} />
-
-              {/* Right: Keypad / Add Call (disabled — group calls coming soon) */}
-              <div className="flex flex-col gap-4">
-                <CtrlBtn
-                  icon={Grid3X3}
-                  label="Keypad"
-                  onPress={() => setShowKeypad(true)}
-                />
-                <CtrlBtn
-                  icon={UserPlus}
-                  label="Add Call"
-                  disabled
-                  onPress={() => setInCallMsg('Group calling is coming soon.')}
-                />
-              </div>
+              <CtrlBtn
+                icon={MessageSquare}
+                label="Open Chat"
+                onPress={() => {
+                  if (onOpenChat) onOpenChat();
+                  else onMinimize();
+                }}
+              />
             </div>
 
             {/* Hold button — only shown once the call is active */}
@@ -454,82 +436,6 @@ export function CallScreen({
           )}
         </AnimatePresence>
 
-        {/* ── DTMF Keypad overlay ──────────────────────────────────────────── */}
-        <AnimatePresence>
-          {showKeypad && (
-            <>
-              <motion.div
-                key="kpad-bg"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="absolute inset-0 z-[210]"
-                style={{ background: 'rgba(0,0,0,0.65)' }}
-                onClick={() => setShowKeypad(false)}
-              />
-              <motion.div
-                key="kpad-sheet"
-                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                className="absolute bottom-0 inset-x-0 z-[220] rounded-t-[28px] pb-10 px-6 pt-4"
-                style={{
-                  background: 'rgba(10,8,20,0.98)',
-                  border: '1.5px solid rgba(236,72,153,0.2)',
-                  backdropFilter: 'blur(20px)',
-                }}
-              >
-                {/* Drag handle + header */}
-                <div className="flex justify-center mb-3">
-                  <div className="w-10 h-1 rounded-full bg-[#333]" />
-                </div>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-[13px] font-bold text-white/40 uppercase tracking-widest">Keypad</p>
-                  <motion.button whileTap={{ scale: 0.88 }} onClick={() => setShowKeypad(false)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ background: 'rgba(255,255,255,0.08)' }}>
-                    <X size={15} className="text-white" />
-                  </motion.button>
-                </div>
-
-                {/* DTMF digit display */}
-                <div className="mb-4 h-10 flex items-center justify-center gap-2">
-                  <span className="text-[24px] font-black text-white tabular-nums tracking-[0.2em] flex-1 text-center">
-                    {dtmfDisplay || <span className="text-white/20 text-[14px] font-normal">Tap to dial</span>}
-                  </span>
-                  {dtmfDisplay && (
-                    <motion.button whileTap={{ scale: 0.88 }}
-                      onClick={() => setDtmfDisplay(prev => prev.slice(0, -1))}
-                      className="flex-shrink-0 p-1.5">
-                      <Delete size={18} className="text-white/50" />
-                    </motion.button>
-                  )}
-                </div>
-
-                {/* Key grid: 1-9, *, 0, # */}
-                {[['1','2','3'],['4','5','6'],['7','8','9'],['*','0','#']].map((row, ri) => (
-                  <div key={ri} className="flex gap-3 mb-3">
-                    {row.map(k => (
-                      <motion.button
-                        key={k}
-                        whileTap={{ scale: 0.88 }}
-                        onClick={() => {
-                          setDtmfDisplay(prev => prev + k);
-                          const sent = onSendDtmf(k);
-                          if (!sent) setInCallMsg('DTMF tones are not supported on this connection.');
-                        }}
-                        className="flex-1 h-14 rounded-2xl flex items-center justify-center"
-                        style={{
-                          background: 'rgba(255,255,255,0.07)',
-                          border: '1px solid rgba(255,255,255,0.09)',
-                        }}
-                      >
-                        <span className="text-[22px] font-black text-white">{k}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                ))}
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
       </div>
     );
   }

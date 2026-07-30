@@ -394,7 +394,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const {
     call, endCall, toggleMute, toggleCamera, toggleSpeaker,
     toggleMinimize, toggleSwapped, switchCamera,
-    toggleHold, sendDtmf,
+    toggleHold,
     incomingCall, answerIncoming, declineIncoming,
   } = useCall();
   const [location, setLocation] = useLocation();
@@ -519,7 +519,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onSwitchCamera={switchCamera}
             onToggleSwap={toggleSwapped}
             onToggleHold={toggleHold}
-            onSendDtmf={sendDtmf}
             onOpenChat={call.conversationId ? () => {
               toggleMinimize();
               setLocation(`/messages/${call.conversationId}`);

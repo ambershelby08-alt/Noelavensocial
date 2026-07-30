@@ -114,8 +114,6 @@ interface CallContextValue {
   switchCamera: () => Promise<void>;
   /** Pause outgoing audio/video while keeping the connection alive. */
   toggleHold: () => void;
-  /** Send DTMF tones. Returns false if RTCDTMFSender is not available. */
-  sendDtmf: (tones: string) => boolean;
   /** Present when an incoming call is ringing (before answering). */
   incomingCall: CallDoc | null;
   answerIncoming: () => Promise<void>;
@@ -302,7 +300,6 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       toggleSwapped: rtc.toggleSwapped,
       switchCamera: rtc.switchCamera,
       toggleHold: rtc.toggleHold,
-      sendDtmf: rtc.sendDtmf,
       incomingCall,
       answerIncoming,
       declineIncoming,
