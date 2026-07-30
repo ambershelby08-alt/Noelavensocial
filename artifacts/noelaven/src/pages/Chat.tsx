@@ -24,6 +24,8 @@ import {
   reportConversation as fsReport,
   leaveGroupConversation as fsLeave,
   sendMessage as fsSendMessage,
+  searchUsers as fsSearchUsers,
+  ensureDMConversation as fsEnsureDMConversation,
 } from '@/lib/firestore';
 import { uploadMedia } from '@/lib/cloudinary';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -902,17 +904,47 @@ function ForwardPickerSheet({
   msg,
   conversations,
   currentUserId,
+  currentUser,
   onSend,
   onClose,
 }: {
   msg: LocalMsg;
   conversations: Conversation[];
   currentUserId: string;
+  currentUser: User;
   onSend: (convIds: string[]) => void;
   onClose: () => void;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [query, setQuery]       = useState('');
+  const [selected, setSelected]         = useState<Set<string>>(new Set());
+  const [query, setQuery]               = useState('');
+  // People search (for forwarding to contacts not in existing conversations)
+  const [userQuery, setUserQuery]       = useState('');
+  const [userResults, setUserResults]   = useState<User[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<Map<string, User>>(new Map());
+  const [userLoading, setUserLoading]   = useState(false);
+  const userTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced user search
+  useEffect(() => {
+    if (!userQuery.trim()) { setUserResults([]); return; }
+    if (userTimerRef.current) clearTimeout(userTimerRef.current);
+    setUserLoading(true);
+    userTimerRef.current = setTimeout(() => {
+      fsSearchUsers(userQuery.trim())
+        .then(r => {
+          // Exclude self and users already in an existing DM conversation
+          const existingPeerIds = new Set(
+            conversations
+              .filter(c => c.type !== 'group')
+              .map(c => c.participants.find(p => p.id !== currentUserId)?.id)
+              .filter(Boolean) as string[]
+          );
+          setUserResults(r.filter(u => u.id !== currentUserId && !existingPeerIds.has(u.id)));
+          setUserLoading(false);
+        })
+        .catch(() => setUserLoading(false));
+    }, 350);
+  }, [userQuery, conversations, currentUserId]);
 
   function toggle(id: string) {
     setSelected(prev => {
@@ -920,6 +952,31 @@ function ForwardPickerSheet({
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  }
+
+  function toggleUser(user: User) {
+    setSelectedUsers(prev => {
+      const next = new Map(prev);
+      if (next.has(user.id)) next.delete(user.id); else next.set(user.id, user);
+      return next;
+    });
+  }
+
+  const totalSelected = selected.size + selectedUsers.size;
+
+  async function handleSend() {
+    if (!totalSelected) return;
+    const convIds = Array.from(selected);
+    // For new contacts, create or reuse the deterministic DM conversation
+    if (selectedUsers.size > 0) {
+      const newIds = await Promise.all(
+        Array.from(selectedUsers.keys()).map(uid =>
+          fsEnsureDMConversation(currentUserId, uid)
+        )
+      );
+      convIds.push(...newIds);
+    }
+    onSend(convIds);
   }
 
   const preview =
@@ -962,14 +1019,14 @@ function ForwardPickerSheet({
           </button>
           <span className="font-black text-[16px] text-white">Forward message</span>
           <button
-            disabled={selected.size === 0}
-            onClick={() => onSend(Array.from(selected))}
+            disabled={totalSelected === 0}
+            onClick={() => { void handleSend(); onClose(); }}
             className={cn(
               'text-[14px] font-black transition-colors',
-              selected.size > 0 ? 'text-[#F5C542]' : 'text-[rgba(255,255,255,0.35)]'
+              totalSelected > 0 ? 'text-[#F5C542]' : 'text-[rgba(255,255,255,0.35)]'
             )}
           >
-            Send{selected.size > 0 ? ` (${selected.size})` : ''}
+            Send{totalSelected > 0 ? ` (${totalSelected})` : ''}
           </button>
         </div>
 
@@ -982,9 +1039,9 @@ function ForwardPickerSheet({
           <p className="text-[12.5px] text-[#BDBDBD] truncate">{preview}</p>
         </div>
 
-        {/* Search bar */}
-        <div className="mx-5 mb-2 flex-shrink-0">
-          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-2xl px-4 py-2.5 focus-within:bg-[#111] focus-within:ring-2 focus-within:ring-purple-200 transition-all border border-transparent focus-within:border-[rgba(245,197,66,0.25)]">
+        {/* Search bar — searches both conversations and all users */}
+        <div className="mx-5 mb-2 flex-shrink-0 space-y-2">
+          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-2xl px-4 py-2.5 focus-within:bg-[#111] border border-transparent focus-within:border-[rgba(245,197,66,0.25)] transition-all">
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="text-[rgba(255,255,255,0.45)] flex-shrink-0"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/><path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
             <input
               value={query}
@@ -998,13 +1055,63 @@ function ForwardPickerSheet({
               </button>
             )}
           </div>
+          {/* New contact search */}
+          <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-2xl px-4 py-2.5 focus-within:bg-[#111] border border-transparent focus-within:border-[rgba(139,92,246,0.35)] transition-all">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="text-violet-400 flex-shrink-0"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/><path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <input
+              value={userQuery}
+              onChange={e => setUserQuery(e.target.value)}
+              placeholder="Find a person to forward to…"
+              className="flex-1 bg-transparent text-[14px] text-white placeholder:text-[#555] outline-none"
+            />
+            {userLoading && <div className="w-3.5 h-3.5 border-2 border-[#333] border-t-violet-400 rounded-full animate-spin" />}
+            {userQuery && !userLoading && (
+              <button onClick={() => { setUserQuery(''); setUserResults([]); }} className="text-[rgba(255,255,255,0.45)] hover:text-[#BDBDBD]">
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Conversation list */}
+        {/* Conversation list + people search results */}
         <div className="overflow-y-auto flex-1 px-4 pb-3 space-y-2">
-          {filtered.length === 0 ? (
+          {/* People search results — shown when userQuery is active */}
+          {userResults.length > 0 && (
+            <>
+              <p className="text-[11px] font-black text-violet-400 uppercase tracking-wider px-1 pt-1">People</p>
+              {userResults.map(user => {
+                const sel = selectedUsers.has(user.id);
+                return (
+                  <motion.button
+                    key={user.id}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => toggleUser(user)}
+                    className={cn(
+                      'w-full flex items-center gap-3.5 px-4 py-3 rounded-[18px] border transition-all text-left',
+                      sel ? 'bg-[rgba(139,92,246,0.10)] border-[rgba(139,92,246,0.30)]' : 'bg-[#111] border-[#1a1a1a]'
+                    )}
+                  >
+                    <UserAvatar userId={user.id} fallbackName={user.displayName} fallbackSrc={user.avatarUrl || undefined} size={44} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[14.5px] text-white truncate">{user.displayName}</p>
+                      <p className="text-[12px] text-[rgba(255,255,255,0.45)] truncate">@{user.handle}</p>
+                    </div>
+                    <div className={cn(
+                      'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
+                      sel ? 'border-violet-500 bg-violet-500' : 'border-[#333]'
+                    )}>
+                      {sel && <Check size={11} className="text-white" />}
+                    </div>
+                  </motion.button>
+                );
+              })}
+              {filtered.length > 0 && <p className="text-[11px] font-black text-[rgba(255,255,255,0.35)] uppercase tracking-wider px-1 pt-1">Conversations</p>}
+            </>
+          )}
+
+          {filtered.length === 0 && userResults.length === 0 ? (
             <p className="text-center text-[rgba(255,255,255,0.45)] text-[14px] py-10">
-              {query ? 'No matches found' : 'No conversations yet'}
+              {query || userQuery ? 'No matches found' : 'No conversations yet'}
             </p>
           ) : filtered.map(conv => {
             const other = conv.participants.find(p => p.id !== currentUserId) ?? conv.participants[0];
@@ -2177,12 +2284,13 @@ export default function Chat() {
           </>
         )}
 
-        {forwardMsg && (
+        {forwardMsg && cu && (
           <ForwardPickerSheet
             key="forward"
             msg={forwardMsg}
             conversations={conversations.filter(c => c.id !== convId)}
             currentUserId={cu.id}
+            currentUser={cu as unknown as User}
             onSend={handleForwardSend}
             onClose={() => setForwardMsg(null)}
           />

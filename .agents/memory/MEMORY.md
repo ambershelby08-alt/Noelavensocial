@@ -39,3 +39,5 @@
 - [Noelaven offline handling](noelaven-offline-handling.md) — NetworkContext (Capacitor Network + web fallback); OfflineScreen z-500; NetworkBanner z-490; NetworkProvider must be outermost in App.tsx.
 - [Noelaven Post Composer](noelaven-post-composer.md) — extracted to PostComposer.tsx; @mention autocomplete via searchUsers; emoji picker (static, no lib); location via Nominatim; Post type has mentions+location fields.
 - [Noelaven GIF + Poll features](noelaven-gif-poll.md) — GIF via Giphy (VITE_GIPHY_API_KEY secret); Poll builder in PostComposer; PollData type; castVote in firestore+useFeed; PostCard renders both; searchUsers now server-side prefix range query.
+- [Noelaven call quality + missed-call](noelaven-call-quality.md) — connectionQuality in CallState (ICE-driven); missed_call push notification in endCall; pagehide marks ringing call missed; ForwardPickerSheet has user search + ensureDMConversation.
+- [Noelaven Firestore rules deploy](noelaven-firestore-deploy-status.md) — Rules deployed successfully via REST API; composite index deploy fails (IAM permission missing for service account); all composite-index queries must sort client-side.

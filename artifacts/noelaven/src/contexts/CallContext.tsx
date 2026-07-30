@@ -35,7 +35,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { useWebRTC, type CallState } from '@/hooks/useWebRTC';
 import { useAuth } from '@/contexts/AuthContext';
 import { isFirebaseConfigured } from '@/lib/firebase';
-import { subscribeIncomingCalls, cleanupStaleCallsForUser, isCallStale, type CallDoc } from '@/lib/callSignaling';
+import { subscribeIncomingCalls, cleanupStaleCallsForUser, isCallStale, updateCallStatus, type CallDoc } from '@/lib/callSignaling';
 
 // ─── Ring tone via Web Audio API ─────────────────────────────────────────────
 
@@ -150,6 +150,26 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     saveHandledCallIds(handledCallIdsRef.current);
     console.log('[CallContext] Marked call as handled', { callId });
   }
+
+  // ── Fix #34: track ringing in a ref so the pagehide handler is stale-free ──
+  const isRingingRef = useRef(false);
+  useEffect(() => { isRingingRef.current = rtc.call.isRinging; });
+
+  // When the caller navigates away or closes the app mid-ring, the callee's
+  // phone would otherwise keep ringing until the stale-call cleanup fires on
+  // their next app open.  Marking the call 'missed' on pagehide stops that.
+  useEffect(() => {
+    function handlePageHide() {
+      const callId = activeCallIdRef.current;
+      if (callId && isRingingRef.current && isFirebaseConfigured) {
+        // Best-effort — Firestore SDK may flush pending writes before the tab
+        // is discarded; worst-case the startup cleanup handles it.
+        updateCallStatus(callId, 'missed').catch(() => {});
+      }
+    }
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+  }, []); // Empty deps — reads only from refs
 
   // Play / stop ring tone whenever incomingCall changes
   useEffect(() => {

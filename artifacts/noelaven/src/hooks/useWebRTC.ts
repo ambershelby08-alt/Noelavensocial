@@ -61,6 +61,8 @@ export interface CallState {
   switchCameraError: string | null;
   /** True while the call is on hold (outgoing audio/video paused). */
   isOnHold: boolean;
+  /** Live connection quality derived from ICE state. null until call connects. */
+  connectionQuality: 'good' | 'poor' | 'reconnecting' | null;
 }
 
 /** Format seconds as M:SS */
@@ -79,6 +81,7 @@ const INITIAL: CallState = {
   mediaPermissionDenied: false,
   switchCameraError: null,
   isOnHold: false,
+  connectionQuality: null,
 };
 
 // ─── Timeouts ─────────────────────────────────────────────────────────────────
@@ -210,11 +213,11 @@ export function useWebRTC() {
         if (t.reconnect)  { clearTimeout(t.reconnect);  t.reconnect  = null; }
         if (t.iceRestart) { clearTimeout(t.iceRestart); t.iceRestart = null; }
 
-        setCall(s => ({ ...s, phase: 'connected', isActive: true, status: 'active' }));
+        setCall(s => ({ ...s, phase: 'connected', isActive: true, status: 'active', connectionQuality: 'good' }));
         startTimer();
 
       } else if (state === 'disconnected') {
-        setCall(s => ({ ...s, phase: 'reconnecting' }));
+        setCall(s => ({ ...s, phase: 'reconnecting', connectionQuality: 'poor' }));
 
         // Give the browser a 20 s grace period to self-heal before we tear down.
         // (Was 8 s — too aggressive for mobile/Wi-Fi packet loss.)
@@ -734,6 +737,15 @@ export function useWebRTC() {
       // Clean up Firestore call doc + ICE candidates after a short delay
       // (delay gives both sides time to read the 'ended' status first)
       setTimeout(() => deleteCall(id).catch(() => {}), 5000);
+      // #33: Notify the callee with a push alert when they missed a call.
+      // writeNotification goes through the existing /api/push/send path so
+      // it reaches backgrounded/closed apps via FCM.
+      if (!wasAnswered && call.remoteId && currentUser) {
+        writeNotification(call.remoteId, 'missed_call', currentUser, {
+          convId: convId ?? undefined,
+          message: `${currentUser.displayName} called you`,
+        }).catch(() => {});
+      }
     }
     // Inject a call-summary system message into the conversation thread
     if (convId && uid && isFirebaseConfigured && id !== 'demo-call') {
@@ -751,7 +763,7 @@ export function useWebRTC() {
         // Non-critical — call still ended successfully
       }
     }
-  }, [call.callId, call.conversationId, call.duration, call.type, call.isActive, call.status, currentUser, cleanup]);
+  }, [call.callId, call.conversationId, call.duration, call.type, call.isActive, call.status, call.remoteId, currentUser, cleanup]);
 
   // ── Media controls ────────────────────────────────────────────────────────
 

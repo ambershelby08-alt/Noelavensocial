@@ -1803,6 +1803,21 @@ export async function addReply(
   return ref.id;
 }
 
+/**
+ * Create a DM conversation between two users if it doesn't already exist.
+ * Uses the deterministic convId (`dm_{minUid}_{maxUid}`) and setDoc+merge
+ * so concurrent callers are idempotent.  Returns the convId regardless.
+ */
+export async function ensureDMConversation(uid1: string, uid2: string): Promise<string> {
+  const convId = `dm_${[uid1, uid2].sort().join('_')}`;
+  if (!db) return convId;
+  await setDoc(doc(db, 'conversations', convId), {
+    type: 'dm',
+    participantIds: [uid1, uid2],
+  }, { merge: true });
+  return convId;
+}
+
 export async function deleteComment(postId: string, commentId: string): Promise<void> {
   if (!db) return;
   const commentRef = doc(db, 'posts', postId, 'comments', commentId);

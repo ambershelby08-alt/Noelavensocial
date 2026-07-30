@@ -283,13 +283,28 @@ export function CallScreen({
           >
             {/* Status badges */}
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                <span className="text-[11px] font-bold text-green-400">
-                  {call.isActive ? 'Connected' : 'Connecting'}
-                </span>
-              </div>
+              {/* Connection quality badge — updates live from ICE state */}
+              {call.connectionQuality === 'poor' ? (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                  style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.30)' }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                  <span className="text-[11px] font-bold text-yellow-300">Weak signal</span>
+                </div>
+              ) : call.connectionQuality === 'reconnecting' ? (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                  style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.30)' }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                  <span className="text-[11px] font-bold text-yellow-300">Reconnecting…</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+                  style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                  <span className="text-[11px] font-bold text-green-400">
+                    {call.isActive ? 'Connected' : 'Connecting'}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
                 style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)' }}>
                 <Shield size={11} style={{ color: '#A78BFA' }} />
