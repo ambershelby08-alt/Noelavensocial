@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flag, AlertTriangle, ShieldAlert, Eye, Zap, Megaphone,
   DollarSign, FileWarning, HelpCircle, ChevronRight, CheckCircle,
-  Loader2, ArrowLeft, X,
+  Loader2, ArrowLeft, X, ShieldX,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { submitReport } from '@/lib/safety';
@@ -35,6 +35,7 @@ interface ReasonOption {
 }
 
 const REASONS: ReasonOption[] = [
+  { reason: 'Child Safety / CSAM',       icon: ShieldX,      desc: 'Content that exploits or endangers a child',       color: '#FF2D55', bg: '#FFF0F3' },
   { reason: 'Spam',                      icon: Megaphone,    desc: 'Repetitive, unsolicited, or irrelevant content',   color: '#FF8C42', bg: '#FFF4EE' },
   { reason: 'Harassment',                icon: AlertTriangle, desc: 'Targeted bullying or intimidation',               color: '#E74C3C', bg: '#FFF0EF' },
   { reason: 'Hate Speech',               icon: ShieldAlert,  desc: 'Attacks based on identity or group',               color: '#C0392B', bg: '#FFF0EF' },

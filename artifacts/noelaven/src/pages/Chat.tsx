@@ -2233,7 +2233,7 @@ export default function Chat() {
 
               {/* Reason picker */}
               <div className="space-y-2 mb-6">
-                {(['Spam', 'Harassment', 'Hate speech', 'Scam or fraud', 'Other'] as const).map(reason => (
+                {(['Child Safety / CSAM', 'Spam', 'Harassment', 'Hate speech', 'Scam or fraud', 'Other'] as const).map(reason => (
                   <button
                     key={reason}
                     onClick={() => setReportReason(reason)}

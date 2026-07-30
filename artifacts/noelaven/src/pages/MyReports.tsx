@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   Flag, ChevronLeft, AlertCircle, CheckCircle, Clock, XCircle,
   Megaphone, AlertTriangle, ShieldAlert, Eye, Zap, DollarSign,
-  FileWarning, HelpCircle, MessageSquare,
+  FileWarning, HelpCircle, MessageSquare, ShieldX,
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,7 @@ const TYPE_LABELS: Record<ReportType, string> = {
 };
 
 const REASON_ICONS: Record<ReportReason, React.ElementType> = {
+  'Child Safety / CSAM':          ShieldX,
   'Spam':                         Megaphone,
   'Harassment':                   AlertTriangle,
   'Hate Speech':                  ShieldAlert,

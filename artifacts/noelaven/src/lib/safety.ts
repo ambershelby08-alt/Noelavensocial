@@ -249,7 +249,7 @@ export async function submitReport(input: ReportInput): Promise<void> {
       authorId:     input.evidence?.authorId ?? input.targetOwnerId ?? null,
     },
     status:             'pending' as ReportStatus,
-    priority:           'medium' as ReportPriority,
+    priority:           (input.reason === 'Child Safety / CSAM' ? 'urgent' : 'medium') as ReportPriority,
     assignedModeratorId: null,
     resolution:         null,
     moderationActionId: null,

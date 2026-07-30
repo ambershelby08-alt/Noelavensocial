@@ -696,6 +696,7 @@ export type ReportType =
   | 'user' | 'post' | 'comment' | 'reply' | 'story'
   | 'spark' | 'dailySpark' | 'message' | 'profile';
 export type ReportReason =
+  | 'Child Safety / CSAM'
   | 'Spam'
   | 'Harassment'
   | 'Hate Speech'
