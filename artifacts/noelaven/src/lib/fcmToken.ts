@@ -1,13 +1,22 @@
 /**
  * FCM Token Management — Noelaven
  *
- * Handles permission request, token generation, Firestore persistence,
- * token refresh, and invalid-token cleanup.
+ * Two registration paths:
  *
- * Token schema (users/{uid}/devices/{deviceId}):
+ *   Web (browser / hosted PWA)
+ *     Uses Firebase Web Messaging SDK + a service worker.
+ *     Entry points: registerFCMToken(), registerMessagingServiceWorker()
+ *
+ *   Android native (Capacitor WebView)
+ *     Uses @capacitor/push-notifications which talks directly to FCM.
+ *     The web service worker is NOT active inside the Capacitor WebView,
+ *     so background notifications require the native plugin.
+ *     Entry point: registerCapacitorPushToken()
+ *
+ * Token schema  users/{uid}/devices/{deviceId}:
  *   token      — FCM registration token
- *   deviceId   — stable browser-local UUID
- *   platform   — 'web'
+ *   deviceId   — stable device-local UUID
+ *   platform   — 'web' | 'android'
  *   enabled    — true | false (user can disable)
  *   createdAt  — server timestamp (first save)
  *   updatedAt  — server timestamp (refreshed on change)
@@ -19,8 +28,8 @@ import { app, db, isFirebaseConfigured } from './firebase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DEVICE_ID_KEY   = 'nlv_device_id';
-const VAPID_KEY       = import.meta.env.VITE_FCM_VAPID_KEY as string | undefined;
+const DEVICE_ID_KEY = 'nlv_device_id';
+const VAPID_KEY     = import.meta.env.VITE_FCM_VAPID_KEY as string | undefined;
 
 /** UID-scoped cache key — prevents multi-account token-skip bug */
 function tokenCacheKey(uid: string) { return `nlv_fcm_token_${uid}`; }
@@ -36,10 +45,44 @@ export function getDeviceId(): string {
   return id;
 }
 
-// ─── Register / refresh token ─────────────────────────────────────────────────
+/** Device ID for the native Android path — kept separate from the web ID. */
+function getAndroidDeviceId(): string {
+  const key = 'nlv_android_device_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = `android-${crypto.randomUUID()}`;
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+// ─── Save / update token doc ──────────────────────────────────────────────────
+
+export async function saveTokenToFirestore(
+  uid: string,
+  token: string,
+  platform: 'web' | 'android' = 'web',
+): Promise<void> {
+  if (!db) return;
+  const deviceId = platform === 'android' ? getAndroidDeviceId() : getDeviceId();
+  await setDoc(
+    doc(db, 'users', uid, 'devices', deviceId),
+    {
+      token,
+      deviceId,
+      platform,
+      enabled:   true,
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp(), // merge:true won't overwrite existing createdAt
+    },
+    { merge: true },
+  );
+}
+
+// ─── Web: Register / refresh token ───────────────────────────────────────────
 
 /**
- * Requests a fresh FCM token and saves it to Firestore.
+ * Requests a fresh FCM token (web) and saves it to Firestore.
  * Returns the token on success, null if FCM is not available.
  */
 export async function registerFCMToken(uid: string): Promise<string | null> {
@@ -54,16 +97,15 @@ export async function registerFCMToken(uid: string): Promise<string | null> {
     const token = await getToken(messaging, { vapidKey: VAPID_KEY });
     if (!token) return null;
 
-    // Skip if unchanged since last save (cache is UID-scoped to handle multi-account)
+    // Skip save if unchanged since last save (cache is UID-scoped)
     const cached = localStorage.getItem(tokenCacheKey(uid));
     if (cached !== token) {
-      await saveTokenToFirestore(uid, token);
+      await saveTokenToFirestore(uid, token, 'web');
       localStorage.setItem(tokenCacheKey(uid), token);
     }
     return token;
   } catch (err: unknown) {
     const code = (err as { code?: string }).code;
-    // User denied permission — not an error we should log noisily
     if (code !== 'messaging/permission-blocked' && code !== 'messaging/permission-default') {
       console.error('[FCM] getToken failed:', err);
     }
@@ -71,40 +113,110 @@ export async function registerFCMToken(uid: string): Promise<string | null> {
   }
 }
 
-// ─── Save / update token doc ──────────────────────────────────────────────────
+// ─── Web: Disable / delete token ─────────────────────────────────────────────
 
-export async function saveTokenToFirestore(uid: string, token: string): Promise<void> {
-  if (!db) return;
-  const deviceId = getDeviceId();
-  await setDoc(
-    doc(db, 'users', uid, 'devices', deviceId),
-    {
-      token,
-      deviceId,
-      platform:  'web',
-      enabled:   true,
-      updatedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),   // merge:true means this won't overwrite on refresh
-    },
-    { merge: true }
-  );
-}
-
-// ─── Disable / delete token ───────────────────────────────────────────────────
-
-/** Call on sign-out to stop notifications for this device. */
+/** Call on sign-out to stop web-push notifications for this device. */
 export async function unregisterFCMToken(uid: string): Promise<void> {
   if (!app || !db) return;
   const deviceId = getDeviceId();
   try {
     const messaging = getMessaging(app);
     await deleteToken(messaging);
-  } catch { /* ignore — token may already be expired */ }
+  } catch { /* token may already be expired */ }
   await deleteDoc(doc(db, 'users', uid, 'devices', deviceId)).catch(console.error);
   localStorage.removeItem(tokenCacheKey(uid));
 }
 
-// ─── Service worker registration ──────────────────────────────────────────────
+// ─── Android native (Capacitor): Register token ───────────────────────────────
+
+/**
+ * Requests push-notification permission and registers an FCM token using
+ * the @capacitor/push-notifications plugin.  This is the correct path for
+ * the Capacitor Android WebView — the web service worker is inactive when
+ * the native app is closed, so only the native plugin can deliver background
+ * push notifications.
+ *
+ * Returns the FCM token string, or null if permission is denied / unavailable.
+ */
+export async function registerCapacitorPushToken(uid: string): Promise<string | null> {
+  if (!isFirebaseConfigured || !db) return null;
+
+  try {
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+
+    // 1. Request (or check existing) permission
+    const permResult = await PushNotifications.requestPermissions();
+    if (permResult.receive !== 'granted') {
+      console.warn('[FCM-native] Push permission not granted:', permResult.receive);
+      return null;
+    }
+
+    // 2. Register with FCM — triggers the 'registration' event asynchronously.
+    //    We wrap it in a one-shot Promise so callers can await the token.
+    const token = await new Promise<string | null>((resolve) => {
+      let resolved = false;
+
+      const safeResolve = (val: string | null) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(val);
+        }
+      };
+
+      // Success
+      PushNotifications.addListener('registration', (t) => {
+        safeResolve(t.value);
+      }).catch(() => safeResolve(null));
+
+      // Failure
+      PushNotifications.addListener('registrationError', (err) => {
+        console.error('[FCM-native] Registration error:', err);
+        safeResolve(null);
+      }).catch(() => safeResolve(null));
+
+      // Kick off the registration — the listeners above will fire
+      PushNotifications.register().catch((err) => {
+        console.error('[FCM-native] register() failed:', err);
+        safeResolve(null);
+      });
+
+      // Timeout safety-net — never block the app indefinitely
+      setTimeout(() => safeResolve(null), 10_000);
+    });
+
+    if (!token) return null;
+
+    // 3. Persist — skip if unchanged to avoid unnecessary Firestore writes
+    const cacheKey = `nlv_fcm_token_android_${uid}`;
+    const cached   = localStorage.getItem(cacheKey);
+    if (cached !== token) {
+      await saveTokenToFirestore(uid, token, 'android');
+      localStorage.setItem(cacheKey, token);
+    }
+
+    return token;
+  } catch (err) {
+    console.error('[FCM-native] registerCapacitorPushToken failed:', err);
+    return null;
+  }
+}
+
+// ─── Android native: Unregister on sign-out ───────────────────────────────────
+
+/** Remove the native FCM token from Firestore on sign-out. */
+export async function unregisterCapacitorPushToken(uid: string): Promise<void> {
+  if (!db) return;
+  const deviceId = getAndroidDeviceId();
+  try {
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+    // Removes all listeners but keeps the OS-level registration — correct for sign-out
+    await PushNotifications.removeAllListeners();
+  } catch { /* plugin unavailable on web */ }
+  await deleteDoc(doc(db, 'users', uid, 'devices', deviceId)).catch(console.error);
+  localStorage.removeItem(`nlv_fcm_token_android_${uid}`);
+}
+
+// ─── Web: Service worker registration ────────────────────────────────────────
 
 /** Register the SW and send Firebase config so the SW can initialise messaging. */
 export async function registerMessagingServiceWorker(): Promise<ServiceWorkerRegistration | null> {
@@ -115,8 +227,6 @@ export async function registerMessagingServiceWorker(): Promise<ServiceWorkerReg
       scope: '/',
     });
 
-    // Send Firebase config to the SW so it can init the SDK
-    // Works regardless of whether the SW is installing, waiting, or active
     const sendConfig = (sw: ServiceWorker) => {
       sw.postMessage({
         type: 'FIREBASE_CONFIG',
@@ -142,7 +252,6 @@ export async function registerMessagingServiceWorker(): Promise<ServiceWorkerReg
       }
     }
 
-    // Also send on any future SW activation (e.g. after page refresh)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (navigator.serviceWorker.controller) {
         sendConfig(navigator.serviceWorker.controller);
