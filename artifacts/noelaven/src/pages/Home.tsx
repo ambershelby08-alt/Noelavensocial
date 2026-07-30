@@ -13,7 +13,7 @@ import { ReactionButton, CommentReactionButton } from '@/components/ui/ReactionB
 import { reactionPhrase, myReactionEmoji } from '@/lib/reactions';
 import { useAuth } from '@/contexts/AuthContext';
 import { dailySparks, mockUsers } from '@/lib/mockData';
-import type { Post, User, SparkAudience } from '@/lib/mockData';
+import type { Post, User, SparkAudience, PollData } from '@/lib/mockData';
 import { useFeed } from '@/hooks/useFeed';
 import { useDailySpark, streakBadges, todayKeyET } from '@/hooks/useDailySpark';
 import { useDailySparkStatus } from '@/contexts/DailySparkContext';
@@ -1668,9 +1668,13 @@ interface PostCardProps {
   onOpenMenu?: (post: Post) => void;
   /** Opens the full-screen photo viewer */
   onOpenPhoto?: (src: string) => void;
+  /** Cast a poll vote: (postId, optionIndex) */
+  onVote?: (postId: string, optionIndex: number) => void;
+  /** UID of the currently signed-in user (for poll vote state) */
+  currentUserId?: string;
 }
 
-export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, onSave, onOpenMenu, onOpenPhoto }: PostCardProps) {
+export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, onSave, onOpenMenu, onOpenPhoto, onVote, currentUserId }: PostCardProps) {
   const [saved, setSaved] = useState(post.saved);
   const [commentsCount, setCommentsCount] = useState(post.comments);
   const [sharesCount, setSharesCount] = useState(post.shares);
@@ -1748,12 +1752,86 @@ export function PostCard({ post, index, onOpenComments, onOpenShare, onReact, on
       {/* Content */}
       <p className="text-[14.5px] leading-relaxed text-white mb-3 whitespace-pre-wrap">{post.content}</p>
 
-      {post.imageUrl && (
+      {post.imageUrl && !post.gifUrl && (
         <div
           className="mb-3 overflow-hidden rounded-2xl cursor-pointer"
           onClick={() => onOpenPhoto?.(post.imageUrl!)}
         >
           <img src={post.imageUrl} alt="Post" className="w-full h-auto object-cover max-h-80" />
+        </div>
+      )}
+
+      {/* GIF */}
+      {post.gifUrl && (
+        <div
+          className="mb-3 relative overflow-hidden rounded-2xl cursor-pointer"
+          onClick={() => onOpenPhoto?.(post.gifUrl!)}
+        >
+          <img src={post.gifUrl} alt="GIF" className="w-full h-auto object-cover max-h-80" />
+          <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md tracking-wider select-none">
+            GIF
+          </span>
+        </div>
+      )}
+
+      {/* Poll */}
+      {post.poll && (
+        <div className="mb-3 p-3 rounded-2xl bg-[#0d0d0d] border border-[rgba(139,92,246,0.20)]">
+          {post.poll.question && (
+            <p className="text-[13.5px] font-bold text-white mb-2.5 leading-snug">{post.poll.question}</p>
+          )}
+          {(() => {
+            const totalVotes = Object.keys(post.poll.votes).length;
+            const myVote     = currentUserId != null ? post.poll.votes[currentUserId] : undefined;
+            const hasVoted   = myVote !== undefined;
+            return post.poll.options.map((opt, i) => {
+              const voteCount = Object.values(post.poll!.votes).filter(v => v === i).length;
+              const pct       = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+              const chosen    = hasVoted && myVote === i;
+              return (
+                <button
+                  key={i}
+                  onClick={() => !hasVoted && onVote?.(post.id, i)}
+                  className={cn(
+                    'w-full mb-1.5 last:mb-0 relative overflow-hidden rounded-xl border text-left transition-all',
+                    hasVoted
+                      ? chosen
+                        ? 'border-violet-500 bg-[rgba(139,92,246,0.12)]'
+                        : 'border-[#2a2a2a] bg-[#111] opacity-70'
+                      : 'border-[#2a2a2a] bg-[#111] hover:border-violet-500/50 cursor-pointer'
+                  )}
+                >
+                  {/* Vote bar fill */}
+                  {hasVoted && (
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-xl transition-all duration-500"
+                      style={{
+                        width: `${pct}%`,
+                        background: chosen
+                          ? 'rgba(139,92,246,0.18)'
+                          : 'rgba(255,255,255,0.04)',
+                      }}
+                    />
+                  )}
+                  <div className="relative flex items-center justify-between px-3 py-2">
+                    <span className="text-[13px] font-semibold text-white">{opt}</span>
+                    {hasVoted && (
+                      <span className="text-[11.5px] font-bold text-[rgba(255,255,255,0.45)]">{pct}%</span>
+                    )}
+                    {chosen && <Check size={13} className="text-violet-400 ml-1 flex-shrink-0" />}
+                  </div>
+                </button>
+              );
+            });
+          })()}
+          {(() => {
+            const totalVotes = Object.keys(post.poll!.votes).length;
+            return (
+              <p className="mt-2 text-[11px] text-[rgba(255,255,255,0.35)]">
+                {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
+              </p>
+            );
+          })()}
         </div>
       )}
 
@@ -1818,7 +1896,7 @@ export default function Home() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = currentUser?.displayName.split(' ')[0] ?? 'there';
 
-  const { posts, addPost, toggleReaction, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
+  const { posts, addPost, castVote, toggleReaction, toggleSave, deletePost, updatePost, hidePost, toggleCommentsDisabled } = useFeed();
   // unreadCount is shown in the global MobileHeader bell (AppShell) — not duplicated here
   // Single shared source of truth — reads from DailySparkContext which is
   // mounted once at app level.  Never calls useDailySpark directly here so
@@ -1979,6 +2057,8 @@ export default function Home() {
     audience?: SparkAudience,
     mentionedUserIds?: string[],
     location?: PostLocation,
+    gifUrl?: string,
+    poll?: Pick<PollData, 'question' | 'options'>,
   ) {
     if (!currentUser) return;
     const postId = await addPost(content, {
@@ -1986,6 +2066,8 @@ export default function Home() {
       postAudience: audience ?? 'public',
       mentions:     mentionedUserIds,
       location:     location ?? undefined,
+      gifUrl:       gifUrl,
+      poll:         poll,
     }).catch(console.error);
     showToast('Post shared! ✨');
     // Dispatch mention notifications (fire-and-forget, non-blocking)
@@ -2151,6 +2233,8 @@ export default function Home() {
             onSave={(id, saved) => toggleSave(id, !saved).catch(console.error)}
             onOpenMenu={p => setMenuPost(p)}
             onOpenPhoto={src => setPhotoViewer({ src })}
+            onVote={(postId, optIdx) => castVote(postId, optIdx).catch(console.error)}
+            currentUserId={currentUser?.id}
           />
         ))}
       </div>

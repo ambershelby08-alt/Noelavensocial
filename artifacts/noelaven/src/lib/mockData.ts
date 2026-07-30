@@ -26,6 +26,15 @@ export interface User {
  */
 export type SparkAudience = 'public' | 'mutuals' | 'private' | 'onlyMe';
 
+/** A single poll option text; votes are stored separately in PollData.votes */
+export interface PollData {
+  question: string;
+  /** 2–4 option texts */
+  options: string[];
+  /** uid → chosen optionIndex (0-based). Empty object = no votes yet. */
+  votes: Record<string, number>;
+}
+
 export interface Post {
   id: string;
   authorId: string;
@@ -33,6 +42,8 @@ export interface Post {
   content: string;
   imageUrl?: string;
   imagePublicId?: string;
+  /** Animated GIF URL (from Giphy). Mutually exclusive with imageUrl. */
+  gifUrl?: string | null;
   communityId?: string;
   sparkPrompt?: string;
   sparkAudience?: SparkAudience;
@@ -55,6 +66,8 @@ export interface Post {
   mentions?: string[];
   /** Attached location (name + optional coordinates) */
   location?: { name: string; lat?: number; lng?: number } | null;
+  /** Optional poll attached to this post */
+  poll?: PollData | null;
 }
 
 export interface Community {

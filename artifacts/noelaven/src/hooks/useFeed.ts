@@ -7,6 +7,7 @@ import {
   togglePostSave,
   deletePost as fsDeletePost, updatePost as fsUpdatePost,
   toggleCommentsDisabled as fsToggleCommentsDisabled,
+  castVote as fsCastVote,
 } from '@/lib/firestore';
 import { mockPosts } from '@/lib/mockData';
 import type { Post } from '@/lib/mockData';
@@ -51,6 +52,8 @@ export function useFeed() {
       sparkPrompt?: string; sparkAudience?: string; postAudience?: string;
       mentions?: string[];
       location?: { name: string; lat?: number; lng?: number };
+      gifUrl?: string;
+      poll?: { question: string; options: string[] };
     }
   ): Promise<string | undefined> => {
     if (!currentUser) return undefined;
@@ -72,6 +75,10 @@ export function useFeed() {
         postAudience: (opts?.postAudience ?? 'public') as Post['postAudience'],
         mentions: opts?.mentions,
         location: opts?.location ?? null,
+        gifUrl: opts?.gifUrl ?? null,
+        poll: opts?.poll
+          ? { question: opts.poll.question, options: opts.poll.options, votes: {} }
+          : null,
         createdAt: new Date(),
       };
       setPosts(prev => [newPost, ...prev]);
@@ -80,6 +87,33 @@ export function useFeed() {
     const postId = await fsCreatePost(currentUser, content, opts);
     return postId;
   }, [currentUser]);
+
+  /** Cast a vote on a post poll with optimistic update. */
+  const castVote = useCallback(async (postId: string, optionIndex: number) => {
+    const user = currentUserRef.current;
+    if (!user) return;
+    // Optimistic update
+    setPosts(prev => prev.map(p => {
+      if (p.id !== postId || !p.poll) return p;
+      return {
+        ...p,
+        poll: {
+          ...p.poll,
+          votes: { ...p.poll.votes, [user.id]: optionIndex },
+        },
+      };
+    }));
+    if (isFirebaseConfigured) {
+      fsCastVote(postId, optionIndex, user.id).catch(() => {
+        // Revert on error — refetch will correct state
+        setPosts(prev => prev.map(p => {
+          if (p.id !== postId || !p.poll) return p;
+          const { [user.id]: _, ...rest } = p.poll.votes;
+          return { ...p, poll: { ...p.poll, votes: rest } };
+        }));
+      });
+    }
+  }, []);
 
   /**
    * Toggle a Noelaven reaction on a post with optimistic update.
@@ -195,7 +229,7 @@ export function useFeed() {
 
   return {
     posts, isLoading,
-    addPost, toggleReaction, toggleLike, toggleSave,
+    addPost, castVote, toggleReaction, toggleLike, toggleSave,
     deletePost, updatePost, hidePost, toggleCommentsDisabled,
   };
 }

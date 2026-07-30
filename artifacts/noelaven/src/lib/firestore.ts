@@ -150,16 +150,28 @@ export async function upsertUserBaseDoc(
 // Search users by handle prefix (simple prefix search)
 export async function searchUsers(q: string): Promise<User[]> {
   if (!db) return [];
-  const snap = await getDocs(
-    query(collection(db, 'users'), orderBy('handle'), limit(50))
-  );
-  const all = snap.docs.map(d => docToUser(d.id, d.data()));
-  if (!q) return all;
+  // Empty query → return up to 6 users alphabetically (for @ button with no typed query)
+  if (!q.trim()) {
+    const snap = await getDocs(
+      query(collection(db, 'users'), orderBy('handle'), limit(6))
+    );
+    return snap.docs.map(d => docToUser(d.id, d.data()));
+  }
+  // Server-side prefix search on the handle field.
+  // Uses the auto-created single-field index on 'handle' — no composite index needed.
+  // '\uf8ff' is the highest Unicode private-use code point; appending it to the
+  // lower bound creates an inclusive range that matches all strings starting with q.
   const lower = q.toLowerCase();
-  return all.filter(u =>
-    u.handle.toLowerCase().includes(lower) ||
-    u.displayName.toLowerCase().includes(lower)
+  const snap = await getDocs(
+    query(
+      collection(db, 'users'),
+      where('handle', '>=', lower),
+      where('handle', '<=', lower + '\uf8ff'),
+      orderBy('handle'),
+      limit(6)
+    )
   );
+  return snap.docs.map(d => docToUser(d.id, d.data()));
 }
 
 /** Fetch all registered users (for ComposeDrawer / people picker). */
@@ -228,6 +240,8 @@ function docToPost(id: string, d: DocumentData): Post {
     createdAt: ts(d.createdAt),
     mentions: Array.isArray(d.mentions) ? (d.mentions as string[]) : undefined,
     location: d.location ?? null,
+    gifUrl: d.gifUrl ?? null,
+    poll: d.poll ?? null,
   };
 }
 
@@ -240,6 +254,8 @@ export async function createPost(
     postAudience?: string;
     mentions?: string[];
     location?: { name: string; lat?: number; lng?: number };
+    gifUrl?: string;
+    poll?: { question: string; options: string[] };
   } = {}
 ): Promise<string> {
   if (!db) throw new Error('Firestore not available');
@@ -264,6 +280,12 @@ export async function createPost(
     sparkDateKey,
     mentions: opts.mentions ?? [],
     location: opts.location ?? null,
+    gifUrl: opts.gifUrl ?? null,
+    // Polls are stored as { question, options (string[]), votes ({}) }
+    // Votes map: uid → chosen optionIndex. Updated via castVote().
+    poll: opts.poll
+      ? { question: opts.poll.question, options: opts.poll.options, votes: {} }
+      : null,
     commentsDisabled: false,
     likes: 0,
     comments: 0,
@@ -489,6 +511,23 @@ export async function reportPost(postId: string, reporterId: string, reason: str
 export async function toggleCommentsDisabled(postId: string, disabled: boolean): Promise<void> {
   if (!db) return;
   await updateDoc(doc(db, 'posts', postId), { commentsDisabled: disabled });
+}
+
+/**
+ * Cast or change a vote on a post's poll.
+ * One vote per user; calling again with a different optionIndex replaces the previous vote.
+ * Implementation: simple map-merge update — last write wins, no transaction needed for polls.
+ * Firestore path: posts/{postId}.poll.votes.{userId} = optionIndex
+ */
+export async function castVote(
+  postId: string,
+  optionIndex: number,
+  userId: string,
+): Promise<void> {
+  if (!db) return;
+  await updateDoc(doc(db, 'posts', postId), {
+    [`poll.votes.${userId}`]: optionIndex,
+  });
 }
 
 export async function followUser(

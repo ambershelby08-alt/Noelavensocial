@@ -10,11 +10,12 @@
  *  • Location picker (GPS current + place-name search via Nominatim)
  *  • Audience / privacy selector
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Image as ImageIcon, Smile, MapPin, Send, X, ChevronDown,
   Globe, Users, Lock, UserCircle, AtSign, Navigation, Loader2, Check,
+  Film, BarChart2, Plus, Minus,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadImage, isCloudinaryConfigured } from '@/lib/cloudinary';
@@ -22,7 +23,7 @@ import { searchUsers } from '@/lib/firestore';
 import { GradientAvatar } from '@/components/ui/GradientAvatar';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { cn } from '@/lib/utils';
-import type { User, SparkAudience } from '@/lib/mockData';
+import type { User, SparkAudience, PollData } from '@/lib/mockData';
 
 // ─── Static emoji data ────────────────────────────────────────────────────────
 
@@ -82,6 +83,35 @@ export const AUDIENCE_OPTIONS: { value: SparkAudience; label: string; icon: Reac
   { value: 'onlyMe',  label: 'Only Me',   icon: <UserCircle size={11} /> },
 ];
 
+// ─── Giphy integration ────────────────────────────────────────────────────────
+
+const GIPHY_KEY = (import.meta.env.VITE_GIPHY_API_KEY as string | undefined) ?? '';
+export const isGiphyConfigured = GIPHY_KEY.length > 0;
+
+interface GifResult { id: string; thumb: string; url: string; title: string }
+
+async function searchGifs(q: string): Promise<GifResult[]> {
+  if (!isGiphyConfigured) return [];
+  const endpoint = q.trim()
+    ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(q)}&limit=12&rating=g`
+    : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=12&rating=g`;
+  try {
+    const res  = await fetch(endpoint);
+    const json = await res.json() as {
+      data: Array<{
+        id: string; title: string;
+        images: Record<string, { url?: string; webp?: string }>;
+      }>
+    };
+    return json.data.map(g => ({
+      id:    g.id,
+      thumb: g.images['fixed_height_small']?.webp ?? g.images['fixed_height_small']?.url ?? '',
+      url:   g.images['downsized']?.url ?? g.images['original']?.url ?? '',
+      title: g.title,
+    }));
+  } catch { return []; }
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 export type PostLocation = { name: string; lat?: number; lng?: number };
@@ -93,6 +123,8 @@ export interface PostComposerProps {
     audience?: SparkAudience,
     mentionedUserIds?: string[],
     location?: PostLocation,
+    gifUrl?: string,
+    poll?: Pick<PollData, 'question' | 'options'>,
   ) => void;
 }
 
@@ -110,6 +142,77 @@ export function PostComposer({ onPost }: PostComposerProps) {
   const [showAudiencePicker, setShowAudiencePicker] = useState(false);
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // ── GIF picker ──────────────────────────────────────────────────────────────
+  const [gifUrl, setGifUrl]               = useState('');
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearch, setGifSearch]         = useState('');
+  const [gifResults, setGifResults]       = useState<GifResult[]>([]);
+  const [gifLoading, setGifLoading]       = useState(false);
+  const gifTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gifPickerRef  = useRef<HTMLDivElement>(null);
+
+  // Load trending GIFs when the picker opens
+  useEffect(() => {
+    if (!showGifPicker || !isGiphyConfigured) return;
+    setGifLoading(true);
+    searchGifs('').then(r => { setGifResults(r); setGifLoading(false); }).catch(() => setGifLoading(false));
+  }, [showGifPicker]);
+
+  // Close GIF picker on outside click
+  useEffect(() => {
+    if (!showGifPicker) return;
+    function onOutside(e: MouseEvent) {
+      if (gifPickerRef.current && !gifPickerRef.current.contains(e.target as Node)) {
+        setShowGifPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [showGifPicker]);
+
+  function handleGifSearch(e: React.ChangeEvent<HTMLInputElement>) {
+    const q = e.target.value;
+    setGifSearch(q);
+    if (gifTimerRef.current) clearTimeout(gifTimerRef.current);
+    setGifLoading(true);
+    gifTimerRef.current = setTimeout(() => {
+      searchGifs(q).then(r => { setGifResults(r); setGifLoading(false); }).catch(() => setGifLoading(false));
+    }, 400);
+  }
+
+  function pickGif(url: string) {
+    setGifUrl(url);
+    setImageUrl('');      // GIFs and images are mutually exclusive
+    setShowGifPicker(false);
+    setGifSearch('');
+  }
+
+  // ── Poll builder ────────────────────────────────────────────────────────────
+  const [showPollBuilder, setShowPollBuilder] = useState(false);
+  const [pollQuestion, setPollQuestion]       = useState('');
+  const [pollOptions, setPollOptions]         = useState<string[]>(['', '']);
+
+  function addPollOption() {
+    if (pollOptions.length < 4) setPollOptions(prev => [...prev, '']);
+  }
+  function removePollOption(i: number) {
+    setPollOptions(prev => prev.filter((_, idx) => idx !== i));
+  }
+  function updatePollOption(i: number, val: string) {
+    setPollOptions(prev => prev.map((o, idx) => (idx === i ? val : o)));
+  }
+  function togglePollBuilder() {
+    setShowPollBuilder(v => !v);
+    if (showPollBuilder) {
+      // Closing — clear poll state
+      setPollQuestion('');
+      setPollOptions(['', '']);
+    }
+  }
+  const hasPoll = showPollBuilder &&
+    pollQuestion.trim().length > 0 &&
+    pollOptions.filter(o => o.trim()).length >= 2;
 
   // ── Emoji picker ────────────────────────────────────────────────────────────
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -278,21 +381,32 @@ export function PostComposer({ onPost }: PostComposerProps) {
   }
 
   // ── Submit ──────────────────────────────────────────────────────────────────
-  const canPost = content.trim().length > 0 || imageUrl.length > 0;
+  const canPost = content.trim().length > 0 || imageUrl.length > 0 || !!gifUrl || hasPoll;
 
   function handlePost() {
     if (!canPost) return;
     const finalContent = content.trim();
-    // Only notify users who were picked from autocomplete AND whose @handle
-    // still appears in the final post text.
     const confirmedIds = mentionedUsers
       .filter(u => finalContent.includes(`@${u.handle}`))
       .map(u => u.id);
-    onPost(finalContent, imageUrl || undefined, postAudience, confirmedIds, location ?? undefined);
+    const pollPayload = hasPoll
+      ? { question: pollQuestion.trim(), options: pollOptions.filter(o => o.trim()) }
+      : undefined;
+    onPost(
+      finalContent,
+      imageUrl || undefined,
+      postAudience,
+      confirmedIds,
+      location ?? undefined,
+      gifUrl || undefined,
+      pollPayload,
+    );
     // Reset all state
-    setContent('');       setImageUrl('');     setPostAudience('public');
-    setIsExpanded(false); setMentionedUsers([]); setLocation(null);
-    setShowAudiencePicker(false); setShowEmojiPicker(false); setShowLocationPicker(false);
+    setContent('');       setImageUrl('');     setGifUrl('');
+    setPostAudience('public'); setIsExpanded(false); setMentionedUsers([]);
+    setLocation(null); setShowPollBuilder(false); setPollQuestion(''); setPollOptions(['', '']);
+    setShowAudiencePicker(false); setShowEmojiPicker(false);
+    setShowLocationPicker(false); setShowGifPicker(false);
   }
 
   async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -381,7 +495,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
           )}
 
           {/* ── Image preview ────────────────────────────────────────────── */}
-          {imageUrl && (
+          {imageUrl && !gifUrl && (
             <div className="relative mt-2 rounded-2xl overflow-hidden">
               <img src={imageUrl} alt="Post image" className="w-full max-h-64 object-cover rounded-2xl" />
               <button
@@ -399,6 +513,22 @@ export function PostComposer({ onPost }: PostComposerProps) {
             </div>
           )}
 
+          {/* ── GIF preview ──────────────────────────────────────────────── */}
+          {gifUrl && (
+            <div className="relative mt-2 rounded-2xl overflow-hidden">
+              <img src={gifUrl} alt="GIF" className="w-full max-h-64 object-cover rounded-2xl" />
+              <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md tracking-wider">
+                GIF
+              </span>
+              <button
+                onClick={() => setGifUrl('')}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition-colors"
+              >
+                <X size={13} className="text-white" />
+              </button>
+            </div>
+          )}
+
           {/* ── Location badge ───────────────────────────────────────────── */}
           {location && (
             <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-[rgba(236,72,153,0.10)] rounded-xl border border-[rgba(236,72,153,0.20)]">
@@ -408,6 +538,53 @@ export function PostComposer({ onPost }: PostComposerProps) {
                 <X size={11} />
               </button>
             </div>
+          )}
+
+          {/* ── Poll builder ─────────────────────────────────────────────── */}
+          {showPollBuilder && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.15 }}
+              className="mt-3 p-3 rounded-2xl bg-[#0d0d0d] border border-[rgba(139,92,246,0.25)]"
+            >
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-[11px] font-black text-violet-400 uppercase tracking-wider">Poll</p>
+                <button onClick={togglePollBuilder} className="text-[rgba(255,255,255,0.35)] hover:text-white transition-colors">
+                  <X size={13} />
+                </button>
+              </div>
+              {/* Question */}
+              <input
+                value={pollQuestion}
+                onChange={e => setPollQuestion(e.target.value.slice(0, 120))}
+                placeholder="Ask a question…"
+                className="w-full px-3 py-2 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-[13px] text-white outline-none focus:border-violet-500 transition-colors placeholder:text-[rgba(255,255,255,0.3)] mb-2"
+              />
+              {/* Options */}
+              {pollOptions.map((opt, i) => (
+                <div key={i} className="flex items-center gap-1.5 mb-1.5">
+                  <input
+                    value={opt}
+                    onChange={e => updatePollOption(i, e.target.value.slice(0, 60))}
+                    placeholder={`Option ${i + 1}${i < 2 ? ' (required)' : ''}`}
+                    className="flex-1 px-3 py-1.5 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] text-[12.5px] text-white outline-none focus:border-violet-500 transition-colors placeholder:text-[rgba(255,255,255,0.25)]"
+                  />
+                  {i >= 2 && (
+                    <button onClick={() => removePollOption(i)} className="p-1 rounded-full hover:bg-[#222] text-[rgba(255,255,255,0.35)] hover:text-white transition-colors">
+                      <Minus size={12} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 4 && (
+                <button
+                  onClick={addPollOption}
+                  className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                >
+                  <Plus size={12} /> Add option
+                </button>
+              )}
+            </motion.div>
           )}
 
           {/* ── Toolbar (visible when expanded) ──────────────────────────── */}
@@ -421,7 +598,7 @@ export function PostComposer({ onPost }: PostComposerProps) {
 
                 {/* Gallery */}
                 <button
-                  onClick={() => isCloudinaryConfigured && imageInputRef.current?.click()}
+                  onClick={() => { if (isCloudinaryConfigured) { setGifUrl(''); imageInputRef.current?.click(); } }}
                   disabled={imageUploading || !isCloudinaryConfigured}
                   className={cn(
                     'p-2 rounded-full transition-colors',
@@ -432,6 +609,98 @@ export function PostComposer({ onPost }: PostComposerProps) {
                   title={isCloudinaryConfigured ? 'Add image' : 'Image upload not configured'}
                 >
                   <ImageIcon size={18} className={imageUrl ? 'text-[#F5C542]' : 'text-[rgba(255,255,255,0.45)]'} />
+                </button>
+
+                {/* GIF */}
+                <div className="relative" ref={gifPickerRef}>
+                  <button
+                    onClick={() => {
+                      setShowGifPicker(v => !v);
+                      setShowEmojiPicker(false);
+                      setShowLocationPicker(false);
+                      setShowAudiencePicker(false);
+                    }}
+                    className={cn(
+                      'p-2 rounded-full transition-colors',
+                      gifUrl
+                        ? 'bg-[rgba(52,211,153,0.15)] text-emerald-400'
+                        : showGifPicker
+                          ? 'bg-[rgba(52,211,153,0.10)]'
+                          : 'hover:bg-[rgba(52,211,153,0.08)]'
+                    )}
+                    title={isGiphyConfigured ? 'Add GIF' : 'Add VITE_GIPHY_API_KEY to enable GIF search'}
+                  >
+                    <Film size={18} className="text-emerald-400" />
+                  </button>
+
+                  <AnimatePresence>
+                    {showGifPicker && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute bottom-full left-0 mb-2 w-[280px] bg-[#181818] rounded-2xl border border-[#2a2a2a] shadow-2xl z-[60] overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {!isGiphyConfigured ? (
+                          <div className="p-4 text-center">
+                            <p className="text-[13px] font-bold text-white mb-1">GIF search not configured</p>
+                            <p className="text-[11.5px] text-[rgba(255,255,255,0.45)] leading-relaxed">
+                              Add <code className="text-emerald-400">VITE_GIPHY_API_KEY</code> to your secrets to enable GIF search via Giphy.
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="p-2 border-b border-[#252525]">
+                              <input
+                                value={gifSearch}
+                                onChange={handleGifSearch}
+                                placeholder="Search GIFs…"
+                                className="w-full px-3 py-1.5 rounded-xl bg-[#111] border border-[#2a2a2a] text-[13px] text-white outline-none focus:border-emerald-500 transition-colors placeholder:text-[rgba(255,255,255,0.3)]"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="grid grid-cols-3 gap-1 p-2 max-h-[200px] overflow-y-auto">
+                              {gifLoading && (
+                                <div className="col-span-3 flex justify-center py-6">
+                                  <div className="w-5 h-5 border-2 border-[#333] border-t-emerald-400 rounded-full animate-spin" />
+                                </div>
+                              )}
+                              {!gifLoading && gifResults.map(gif => (
+                                <button
+                                  key={gif.id}
+                                  onClick={() => pickGif(gif.url)}
+                                  className="relative aspect-square overflow-hidden rounded-lg hover:scale-105 transition-transform"
+                                  title={gif.title}
+                                >
+                                  <img src={gif.thumb} alt={gif.title} className="w-full h-full object-cover" loading="lazy" />
+                                </button>
+                              ))}
+                              {!gifLoading && gifResults.length === 0 && (
+                                <p className="col-span-3 text-center text-[12px] text-[rgba(255,255,255,0.35)] py-6">No GIFs found</p>
+                              )}
+                            </div>
+                            <p className="text-center text-[10px] text-[rgba(255,255,255,0.2)] py-1.5">Powered by Giphy</p>
+                          </>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Poll */}
+                <button
+                  onClick={togglePollBuilder}
+                  className={cn(
+                    'p-2 rounded-full transition-colors',
+                    showPollBuilder
+                      ? 'bg-[rgba(139,92,246,0.15)] text-violet-400'
+                      : 'hover:bg-[rgba(139,92,246,0.08)]'
+                  )}
+                  title="Add poll"
+                >
+                  <BarChart2 size={18} className="text-violet-400" />
                 </button>
 
                 {/* Emoji */}
@@ -641,10 +910,11 @@ export function PostComposer({ onPost }: PostComposerProps) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    setContent(''); setImageUrl(''); setIsExpanded(false);
+                    setContent(''); setImageUrl(''); setGifUrl(''); setIsExpanded(false);
                     setMentionedUsers([]); setLocation(null);
+                    setShowPollBuilder(false); setPollQuestion(''); setPollOptions(['', '']);
                     setShowEmojiPicker(false); setShowLocationPicker(false);
-                    setShowAudiencePicker(false);
+                    setShowAudiencePicker(false); setShowGifPicker(false);
                   }}
                   className="px-3 py-1.5 rounded-full text-[13px] font-semibold text-[rgba(255,255,255,0.45)] hover:bg-[#1a1a1a] transition-colors"
                 >
