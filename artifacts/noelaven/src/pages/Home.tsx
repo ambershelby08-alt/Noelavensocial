@@ -1202,10 +1202,10 @@ function CommunityReveal({
 
       {/* ③ Waiting — current user answered but no one else is visible in this tab */}
       {isWaitingState && (
-        <div className="mx-4 mb-4 py-10 flex flex-col items-center gap-2 text-center">
-          <span className="text-4xl mb-1">🌟</span>
+        <div className="mx-4 mb-3 py-5 flex flex-col items-center gap-1.5 text-center">
+          <span className="text-3xl">🌟</span>
           <p className="font-bold text-white text-[15px]">Your spark is out there!</p>
-          <p className="text-[13px] text-[rgba(255,255,255,0.45)] max-w-[240px] leading-relaxed mt-1">
+          <p className="text-[13px] text-[rgba(255,255,255,0.45)] max-w-[240px] leading-relaxed">
             {sort === 'following'
               ? 'No responses from people you follow yet. Check back soon!'
               : sort === 'mutuals'

@@ -124,6 +124,12 @@ export default function Settings() {
   const [bio, setBio] = useState(currentUser?.bio ?? '');
   const [savingInfo, setSavingInfo] = useState(false);
 
+  // Location fields — parsed from stored "City, State" name
+  const _locName = currentUser?.location?.name ?? '';
+  const _locParts = _locName.includes(', ') ? _locName.split(', ') : [_locName, ''];
+  const [city, setCity] = useState(_locParts[0]);
+  const [locationState, setLocationState] = useState(_locParts[1] ?? '');
+
   // Security form
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -302,7 +308,15 @@ export default function Settings() {
     }
     setSavingInfo(true);
     try {
-      updateUser({ displayName: displayName.trim(), handle: handle.trim() || currentUser.handle, bio: bio.trim() });
+      const cityTrim  = city.trim();
+      const stateTrim = locationState.trim();
+      const locName   = cityTrim && stateTrim ? `${cityTrim}, ${stateTrim}` : cityTrim || stateTrim || '';
+      await updateUser({
+        displayName: displayName.trim(),
+        handle: handle.trim() || currentUser.handle,
+        bio: bio.trim(),
+        location: locName ? { name: locName } : null as any,
+      });
       showToast('Profile updated!');
       setActivePanel(null);
     } catch {
@@ -670,6 +684,28 @@ export default function Settings() {
                                 className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111] resize-none"
                               />
                               <p className="text-right text-[11px] text-[rgba(255,255,255,0.45)] mt-0.5">{bio.length}/160</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <label className="text-[11.5px] font-bold text-[#BDBDBD] uppercase tracking-wide">City</label>
+                                <input
+                                  value={city}
+                                  onChange={e => setCity(e.target.value)}
+                                  maxLength={60}
+                                  placeholder="e.g. Atlanta"
+                                  className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111] placeholder-[rgba(255,255,255,0.25)]"
+                                />
+                              </div>
+                              <div className="w-[90px]">
+                                <label className="text-[11.5px] font-bold text-[#BDBDBD] uppercase tracking-wide">State</label>
+                                <input
+                                  value={locationState}
+                                  onChange={e => setLocationState(e.target.value.toUpperCase().slice(0, 2))}
+                                  maxLength={2}
+                                  placeholder="GA"
+                                  className="mt-1.5 w-full px-3.5 py-2.5 rounded-xl border border-[#2a2a2a] text-[14px] text-white outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[rgba(124,58,237,0.2)] transition-all bg-[#111] placeholder-[rgba(255,255,255,0.25)] uppercase"
+                                />
+                              </div>
                             </div>
                             <motion.button
                               whileTap={{ scale: 0.97 }}
