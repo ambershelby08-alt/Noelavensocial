@@ -1100,6 +1100,7 @@ export default function Chat() {
   const [safetySheet, setSafetySheet]     = useState(false);
   const [showReportConfirm, setShowReportConfirm] = useState(false);
   const [isReporting, setIsReporting]     = useState(false);
+  const [reportReason, setReportReason]   = useState('');
   const [forwardMsg, setForwardMsg]       = useState<LocalMsg | null>(null);
   const [forwardDone, setForwardDone]     = useState(0); // # convs forwarded to; >0 shows toast
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
@@ -1525,7 +1526,7 @@ export default function Chat() {
   }
 
   async function confirmReport() {
-    if (isReporting) return;
+    if (isReporting || !reportReason) return;
     setIsReporting(true);
     try {
       if (isFirebaseConfigured) {
@@ -1536,12 +1537,13 @@ export default function Chat() {
           type:     m.type    ?? 'text',
           createdAt: m.createdAt instanceof Date ? m.createdAt : null,
         }));
-        await fsReport(convId, cu.id, 'Reported by user', {
+        await fsReport(convId, cu.id, reportReason, {
           reportedUserId,
           lastMessages: lastMsgs,
         });
       }
       setShowReportConfirm(false);
+      setReportReason('');
       setSafetySheet(false);
       toast.success('Conversation reported.', {
         description: 'Thank you. Our moderation team will review this report.',
@@ -2096,7 +2098,7 @@ export default function Chat() {
               key="report-bg"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70]"
-              onClick={() => !isReporting && setShowReportConfirm(false)}
+              onClick={() => { if (!isReporting) { setShowReportConfirm(false); setReportReason(''); } }}
             />
             {/* Dialog */}
             <motion.div
@@ -2117,13 +2119,43 @@ export default function Chat() {
                 style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)' }}>
                 <Flag size={20} className="text-red-400" />
               </div>
-              <h2 className="text-white text-[17px] font-black text-center mb-2">Report Conversation?</h2>
-              <p className="text-white/55 text-[13.5px] text-center leading-relaxed mb-6">
-                Are you sure you want to report this conversation? Our moderation team will review it.
+              <h2 className="text-white text-[17px] font-black text-center mb-1.5">Report Conversation</h2>
+              <p className="text-white/55 text-[13px] text-center leading-relaxed mb-5">
+                What's the problem? This helps our moderation team act quickly.
               </p>
+
+              {/* Reason picker */}
+              <div className="space-y-2 mb-6">
+                {(['Spam', 'Harassment', 'Hate speech', 'Scam or fraud', 'Other'] as const).map(reason => (
+                  <button
+                    key={reason}
+                    onClick={() => setReportReason(reason)}
+                    disabled={isReporting}
+                    className={cn(
+                      'w-full flex items-center justify-between px-4 py-3 rounded-[14px] text-[14px] font-semibold transition-all text-left',
+                      reportReason === reason
+                        ? 'text-white'
+                        : 'text-white/70'
+                    )}
+                    style={
+                      reportReason === reason
+                        ? { background: 'rgba(239,68,68,0.18)', border: '1.5px solid rgba(239,68,68,0.5)' }
+                        : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }
+                    }
+                  >
+                    <span>{reason}</span>
+                    {reportReason === reason && (
+                      <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                        <Check size={11} className="text-white" strokeWidth={3} />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowReportConfirm(false)}
+                  onClick={() => { setShowReportConfirm(false); setReportReason(''); }}
                   disabled={isReporting}
                   className="flex-1 py-3 rounded-[14px] text-[14px] font-bold text-white/70 transition-colors active:bg-white/10 disabled:opacity-50"
                   style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -2132,8 +2164,8 @@ export default function Chat() {
                 </button>
                 <button
                   onClick={confirmReport}
-                  disabled={isReporting}
-                  className="flex-1 py-3 rounded-[14px] text-[14px] font-bold text-white transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+                  disabled={isReporting || !reportReason}
+                  className="flex-1 py-3 rounded-[14px] text-[14px] font-bold text-white transition-opacity disabled:opacity-40 flex items-center justify-center gap-2"
                   style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)' }}
                 >
                   {isReporting ? (
