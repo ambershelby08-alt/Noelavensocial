@@ -6,12 +6,20 @@
       "categoryLabel": "🌎 Life",
       "isGoldenSpark": false,
       "isSurprise": false
+    },
+    "2026-07-30": {
+      "prompt": "Would you rather have a movie soundtrack for your life or a theme song for your mornings?",
+      "categoryKey": "wouldYouRather",
+      "categoryLabel": "🎬 Would You Rather",
+      "isGoldenSpark": false,
+      "isSurprise": false
     }
   },
   "recentPrompts": [
-    "What made you smile most yesterday?"
+    "What made you smile most yesterday?",
+    "Would you rather have a movie soundtrack for your life or a theme song for your mornings?"
   ],
-  "lastCategoryKey": "",
+  "lastCategoryKey": "wouldYouRather",
   "goldenSpark": {
     "weekKey": "2026-W31",
     "prompt": "What small kindness made your day brighter this week?",
