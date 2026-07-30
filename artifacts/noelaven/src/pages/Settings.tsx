@@ -463,8 +463,9 @@ export default function Settings() {
         { icon: AlertTriangle, label: 'Report a Problem',      desc: 'Help us fix issues',                key: 'report'     },
         { icon: FileText,      label: 'Community Guidelines',  desc: 'Rules and policies',                key: 'guidelines' },
         { icon: HelpCircle,    label: 'Help Center',           desc: 'FAQs and support',                  key: 'help'       },
-        { icon: FileText,      label: 'Privacy Policy',        desc: 'How we handle your data',           key: 'privacy'    },
-        { icon: FileText,      label: 'Terms of Service',      desc: 'Rules for using Noelaven',          key: 'terms'      },
+        { icon: FileText,      label: 'Privacy Policy',        desc: 'How we handle your data',           key: 'privacy'      },
+        { icon: FileText,      label: 'Terms of Service',      desc: 'Rules for using Noelaven',          key: 'terms'        },
+        { icon: Shield,        label: 'Data Safety',           desc: 'What data we collect and why',      key: 'data-safety'  },
       ],
     },
   ];
@@ -589,9 +590,10 @@ export default function Settings() {
                     whileTap={{ scale: 0.99 }}
                     onClick={() => {
                       if (item.onPress) { item.onPress(); return; }
-                      if (item.key === 'safety')   { setLocation('/safety');  return; }
-                      if (item.key === 'privacy')  { setLocation('/privacy'); return; }
-                      if (item.key === 'terms')    { setLocation('/terms');   return; }
+                      if (item.key === 'safety')       { setLocation('/safety');       return; }
+                      if (item.key === 'privacy')      { setLocation('/privacy');      return; }
+                      if (item.key === 'terms')        { setLocation('/terms');        return; }
+                      if (item.key === 'data-safety')  { setLocation('/data-safety'); return; }
                       togglePanel(item.key);
                     }}
                     className="w-full flex items-center gap-3.5 px-4 py-4 text-left hover:bg-[#111] transition-colors border-b border-[#1a1a1a] last:border-0 group"
@@ -1034,9 +1036,45 @@ export default function Settings() {
           </div>
         ))}
 
-        <p className="text-center text-[12px] text-[rgba(255,255,255,0.45)] pt-2 pb-1 font-medium">
-          Noelaven v1.0.0 · Made with 💜
-        </p>
+        {/* ── About block ─────────────────────────────────────────────────── */}
+        <div className="rounded-[22px] border border-[#1a1a1a] bg-[#111] px-5 py-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg,#EC4899,#7C3AED)' }}>
+              <span className="text-[20px]">🌿</span>
+            </div>
+            <div>
+              <p className="text-[15px] font-black text-white">Noelaven</p>
+              <p className="text-[12px] text-[rgba(255,255,255,0.45)]">Version 1.0.0 · Rated 13+</p>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            {[
+              { label: 'Privacy Policy',  path: '/privacy' },
+              { label: 'Terms of Service', path: '/terms' },
+              { label: 'Data Safety',     path: '/data-safety' },
+            ].map(link => (
+              <button key={link.path}
+                onClick={() => setLocation(link.path)}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-white/5"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <span className="text-[13.5px] font-semibold text-[#BDBDBD]">{link.label}</span>
+                <ChevronRight size={14} className="text-[#555]" />
+              </button>
+            ))}
+          </div>
+
+          <div className="pt-1 border-t border-[#1a1a1a]">
+            <p className="text-[12px] text-[rgba(255,255,255,0.3)] text-center">
+              © {new Date().getFullYear()} Noelaven · Made with 💜 ·{' '}
+              <a href="mailto:support@noelaven.com" className="text-[rgba(255,255,255,0.45)] underline">
+                support@noelaven.com
+              </a>
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ── Account Switcher sheet ──────────────────────────────────────────── */}
