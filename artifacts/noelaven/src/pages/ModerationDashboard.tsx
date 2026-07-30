@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
   subscribeReports, updateReportStatus, assignReport, updateReportPriority,
-  suspendUser, banUser, unbanUser, sendWarning, restrictAccount,
+  suspendUser, banUser, unbanUser, liftSuspension, sendWarning, restrictAccount,
   removeContent, restoreContent,
   getSuspendedUsers, getBannedUsers, getModerationLog, checkIsAdmin,
 } from '@/lib/safety';
@@ -58,7 +58,8 @@ const PRIORITY_CONFIG: Record<ReportPriority, { label: string; color: string; bg
 
 type ConfirmAction = {
   type: 'dismiss' | 'remove_content' | 'send_warning' | 'restrict'
-       | 'suspend' | 'ban' | 'unban' | 'restore' | 'assign' | 'resolve';
+       | 'suspend' | 'ban' | 'unban' | 'restore' | 'assign' | 'resolve'
+       | 'lift_suspension';
   reportId: string;
   targetId: string;          // content id or user id
   targetUserId?: string;
@@ -86,7 +87,8 @@ function ConfirmModal({
   const isDanger = dangerTypes.has(action.type);
 
   async function handleSubmit() {
-    if (!reason.trim() && action.type !== 'assign') return;
+    // 'resolve' uses the notes field, not reason — don't gate on reason for it
+    if (!reason.trim() && action.type !== 'assign' && action.type !== 'resolve') return;
     setBusy(true);
     try {
       await onConfirm(reason.trim(), needsDays ? { days } : needsNotes ? { notes } : {});
@@ -370,9 +372,12 @@ function ActionBtn({ label, icon: Icon, color, onClick }: {
 function LogEntry({ entry }: { entry: ModerationLog }) {
   const actionColors: Record<string, string> = {
     permanent_ban: '#E74C3C', suspend_30d: '#E67E22', suspend_7d: '#E67E22',
-    suspend_1d: '#FF8C42', send_warning: '#FF8C42', restrict_account: '#F5C542',
-    remove_content: '#E74C3C', restore_content: '#27AE60', dismiss: '#95A5A6',
-    resolve: '#27AE60', assign: '#2980B9', unban: '#27AE60',
+    suspend_1d: '#FF8C42', suspend_custom: '#E67E22',
+    send_warning: '#FF8C42', restrict_account: '#F5C542',
+    remove_content: '#E74C3C', restore_content: '#27AE60',
+    dismiss: '#95A5A6', dismissed: '#95A5A6',
+    resolve: '#27AE60', resolved: '#27AE60',
+    assign: '#2980B9', unban: '#27AE60', lift_suspension: '#27AE60',
   };
   const color = actionColors[entry.action] ?? '#F5C542';
 
@@ -403,16 +408,16 @@ function LogEntry({ entry }: { entry: ModerationLog }) {
 
 // ─── Suspended / Banned User Card ─────────────────────────────────────────────
 
-function SuspendedCard({ item, onUnban, type }: {
+function SuspendedCard({ item, onAction, type }: {
   item: { userId: string; reason: string; suspendedAt?: Date; bannedAt?: Date; expiresAt?: Date | null; days?: number };
-  onUnban: (userId: string) => void;
+  onAction: (actionType: 'lift_suspension' | 'suspend' | 'ban' | 'unban', userId: string) => void;
   type: 'suspended' | 'banned';
 }) {
   const when = type === 'banned' ? item.bannedAt : item.suspendedAt;
   return (
     <div className="bg-[#111] rounded-[18px] border border-[#1a1a1a] shadow-sm p-4">
       <div className="flex items-start gap-3">
-        <div className={cn('w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0', type === 'banned' ? 'bg-red-100' : 'bg-orange-100')}>
+        <div className={cn('w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5', type === 'banned' ? 'bg-red-100' : 'bg-orange-100')}>
           {type === 'banned' ? <Ban size={16} className="text-red-500" /> : <Clock size={16} className="text-orange-500" />}
         </div>
         <div className="flex-1 min-w-0">
@@ -425,13 +430,44 @@ function SuspendedCard({ item, onUnban, type }: {
             </p>
           )}
         </div>
-        <button
-          onClick={() => onUnban(item.userId)}
-          className="px-3 py-1.5 rounded-full bg-green-50 text-green-600 text-[12px] font-bold border border-green-200 hover:bg-green-100 transition-colors"
-        >
-          Restore
-        </button>
       </div>
+
+      {/* Action buttons */}
+      {type === 'suspended' ? (
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={() => onAction('lift_suspension', item.userId)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#0f2e1a] text-green-400 text-[12px] font-bold border border-green-900 hover:bg-[#163d22] transition-colors"
+          >
+            <CheckCircle size={13} />
+            Lift Suspension
+          </button>
+          <button
+            onClick={() => onAction('suspend', item.userId)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#1e1a0a] text-amber-400 text-[12px] font-bold border border-amber-900 hover:bg-[#2a2310] transition-colors"
+          >
+            <Clock size={13} />
+            Extend
+          </button>
+          <button
+            onClick={() => onAction('ban', item.userId)}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#2e0a0a] text-red-400 text-[12px] font-bold border border-red-900 hover:bg-[#3d1010] transition-colors"
+          >
+            <Ban size={13} />
+            Perm Ban
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <button
+            onClick={() => onAction('unban', item.userId)}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#0f2e1a] text-green-400 text-[12px] font-bold border border-green-900 hover:bg-[#163d22] transition-colors"
+          >
+            <CheckCircle size={13} />
+            Lift Ban
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -538,42 +574,72 @@ export default function ModerationDashboard() {
       if (type === 'assign') {
         await assignReport(reportId, currentUser.id);
         showToast('Report assigned to you');
+
       } else if (type === 'dismiss') {
-        await updateReportStatus(reportId, 'dismissed', currentUser.id, reason);
+        await updateReportStatus(reportId, 'dismissed', currentUser.id, reason, undefined, reason);
         showToast('Report dismissed');
+
       } else if (type === 'resolve') {
-        await updateReportStatus(reportId, 'resolved', currentUser.id, extra.notes, extra.notes);
-        showToast('Report resolved');
+        // notes come from the 'Resolution Notes' field; reason may be empty — both are OK
+        const finalNotes = extra.notes?.trim() || reason || 'Resolved';
+        await updateReportStatus(
+          reportId, 'resolved', currentUser.id,
+          finalNotes,   // moderatorNote
+          finalNotes,   // resolution
+          finalNotes,   // resolutionNotes (properly stored as resolvedBy + resolutionNotes)
+        );
+        showToast('✅ Report resolved');
+
       } else if (type === 'remove_content') {
         await removeContent(targetId, (targetType as 'post' | 'comment') ?? 'post', currentUser.id, reason, reportId);
-        await updateReportStatus(reportId, 'resolved', currentUser.id, `Content removed: ${reason}`);
+        await updateReportStatus(reportId, 'resolved', currentUser.id, `Content removed: ${reason}`, undefined, reason);
         showToast('Content removed');
+
       } else if (type === 'restore') {
         await restoreContent(targetId, (targetType as 'post' | 'comment') ?? 'post', currentUser.id, reason);
         showToast('Content restored');
+
       } else if (type === 'send_warning') {
         await sendWarning(targetUserId ?? targetId, currentUser.id, reason, reportId);
-        showToast('Warning sent to user');
+        showToast('⚠️ Warning sent to user');
+
       } else if (type === 'restrict') {
         await restrictAccount(targetUserId ?? targetId, currentUser.id, reason, reportId);
         showToast('Account restricted');
+
       } else if (type === 'suspend') {
         await suspendUser(targetUserId ?? targetId, currentUser.id, reason, extra.days ?? 7, reportId);
-        await updateReportStatus(reportId, 'resolved', currentUser.id, `User suspended ${extra.days ?? 7}d: ${reason}`);
-        showToast(`User suspended for ${extra.days ?? 7} days`);
+        if (reportId) {
+          await updateReportStatus(reportId, 'resolved', currentUser.id,
+            `User suspended ${extra.days ?? 7}d: ${reason}`, undefined, reason);
+        }
+        showToast(`🕐 User suspended for ${extra.days ?? 7} days`);
+
       } else if (type === 'ban') {
         await banUser(targetUserId ?? targetId, currentUser.id, reason, reportId);
-        await updateReportStatus(reportId, 'resolved', currentUser.id, `User permanently banned: ${reason}`);
-        showToast('User permanently banned');
+        if (reportId) {
+          await updateReportStatus(reportId, 'resolved', currentUser.id,
+            `User permanently banned: ${reason}`, undefined, reason);
+        }
+        showToast('🚫 User permanently banned');
+
+      } else if (type === 'lift_suspension') {
+        await liftSuspension(targetId, currentUser.id, reason);
+        showToast('✅ Suspension lifted — user reinstated');
+        // Refresh suspended list immediately
+        setSuspended(await getSuspendedUsers());
+
       } else if (type === 'unban') {
         await unbanUser(targetId, currentUser.id, reason);
-        showToast('User restored');
+        showToast('✅ Ban lifted — user reinstated');
+        setBanned(await getBannedUsers());
       }
+
       setConfirmAction(null);
       loadTab(activeTab);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      showToast(msg.includes('Founder') ? '⛔ Cannot moderate the Founder account.' : `Error: ${msg}`);
+      showToast(msg.includes('Founder') ? '⛔ Cannot moderate the Founder account.' : `❌ Error: ${msg}`);
       setConfirmAction(null);
     }
   }
@@ -764,9 +830,15 @@ export default function ModerationDashboard() {
             suspended.map(s => (
               <SuspendedCard key={s.userId} type="suspended"
                 item={{ ...s, suspendedAt: s.suspendedAt }}
-                onUnban={uid => setConfirmAction({
-                  type: 'unban', reportId: '', targetId: uid, label: 'Restore this user',
-                })} />
+                onAction={(actionType, uid) => {
+                  if (actionType === 'lift_suspension') {
+                    setConfirmAction({ type: 'lift_suspension', reportId: '', targetId: uid, label: '✅ Lift Suspension' });
+                  } else if (actionType === 'suspend') {
+                    setConfirmAction({ type: 'suspend', reportId: '', targetId: uid, label: '⏳ Extend Suspension' });
+                  } else if (actionType === 'ban') {
+                    setConfirmAction({ type: 'ban', reportId: '', targetId: uid, label: '🚫 Permanently Ban' });
+                  }
+                }} />
             ))
           )
         ) : activeTab === 'banned' ? (
@@ -776,8 +848,8 @@ export default function ModerationDashboard() {
             banned.map(b => (
               <SuspendedCard key={b.userId} type="banned"
                 item={{ ...b, bannedAt: b.bannedAt }}
-                onUnban={uid => setConfirmAction({
-                  type: 'unban', reportId: '', targetId: uid, label: 'Unban this user',
+                onAction={(_actionType, uid) => setConfirmAction({
+                  type: 'unban', reportId: '', targetId: uid, label: '✅ Lift Ban',
                 })} />
             ))
           )

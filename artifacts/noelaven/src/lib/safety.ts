@@ -398,26 +398,41 @@ export async function getPendingReports(statusFilter: ReportStatus | 'all' = 'pe
 
 export async function updateReportStatus(
   reportId: string, status: ReportStatus, moderatorId: string,
-  moderatorNote?: string, resolution?: string
+  moderatorNote?: string, resolution?: string, resolutionNotes?: string
 ): Promise<void> {
+  const isTerminal = status === 'resolved' || status === 'dismissed';
   if (isFirebaseConfigured && db) {
     await updateDoc(doc(db, 'reports', reportId), {
       status,
       moderatorId,
-      moderatorNote: moderatorNote ?? null,
-      resolution: resolution ?? null,
-      resolvedAt: serverTimestamp(),
-      reviewedAt: serverTimestamp(),
+      resolvedBy:       isTerminal ? moderatorId : null,
+      moderatorNote:    moderatorNote ?? null,
+      resolution:       resolution ?? null,
+      resolutionNotes:  resolutionNotes ?? null,
+      resolvedAt:       isTerminal ? serverTimestamp() : null,
+      reviewedAt:       serverTimestamp(),
     });
   } else {
     try {
       const raw = localStorage.getItem(K.reports);
       if (!raw) return;
       const reports: Report[] = JSON.parse(raw).map((r: Report) =>
-        r.id === reportId ? { ...r, status, moderatorNote, resolution, resolvedAt: new Date() } : r
+        r.id === reportId
+          ? { ...r, status, moderatorNote, resolution, resolutionNotes, resolvedAt: new Date() }
+          : r
       );
       localStorage.setItem(K.reports, JSON.stringify(reports));
     } catch {}
+  }
+  // Always log terminal status transitions
+  if (isTerminal) {
+    await logAction({
+      moderatorId,
+      action:     status,                          // 'resolved' or 'dismissed'
+      targetId:   reportId,
+      targetType: 'report',
+      reason:     resolutionNotes ?? moderatorNote ?? status,
+    });
   }
 }
 
@@ -517,11 +532,57 @@ export async function unbanUser(
   userId: string, moderatorId: string, reason: string
 ): Promise<void> {
   if (isFirebaseConfigured && db) {
-    await updateDoc(doc(db, 'userSuspensions', userId), { active: false });
+    await updateDoc(doc(db, 'userSuspensions', userId), {
+      active: false,
+      liftedBy: moderatorId,
+      liftedAt: serverTimestamp(),
+      liftReason: reason,
+    });
+    // Notify the user their ban has been lifted
+    try {
+      const { writeNotification, getUserDoc } = await import('@/lib/firestore');
+      const moderatorUser = await getUserDoc(moderatorId);
+      if (moderatorUser) {
+        await writeNotification(userId, 'moderation_warning', moderatorUser, {
+          targetPreview: 'Your account ban has been lifted.',
+          message: 'Your account ban has been lifted by a moderator. You can use Noelaven again.',
+        });
+      }
+    } catch {}
   }
   await logAction({
     moderatorId, action: 'unban', targetId: userId, targetType: 'user', targetUserId: userId,
     reason, previousState: 'banned', newState: 'active',
+  });
+}
+
+/** Lift a temporary suspension — clears all suspension metadata and notifies the user. */
+export async function liftSuspension(
+  userId: string, moderatorId: string, reason: string
+): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    await updateDoc(doc(db, 'userSuspensions', userId), {
+      active: false,
+      liftedBy: moderatorId,
+      liftedAt: serverTimestamp(),
+      liftReason: reason,
+      suspensionReason: null,
+    });
+    // Notify the user their suspension has been lifted
+    try {
+      const { writeNotification, getUserDoc } = await import('@/lib/firestore');
+      const moderatorUser = await getUserDoc(moderatorId);
+      if (moderatorUser) {
+        await writeNotification(userId, 'moderation_warning', moderatorUser, {
+          targetPreview: 'Your suspension has been lifted.',
+          message: 'Your account suspension has been lifted. Welcome back to Noelaven!',
+        });
+      }
+    } catch {}
+  }
+  await logAction({
+    moderatorId, action: 'lift_suspension', targetId: userId, targetType: 'user', targetUserId: userId,
+    reason, previousState: 'suspended', newState: 'active',
   });
 }
 
