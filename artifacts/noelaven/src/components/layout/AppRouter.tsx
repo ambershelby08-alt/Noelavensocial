@@ -19,6 +19,7 @@ import ModerationDashboard from '@/pages/ModerationDashboard';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import DataSafety from '@/pages/DataSafety';
+import DeleteAccount from '@/pages/DeleteAccount';
 
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
@@ -49,6 +50,7 @@ function AuthenticatedApp() {
         <Route path="/privacy"            component={Privacy} />
         <Route path="/terms"             component={Terms} />
         <Route path="/data-safety"       component={DataSafety} />
+        <Route path="/delete-account"    component={DeleteAccount} />
         <Route>
           <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6">
             <p className="text-6xl mb-5">🌿</p>
@@ -94,9 +96,10 @@ export default function AppRouter() {
   if (isLoading) return <LoadingScreen />;
 
   // Public routes — no auth required
-  if (location === '/privacy'     || location.startsWith('/privacy/'))     return <Privacy />;
-  if (location === '/terms'       || location.startsWith('/terms/'))       return <Terms />;
-  if (location === '/data-safety' || location.startsWith('/data-safety/')) return <DataSafety />;
+  if (location === '/privacy'        || location.startsWith('/privacy/'))        return <Privacy />;
+  if (location === '/terms'          || location.startsWith('/terms/'))          return <Terms />;
+  if (location === '/data-safety'    || location.startsWith('/data-safety/'))    return <DataSafety />;
+  if (location === '/delete-account' || location.startsWith('/delete-account/')) return <DeleteAccount />;
 
   // After sign-up, before profile is complete
   if (isNewUser && !currentUser) return <CreateProfile />;
