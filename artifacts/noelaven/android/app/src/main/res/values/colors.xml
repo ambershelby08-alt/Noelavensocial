@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher / icon background (matches ic_launcher_background.xml) -->
+    <color name="colorPrimary">#EC4899</color>
+    <color name="colorPrimaryDark">#0f0f10</color>
+    <color name="colorAccent">#EC4899</color>
+
+    <!-- Noelaven brand palette — used in offline overlay and native UI -->
+    <color name="nlv_background">#0f0f10</color>
+    <color name="nlv_pink">#EC4899</color>
+    <color name="nlv_text_primary">#FFFFFF</color>
+    <color name="nlv_text_muted">#73FFFFFF</color>
+</resources>

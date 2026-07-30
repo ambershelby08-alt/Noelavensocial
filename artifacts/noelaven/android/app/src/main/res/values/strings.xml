@@ -4,4 +4,9 @@
     <string name="title_activity_main">Noelaven</string>
     <string name="package_name">com.noelaven.app</string>
     <string name="custom_url_scheme">com.noelaven.app</string>
+
+    <!-- Offline overlay strings -->
+    <string name="offline_icon_desc">No internet connection</string>
+    <string name="offline_message">You\'re offline.\nCheck your connection and try again.</string>
+    <string name="offline_retry">Try again</string>
 </resources>
