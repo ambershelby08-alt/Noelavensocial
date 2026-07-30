@@ -153,6 +153,30 @@ export default function Login() {
             Create an account →
           </Link>
         </motion.p>
+
+        {/* Legal links — visible before signing in */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          className="flex items-center justify-center gap-4 mt-6"
+        >
+          {[
+            { label: 'Privacy Policy', href: '/privacy' },
+            { label: 'Terms of Service', href: '/terms' },
+            { label: 'Data Safety', href: '/data-safety' },
+          ].map((link, i, arr) => (
+            <React.Fragment key={link.href}>
+              <Link href={link.href}
+                className="text-[12px] text-[rgba(255,255,255,0.35)] hover:text-[rgba(255,255,255,0.6)] transition-colors">
+                {link.label}
+              </Link>
+              {i < arr.length - 1 && (
+                <span className="text-[rgba(255,255,255,0.15)] text-[10px]">•</span>
+              )}
+            </React.Fragment>
+          ))}
+        </motion.div>
       </div>
     </div>
   );

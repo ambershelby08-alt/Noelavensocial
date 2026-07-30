@@ -94,7 +94,9 @@ export default function AppRouter() {
   if (isLoading) return <LoadingScreen />;
 
   // Public routes — no auth required
-  if (location === '/privacy' || location.startsWith('/privacy/')) return <Privacy />;
+  if (location === '/privacy'     || location.startsWith('/privacy/'))     return <Privacy />;
+  if (location === '/terms'       || location.startsWith('/terms/'))       return <Terms />;
+  if (location === '/data-safety' || location.startsWith('/data-safety/')) return <DataSafety />;
 
   // After sign-up, before profile is complete
   if (isNewUser && !currentUser) return <CreateProfile />;
